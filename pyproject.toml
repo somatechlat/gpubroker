@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "gpubroker"
+version = "0.1.0"
+description = "GPUBROKER control‑tower SaaS"
+authors = ["SomaAgent 01 <somaagent01@example.com>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.13"
+fastapi = "^0.110.0"
+uvicorn = "^0.27.0"
+sqlalchemy = "^2.0"
+psycopg2-binary = "^2.9"
+redis = "^5.0"
+clickhouse-driver = "^0.2"
+langchain = "^0.1.0"
+pymoo = "^0.6"
+xgboost = "^2.0"
+pydantic = "^2.6"
+python-jose = "^3.3"
+passlib = {extras = ["argon2"], version = "^1.7"}
+# add other dependencies as needed
+
+[tool.poetry.dev-dependencies]
+pytest = "^8.0"
+ruff = "^0.2"
