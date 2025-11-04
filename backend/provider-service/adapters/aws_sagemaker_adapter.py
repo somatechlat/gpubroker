@@ -57,11 +57,11 @@ class AWSSageMakerAdapter(BaseProviderAdapter):
         except Exception as e:
             logger.error(f"Failed to fetch AWS SageMaker data: {e}")
             # Fallback to hardcoded real pricing for testing
-            return self._get_fallback_pricing()
+            raise RuntimeError("AWS SageMaker data fetch failed")
 
         except Exception as e:
             logger.error(f"Failed to fetch AWS SageMaker data: {e}")
-            return []
+            raise RuntimeError("AWS SageMaker data fetch failed")
 
     async def _parse_aws_pricing_response(self, response: Dict) -> List[ProviderOffer]:
         """Parse AWS pricing API response into normalized offers"""
@@ -226,40 +226,7 @@ class AWSSageMakerAdapter(BaseProviderAdapter):
 
         return tags
 
-    def _get_fallback_pricing(self) -> List[ProviderOffer]:
-        """Fallback method with real AWS SageMaker pricing when API fails"""
-        return [
-            ProviderOffer(
-                provider="aws_sagemaker",
-                region="us-east-1",
-                instance_type="ml.p3.2xlarge",
-                price_per_hour=3.06,
-                tokens_per_second=500,
-                availability="available",
-                compliance_tags=["aws", "sagemaker", "cloud", "hipaa_compliant", "soc2_compliant"],
-                last_updated=datetime.now(timezone.utc)
-            ),
-            ProviderOffer(
-                provider="aws_sagemaker",
-                region="us-east-1",
-                instance_type="ml.g4dn.xlarge",
-                price_per_hour=0.526,
-                tokens_per_second=300,
-                availability="available",
-                compliance_tags=["aws", "sagemaker", "cloud", "hipaa_compliant", "soc2_compliant"],
-                last_updated=datetime.now(timezone.utc)
-            ),
-            ProviderOffer(
-                provider="aws_sagemaker",
-                region="us-east-1",
-                instance_type="ml.g5.xlarge",
-                price_per_hour=1.006,
-                tokens_per_second=400,
-                availability="available",
-                compliance_tags=["aws", "sagemaker", "cloud", "hipaa_compliant", "soc2_compliant"],
-                last_updated=datetime.now(timezone.utc)
-            )
-        ]
+    # The fallback pricing method has been removed to avoid returning static placeholder data.
 
     async def validate_credentials(self, credentials: Dict[str, str]) -> bool:
         """Validate AWS credentials using boto3"""

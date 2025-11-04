@@ -40,7 +40,7 @@ class DeepInfraAdapter(BaseProviderAdapter):
 
         except Exception as e:
             logger.error(f"Failed to fetch DeepInfra data: {e}")
-            return []
+            raise RuntimeError("DeepInfra data fetch failed")
 
     async def _parse_model_data(self, data: Dict) -> List[ProviderOffer]:
         """Parse DeepInfra model data into normalized offers"""

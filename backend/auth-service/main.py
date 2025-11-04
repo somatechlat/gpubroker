@@ -1,108 +1,6 @@
-"""Auth Service (FastAPI)
-
-Provides minimal user registration and JWT based authentication.
-Uses Argon2 for password hashing and python‑jose for token handling.
-In a production setting this would be backed by a persistent DB and
-integrated with Keycloak, but for the initial scaffold we keep an
-in‑memory store so the UI can obtain a token for subsequent calls.
 """
-
-from datetime import datetime, timedelta
-from typing import Dict
-
-from fastapi import FastAPI, HTTPException, Depends, status
-from fastapi.security import OAuth2PasswordRequestForm
-from pydantic import BaseModel
-from jose import JWTError, jwt
-import argon2
-
-# ---------------------------------------------------------------------------
-# Configuration (would normally come from env vars)
-# ---------------------------------------------------------------------------
-SECRET_KEY = "change_this_secret_key"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
-REFRESH_TOKEN_EXPIRE_DAYS = 7
-
-app = FastAPI(title="GPUBROKER Auth Service")
-
-# Simple in‑memory user store: username -> {hashed_password, role}
-_users_db: Dict[str, Dict[str, str]] = {}
-
-pwd_hasher = argon2.PasswordHasher()
-
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-    refresh_token: str
-
-
-def _create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
-    to_encode = data.copy()
-    expire = datetime.utcnow() + (
-        expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    )
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-
-
-def _create_refresh_token(username: str) -> str:
-    expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
-    to_encode = {"sub": username, "exp": expire, "type": "refresh"}
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-
-
-def _verify_password(plain_password: str, hashed_password: str) -> bool:
-    try:
-        return pwd_hasher.verify(hashed_password, plain_password)
-    except argon2.exceptions.VerifyMismatchError:
-        return False
-
-
-def _get_user(username: str):
-    return _users_db.get(username)
-
-
-def authenticate_user(username: str, password: str):
-    user = _get_user(username)
-    if not user:
-        return False
-    if not _verify_password(password, user["hashed_password"]):
-        return False
-    return True
-
-
-@app.post("/register", status_code=status.HTTP_201_CREATED)
-def register(username: str, password: str, role: str = "user"):
-    if username in _users_db:
-        raise HTTPException(status_code=400, detail="User already exists")
-    _users_db[username] = {
-        "hashed_password": pwd_hasher.hash(password),
-        "role": role,
-    }
-    return {"msg": "User created"}
-
-
-@app.post("/login", response_model=Token)
-def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    if not authenticate_user(form_data.username, form_data.password):
-        raise HTTPException(status_code=400, detail="Incorrect username or password")
-    access_token = _create_access_token({"sub": form_data.username})
-    refresh_token = _create_refresh_token(form_data.username)
-    return {"access_token": access_token, "refresh_token": refresh_token}
-
-
-def get_current_user(token: str = Depends(OAuth2PasswordRequestForm)):
-    # Placeholder for dependency injection; real implementation would decode token.
-    raise NotImplementedError()
-
-
-"""
-⚠️ WARNING: REAL IMPLEMENTATION ONLY ⚠️
-We do NOT mock, bypass, or invent data.
-We use ONLY real servers, real APIs, and real data.
-This codebase follows principles of truth, simplicity, and elegance.
+Auth Service (FastAPI) — DB-backed, JWT-based authentication.
+Legacy in-memory scaffolding removed. Standardized on python-jose for JWT.
 """
 
 from fastapi import FastAPI, HTTPException, Depends, status
@@ -110,7 +8,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from passlib.context import CryptContext
-import jwt
+from jose import jwt, JWTError
 from datetime import datetime, timedelta
 from typing import Optional
 import uuid
@@ -243,7 +141,7 @@ async def get_current_user(
                 raise HTTPException(status_code=401, detail="User not found")
 
             return User(**dict(user_record))
-    except jwt.PyJWTError:
+    except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
 

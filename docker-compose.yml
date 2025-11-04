@@ -35,9 +35,10 @@ services:
       CLICKHOUSE_PASSWORD: clickhouse_dev_password_2024
     volumes:
       - clickhouse_data:/var/lib/clickhouse
-    ports:
-      - "8123:8123"
-      - "9000:9000"
+      ports:
+        # External ports 33011 and 33012 map to ClickHouse HTTP and native ports
+        - "33011:8123"
+        - "33012:9000"
 
   redis:
     image: redis:7-alpine
@@ -58,8 +59,9 @@ services:
       DATABASE_URL: postgresql://gpubroker:gpubroker_dev_password_2024@postgres:5432/gpubroker
       JWT_SECRET_KEY: auth_jwt_secret_key_dev_2024_change_in_production
       REDIS_URL: redis://:redis_dev_password_2024@redis:6379/0
-    ports:
-      - "8001:8000"
+      ports:
+        # External port 33001 maps to internal FastAPI port 8000
+        - "33001:8000"
     depends_on:
       - postgres
       - redis
@@ -77,10 +79,14 @@ services:
       COREWEAVE_API_KEY: ${COREWEAVE_API_KEY}
       HUGGINGFACE_API_KEY: ${HUGGINGFACE_API_KEY}
       REDIS_URL: redis://:redis_dev_password_2024@redis:6379/1
-    ports:
-      - "8002:8000"
+      DATABASE_URL: postgresql://gpubroker:gpubroker_dev_password_2024@postgres:5432/gpubroker
+      ENABLE_INGESTION: "true"
+      ports:
+        # External port 33002 maps to internal FastAPI port 8000
+        - "33002:8000"
     depends_on:
       - redis
+      - postgres
     volumes:
       - ./backend/provider-service:/app
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
@@ -92,8 +98,9 @@ services:
       DATABASE_URL: postgresql://gpubroker:gpubroker_dev_password_2024@postgres:5432/gpubroker
       CLICKHOUSE_URL: http://gpubroker:clickhouse_dev_password_2024@clickhouse:8123/gpubroker_analytics
       REDIS_URL: redis://:redis_dev_password_2024@redis:6379/2
-    ports:
-      - "8003:8000"
+      ports:
+        # External port 33003 maps to internal FastAPI port 8000
+        - "33003:8000"
     depends_on:
       - postgres
       - clickhouse
@@ -112,8 +119,10 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8080
       NEXT_PUBLIC_WS_URL: ws://localhost:8080
-    ports:
-      - "3000:3000"
+      PROVIDER_API_URL: http://provider-service:8000
+      ports:
+        # External port 33004 maps to internal dev server port 3000
+        - "33004:3000"
     volumes:
       - ./frontend:/app
       - /app/node_modules

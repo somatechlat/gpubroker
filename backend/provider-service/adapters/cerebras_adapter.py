@@ -38,7 +38,7 @@ class CerebrasAdapter(BaseProviderAdapter):
 
         except Exception as e:
             logger.error(f"Failed to fetch Cerebras data: {e}")
-            return []
+            raise RuntimeError("Cerebras data fetch failed")
 
     async def _parse_model_data(self, data: Dict) -> List[ProviderOffer]:
         """Parse Cerebras model data into normalized offers"""
