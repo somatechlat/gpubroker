@@ -1,3 +1,5 @@
+'use client'
+
 import { useEffect, useState } from 'react'
 import { BookingModal } from '../booking/BookingModal'
 import { fetchProviders } from '@/lib/api/providers'

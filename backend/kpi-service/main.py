@@ -17,6 +17,7 @@ import json
 import logging
 from dataclasses import dataclass
 import statistics
+import os
 
 app = FastAPI(
     title="GPUBROKER KPI Service",
@@ -26,6 +27,27 @@ app = FastAPI(
 
 logger = logging.getLogger(__name__)
 
+# Database configuration
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@localhost/gpubroker")
+db_pool = None
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database connection pool"""
+    global db_pool
+    try:
+        db_pool = await asyncpg.create_pool(DATABASE_URL, min_size=5, max_size=20)
+        logger.info("KPI Service connected to PostgreSQL database")
+    except Exception as e:
+        logger.error(f"KPI Service failed to connect to database: {e}")
+        # We don't raise here to allow the service to start even if DB is temporarily down,
+        # but endpoints needing DB will fail gracefully.
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Close database connection pool"""
+    if db_pool:
+        await db_pool.close()
 
 # Pydantic Models
 class GPUMetrics(BaseModel):
@@ -56,8 +78,8 @@ class ProviderKPI(BaseModel):
 class MarketInsights(BaseModel):
     total_providers: int
     total_offers: int
-    cheapest_gpu_offer: Dict[str, Any]
-    most_expensive_gpu_offer: Dict[str, Any]
+    cheapest_gpu_offer: Optional[Dict[str, Any]] = None
+    most_expensive_gpu_offer: Optional[Dict[str, Any]] = None
     avg_market_price: float
     price_trend_7d: float  # Percentage change
     demand_hotspots: List[str]
@@ -78,7 +100,6 @@ class CostOptimization(BaseModel):
 # KPI Calculation Engine
 class KPIEngine:
     def __init__(self):
-        self.db_pool = None
         self.gpu_benchmarks = self._load_gpu_benchmarks()
 
     def _load_gpu_benchmarks(self) -> Dict[str, float]:
@@ -125,7 +146,7 @@ class KPIEngine:
             tokens_per_second = tokens_per_second_rates[gpu_key]
 
         tokens_per_hour = tokens_per_second * 3600
-        cost_per_token = price_per_hour / tokens_per_hour
+        cost_per_token = price_per_hour / tokens_per_hour if tokens_per_hour > 0 else 0
 
         return cost_per_token
 
@@ -145,71 +166,8 @@ class KPIEngine:
         else:
             gflops = self.gpu_benchmarks[gpu_key]
 
-        cost_per_gflop = (price_per_hour / gflops) * 1000  # Per 1000 GFLOPS
+        cost_per_gflop = (price_per_hour / gflops) * 1000 if gflops > 0 else 0 # Per 1000 GFLOPS
         return cost_per_gflop
-
-    async def calculate_reliability_score(
-        self, provider: str, historical_data: List[Dict]
-    ) -> float:
-        """Calculate provider reliability based on uptime and performance history"""
-        if not historical_data:
-            return 0.5  # Default neutral score
-
-        # Calculate uptime percentage
-        uptimes = [data.get("uptime", 0) for data in historical_data]
-        avg_uptime = statistics.mean(uptimes) if uptimes else 0
-
-        # Calculate response time consistency
-        response_times = [
-            data.get("response_time_ms", 1000) for data in historical_data
-        ]
-        response_time_variance = (
-            statistics.variance(response_times) if len(response_times) > 1 else 0
-        )
-
-        # Normalize scores (0-1 scale)
-        uptime_score = min(avg_uptime / 99.9, 1.0)  # Target 99.9% uptime
-        consistency_score = max(
-            0, 1 - (response_time_variance / 10000)
-        )  # Penalty for high variance
-
-        reliability_score = (uptime_score * 0.7) + (consistency_score * 0.3)
-        return reliability_score
-
-    async def analyze_market_trends(self, offers_data: List[Dict]) -> Dict[str, Any]:
-        """Analyze market trends and price movements"""
-        if not offers_data:
-            return {"trend": "insufficient_data", "change": 0}
-
-        df = pd.DataFrame(offers_data)
-
-        # Calculate 7-day price trend
-        df["timestamp"] = pd.to_datetime(df["last_updated"])
-        df_sorted = df.sort_values("timestamp")
-
-        if len(df_sorted) > 1:
-            recent_prices = df_sorted.tail(24)["price_per_hour"]  # Last 24 hours
-            older_prices = df_sorted.head(24)["price_per_hour"]  # 7 days ago
-
-            recent_avg = recent_prices.mean()
-            older_avg = older_prices.mean()
-
-            trend_percentage = (
-                ((recent_avg - older_avg) / older_avg) * 100 if older_avg > 0 else 0
-            )
-        else:
-            trend_percentage = 0
-
-        return {
-            "trend": "increasing"
-            if trend_percentage > 5
-            else "decreasing"
-            if trend_percentage < -5
-            else "stable",
-            "change_percentage": trend_percentage,
-            "avg_price": df["price_per_hour"].mean(),
-            "price_volatility": df["price_per_hour"].std(),
-        }
 
 
 # Global KPI engine instance
@@ -226,109 +184,182 @@ async def root():
 async def get_gpu_kpis(gpu_type: str, provider: Optional[str] = None):
     """Get comprehensive KPIs for a specific GPU type"""
 
-    # This would typically fetch from database - for now using sample calculation
-    sample_price = 2.50  # This would be real data from provider service
+    if not db_pool:
+        raise HTTPException(status_code=503, detail="Database not available")
 
-    cost_per_token = await kpi_engine.calculate_cost_per_token(gpu_type, sample_price)
-    cost_per_gflop = await kpi_engine.calculate_cost_per_gflop(gpu_type, sample_price)
+    # Fetch real price stats from DB
+    async with db_pool.acquire() as conn:
+        query = """
+            SELECT AVG(price_per_hour) as avg_price, COUNT(*) as count
+            FROM gpu_offers
+            WHERE gpu_type ILIKE $1
+        """
+        params = [f"%{gpu_type}%"]
+
+        if provider:
+            # We need to join with providers table to filter by provider name if not stored directly
+            # Assuming provider_id is in gpu_offers, let's look up provider ID first or join
+            # For simplicity, assuming provider name filter needs join
+            query = """
+                SELECT AVG(o.price_per_hour) as avg_price, COUNT(o.*) as count
+                FROM gpu_offers o
+                JOIN providers p ON o.provider_id = p.id
+                WHERE o.gpu_type ILIKE $1 AND p.name ILIKE $2
+            """
+            params.append(provider)
+
+        row = await conn.fetchrow(query, *params)
+
+    avg_price = float(row['avg_price']) if row and row['avg_price'] else 0.0
+
+    # If no data found, we return 0s (Real Implementation: No fake data)
+    if avg_price == 0:
+        return GPUMetrics(
+            gpu_type=gpu_type,
+            provider=provider or "aggregated",
+            avg_price_per_hour=0.0,
+            cost_per_token=0.0,
+            cost_per_gflop=0.0,
+            availability_score=0.0,
+            reliability_score=0.0,
+            performance_score=0.0,
+            region="global"
+        )
+
+    cost_per_token = await kpi_engine.calculate_cost_per_token(gpu_type, avg_price)
+    cost_per_gflop = await kpi_engine.calculate_cost_per_gflop(gpu_type, avg_price)
 
     return GPUMetrics(
         gpu_type=gpu_type,
         provider=provider or "aggregated",
-        avg_price_per_hour=sample_price,
+        avg_price_per_hour=avg_price,
         cost_per_token=cost_per_token,
         cost_per_gflop=cost_per_gflop,
-        availability_score=0.85,  # Would be calculated from real data
-        reliability_score=0.92,  # Would be calculated from real data
-        performance_score=0.88,  # Would be calculated from real data
-        region="us-east",
+        availability_score=0.85,  # Placeholder: Needs real availability history table
+        reliability_score=0.92,  # Placeholder: Needs real health check history
+        performance_score=0.88,  # Placeholder: Needs benchmark table
+        region="global",
     )
 
 
 @app.get("/kpis/provider/{provider_name}", response_model=ProviderKPI)
 async def get_provider_kpis(provider_name: str):
-    """Get comprehensive KPIs for a specific provider"""
+    """Get comprehensive KPIs for a specific provider using Real DB Data"""
 
-    # In production, this would query real historical data
-    sample_data = {
-        "runpod": {
-            "offers": 150,
-            "avg_price": 1.85,
-            "uptime": 99.2,
-            "response_time": 250,
-        },
-        "vastai": {
-            "offers": 300,
-            "avg_price": 1.32,
-            "uptime": 97.8,
-            "response_time": 180,
-        },
-        "coreweave": {
-            "offers": 80,
-            "avg_price": 2.10,
-            "uptime": 99.7,
-            "response_time": 120,
-        },
-    }
+    if not db_pool:
+        raise HTTPException(status_code=503, detail="Database not available")
 
-    data = sample_data.get(
-        provider_name.lower(),
-        {"offers": 0, "avg_price": 0, "uptime": 0, "response_time": 1000},
-    )
+    async with db_pool.acquire() as conn:
+        # Get provider stats
+        # We join providers and gpu_offers
+        stats = await conn.fetchrow("""
+            SELECT
+                COUNT(o.id) as total_offers,
+                AVG(o.price_per_hour) as avg_price,
+                STDDEV(o.price_per_hour) as price_stddev,
+                p.reliability_score
+            FROM providers p
+            LEFT JOIN gpu_offers o ON p.id = o.provider_id
+            WHERE p.name = $1
+            GROUP BY p.id
+        """, provider_name)
+
+        if not stats:
+            # Provider not found or no offers
+            # Check if provider exists at least
+            exists = await conn.fetchval("SELECT 1 FROM providers WHERE name = $1", provider_name)
+            if not exists:
+                raise HTTPException(status_code=404, detail=f"Provider {provider_name} not found")
+
+            # Provider exists but no offers yet
+            return ProviderKPI(
+                provider=provider_name,
+                total_offers=0,
+                avg_price_per_hour=0.0,
+                price_volatility=0.0,
+                uptime_percentage=0.0,
+                response_time_ms=0.0,
+                cost_efficiency_score=0.0,
+                reliability_index=0.0
+            )
+
+    total_offers = stats['total_offers']
+    avg_price = float(stats['avg_price']) if stats['avg_price'] else 0.0
+    price_stddev = float(stats['price_stddev']) if stats['price_stddev'] else 0.0
+    reliability_score = float(stats['reliability_score']) if stats['reliability_score'] else 0.5
 
     # Calculate derived metrics
-    price_volatility = data["avg_price"] * 0.15  # 15% volatility estimate
-    cost_efficiency = min(3.0 / data["avg_price"], 1.0) if data["avg_price"] > 0 else 0
-    reliability_index = (data["uptime"] / 100) * (
-        1000 / max(data["response_time"], 100)
-    )
+    price_volatility = price_stddev  # Standard deviation is a measure of volatility
+    cost_efficiency = min(3.0 / avg_price, 1.0) if avg_price > 0 else 0
+
+    # Real uptime would come from `provider_health_checks` table
+    # For now, we use the reliability_score stored in providers table which should be updated by a background worker
+    uptime_percentage = reliability_score * 100
 
     return ProviderKPI(
         provider=provider_name,
-        total_offers=data["offers"],
-        avg_price_per_hour=data["avg_price"],
+        total_offers=total_offers,
+        avg_price_per_hour=avg_price,
         price_volatility=price_volatility,
-        uptime_percentage=data["uptime"],
-        response_time_ms=data["response_time"],
+        uptime_percentage=uptime_percentage,
+        response_time_ms=200, # Would query avg response_time from health_checks
         cost_efficiency_score=cost_efficiency,
-        reliability_index=reliability_index,
+        reliability_index=reliability_score,
     )
 
 
 @app.get("/insights/market", response_model=MarketInsights)
 async def get_market_insights():
-    """Get comprehensive market insights and trends"""
+    """Get comprehensive market insights and trends from Real DB Data"""
 
-    # In production, this would analyze real market data
+    if not db_pool:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    async with db_pool.acquire() as conn:
+        # Aggregates
+        totals = await conn.fetchrow("""
+            SELECT
+                (SELECT COUNT(*) FROM providers) as total_providers,
+                (SELECT COUNT(*) FROM gpu_offers) as total_offers,
+                (SELECT AVG(price_per_hour) FROM gpu_offers) as avg_price
+        """)
+
+        # Extremes
+        cheapest = await conn.fetchrow("""
+            SELECT o.price_per_hour, o.gpu_type, o.region, p.name as provider
+            FROM gpu_offers o
+            JOIN providers p ON o.provider_id = p.id
+            ORDER BY o.price_per_hour ASC
+            LIMIT 1
+        """)
+
+        most_expensive = await conn.fetchrow("""
+            SELECT o.price_per_hour, o.gpu_type, o.region, p.name as provider
+            FROM gpu_offers o
+            JOIN providers p ON o.provider_id = p.id
+            ORDER BY o.price_per_hour DESC
+            LIMIT 1
+        """)
+
     return MarketInsights(
-        total_providers=8,
-        total_offers=530,
-        cheapest_gpu_offer={
-            "provider": "vastai",
-            "gpu_type": "RTX 3060",
-            "price_per_hour": 0.15,
-            "region": "us-central",
-        },
-        most_expensive_gpu_offer={
-            "provider": "runpod",
-            "gpu_type": "H100",
-            "price_per_hour": 4.90,
-            "region": "us-east",
-        },
-        avg_market_price=1.75,
-        price_trend_7d=-2.3,  # 2.3% decrease
-        demand_hotspots=["us-east", "eu-west", "ap-southeast"],
-        supply_constraints=["H100", "A100-80GB", "L40"],
+        total_providers=totals['total_providers'] or 0,
+        total_offers=totals['total_offers'] or 0,
+        cheapest_gpu_offer=dict(cheapest) if cheapest else None,
+        most_expensive_gpu_offer=dict(most_expensive) if most_expensive else None,
+        avg_market_price=float(totals['avg_price']) if totals['avg_price'] else 0.0,
+        price_trend_7d=0.0,  # Requires historical table queries
+        demand_hotspots=["us-east", "eu-west"], # Placeholder until demand tracking is live
+        supply_constraints=["H100"], # Placeholder until inventory tracking is live
     )
 
 
 @app.post("/optimize/workload", response_model=CostOptimization)
 async def optimize_workload_cost(workload_data: Dict[str, Any]):
     """Provide cost optimization recommendations for specific workloads"""
+    # This logic remains heuristic-based for now as it's a recommendation engine,
+    # but in future steps it should query specific GPU prices to give *real* savings estimates.
 
     workload_type = workload_data.get("type", "general")
-    budget = workload_data.get("budget_per_hour", 10.0)
-    performance_requirement = workload_data.get("performance_level", "medium")
 
     # Real optimization logic based on workload characteristics
     recommendations = {
@@ -380,10 +411,11 @@ async def optimize_workload_cost(workload_data: Dict[str, Any]):
 @app.get("/health")
 async def health_check():
     """Service health check"""
+    db_status = "connected" if db_pool else "disconnected"
     return {
-        "status": "healthy",
+        "status": "healthy" if db_pool else "degraded",
+        "database": db_status,
         "kpi_engine": "operational",
-        "calculation_accuracy": "high",
         "timestamp": datetime.utcnow(),
     }
 

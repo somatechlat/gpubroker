@@ -5,7 +5,9 @@ We use ONLY real servers, real APIs, and real data.
 This codebase follows principles of truth, simplicity, and elegance.
 */
 
-import { DashboardHeader } from '@/components/dashboard/DashboardHeader'
+'use client'
+
+import { Header as DashboardHeader } from '@/components/layout/Header'
 import { ProviderGrid } from '@/components/providers/ProviderGrid'
 import { FilterPanel } from '@/components/filters/FilterPanel'
 import { KPIOverview } from '@/components/kpi/KPIOverview'
