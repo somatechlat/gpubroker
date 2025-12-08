@@ -37,6 +37,7 @@ _ADAPTER_CLASS_PATHS: Dict[str, str] = {
     "spell": "..adapters.spell_adapter:SpellAdapter",
     "kaggle": "..adapters.kaggle_adapter:KaggleAdapter",
     "runai": "..adapters.runai_adapter:RunAIAdapter",
+    "vastai": "..adapters.vastai_adapter:VastAIAdapter",
 }
 
 
