@@ -17,8 +17,10 @@ import os
 import json
 import hashlib
 import asyncio
+import asyncpg
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Body, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from core.registry import ProviderRegistry
@@ -41,6 +43,14 @@ app = FastAPI(
     version="1.0.0",
 )
 
+# CORS configuration to allow frontend access
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Adjust for production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class ProviderItem(BaseModel):
     id: str
@@ -59,13 +69,23 @@ class ProviderListResponse(BaseModel):
     items: List[ProviderItem]
     warnings: Optional[List[str]] = None
 
+class IntegrationConfig(BaseModel):
+    provider: str
+    api_key: Optional[str] = None
+    api_url: Optional[str] = None
+
+class IntegrationStatus(BaseModel):
+    provider: str
+    status: str  # 'active', 'error', 'not_configured'
+    message: Optional[str] = None
+    last_checked: datetime
 
 redis_client: Optional[Redis] = None  # type: ignore
-
+db_pool = None
 
 @app.on_event("startup")
 async def on_startup():
-    global redis_client
+    global redis_client, db_pool
     redis_url = os.getenv("REDIS_URL")
     if Redis and redis_url:
         try:
@@ -85,32 +105,65 @@ async def on_startup():
     # DB pool
     try:
         await init_db_pool()
-        logger.info("DB pool initialized")
+        db_pool = await asyncpg.create_pool(os.getenv("DATABASE_URL"))
+        logger.info("DB pool initialized for Config")
     except Exception as e:
         logger.warning(f"DB not available: {e}")
     # Ingestion scheduler (optional)
     if os.getenv("ENABLE_INGESTION", "false").lower() in {"1", "true", "yes"}:
         start_scheduler(asyncio.get_event_loop())
 
+@app.on_event("shutdown")
+async def on_shutdown():
+    if db_pool:
+        await db_pool.close()
 
 def _cache_key(path: str, params: Dict[str, str]) -> str:
     base = path + "?" + "&".join(f"{k}={v}" for k, v in sorted(params.items()))
     return "providers:" + hashlib.sha256(base.encode()).hexdigest()
 
+async def _get_user_config(user_id: str, provider: str) -> Dict[str, str]:
+    """Retrieve provider config for a user from DB."""
+    if not db_pool:
+        return {}
+    try:
+        async with db_pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT preference_value FROM user_preferences WHERE user_id = $1 AND preference_key = $2",
+                user_id, f"provider_config:{provider}"
+            )
+            if row:
+                return json.loads(row['preference_value'])
+    except Exception as e:
+        logger.error(f"Failed to fetch user config: {e}")
+    return {}
+
+async def _validate_provider_creds(provider_name: str, api_key: str) -> bool:
+    """Validate credentials using the adapter's implementation."""
+    try:
+        adapter = ProviderRegistry.get_adapter(provider_name)
+        return await adapter.validate_credentials({"api_key": api_key})
+    except Exception as e:
+        logger.warning(f"Validation failed for {provider_name}: {e}")
+        return False
 
 async def _fetch_offers() -> Dict[str, List[Dict]]:
-    """Fetch offers from all registered adapters; tolerate partial failures."""
     results: Dict[str, List[Dict]] = {}
+    user_id = "00000000-0000-0000-0000-000000000000"
+
     for name in ProviderRegistry.list_adapters():
         try:
             adapter: BaseProviderAdapter = ProviderRegistry.get_adapter(name)
-            # Pass provider-specific token if present (e.g., RUNPOD_API_KEY)
-            token_env = f"{name}_API_KEY".upper()
-            auth_token = os.getenv(token_env)
+            user_config = await _get_user_config(user_id, name)
+            auth_token = user_config.get("api_key")
+
+            if not auth_token:
+                token_env = f"{name}_API_KEY".upper()
+                auth_token = os.getenv(token_env)
+
             offers = await adapter.get_offers(auth_token)
             items = []
             for o in offers:
-                # Build a normalized API item matching frontend expectations
                 item = {
                     "id": f"{o.provider}:{o.instance_type}:{o.region}",
                     "name": o.instance_type,
@@ -138,6 +191,86 @@ async def root():
         "providers": ProviderRegistry.list_adapters(),
     }
 
+@app.post("/config/integrations")
+async def save_integration_config(config: IntegrationConfig):
+    """Save API Key and Settings for a Provider"""
+    if not db_pool:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+
+    user_id = "00000000-0000-0000-0000-000000000000"
+
+    # Validate credentials before saving
+    if config.api_key:
+        is_valid = await _validate_provider_creds(config.provider, config.api_key)
+        if not is_valid:
+            # We allow saving but warn? Or block?
+            # Prompt implies "green icon if connected... yellow if not healthy".
+            # So we save it, but maybe the frontend checks status separately.
+            # Let's verify implicitly by just saving.
+            pass
+
+    key_name = f"provider_config:{config.provider}"
+    value_json = json.dumps(config.model_dump())
+
+    try:
+        async with db_pool.acquire() as conn:
+            await conn.execute("""
+                INSERT INTO user_preferences (user_id, preference_key, preference_value, updated_at)
+                VALUES ($1, $2, $3, NOW())
+                ON CONFLICT (user_id, preference_key)
+                DO UPDATE SET preference_value = $3, updated_at = NOW()
+            """, user_id, key_name, value_json)
+            return {"status": "saved", "provider": config.provider}
+    except Exception as e:
+        logger.error(f"Failed to save config: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/config/integrations", response_model=List[IntegrationStatus])
+async def list_integrations():
+    """List configured integrations and their health status."""
+    if not db_pool:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+
+    user_id = "00000000-0000-0000-0000-000000000000"
+    statuses = []
+
+    # Get all saved configs
+    saved_configs = {}
+    try:
+        async with db_pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT preference_key, preference_value FROM user_preferences WHERE user_id = $1 AND preference_key LIKE 'provider_config:%'",
+                user_id
+            )
+            for row in rows:
+                provider = row['preference_key'].split(":")[1]
+                saved_configs[provider] = json.loads(row['preference_value'])
+    except Exception as e:
+        logger.error(f"Failed to fetch configs: {e}")
+
+    # Iterate all supported adapters
+    for name in ProviderRegistry.list_adapters():
+        config = saved_configs.get(name)
+        api_key = config.get("api_key") if config else os.getenv(f"{name}_API_KEY".upper())
+
+        status = "not_configured"
+        msg = None
+
+        if api_key:
+            # Perform a live check
+            is_valid = await _validate_provider_creds(name, api_key)
+            status = "active" if is_valid else "error"
+            if not is_valid:
+                msg = "Validation failed"
+
+        statuses.append(IntegrationStatus(
+            provider=name,
+            status=status,
+            message=msg,
+            last_checked=datetime.utcnow()
+        ))
+
+    return statuses
 
 @app.get("/providers", response_model=ProviderListResponse)
 async def list_providers(
@@ -148,7 +281,6 @@ async def list_providers(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
 ):
-    # Use cache if available
     params = {
         "gpu": gpu or gpu_type or "",
         "region": region or "",
@@ -162,12 +294,10 @@ async def list_providers(
             cached = await redis_client.get(key)
             if cached:
                 payload = json.loads(cached)
-                # Re-coerce last_updated to datetime via pydantic on response
                 return ProviderListResponse(**payload)
         except Exception:
             pass
 
-    # Prefer DB-backed read (ingested offers) and fall back to live fetch if needed
     term = gpu or gpu_type or None
     response: Optional[ProviderListResponse] = None
     warnings: List[str] = []
@@ -180,7 +310,6 @@ async def list_providers(
             page=page,
             per_page=per_page,
         )
-        # Coerce timestamps to datetime
         items = []
         for it in result["items"]:
             try:
@@ -203,7 +332,6 @@ async def list_providers(
             if not items:
                 warnings.append(f"{provider_name} unavailable or returned no offers")
             flat.extend(items)
-        # Apply filters client-side
         term_l = (term or "").lower().strip()
         if term_l:
             flat = [
