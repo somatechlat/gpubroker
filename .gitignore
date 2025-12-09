@@ -234,3 +234,9 @@ vault-data/
 *.api_key
 *_secret_*
 *_apikey_*
+
+# Secrets - never commit
+docs/SECRETS_VAULT_KEYS.env
+docs/provider_api_keys_complete.csv
+*.env.local
+*.secrets
