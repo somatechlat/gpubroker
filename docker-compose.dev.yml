@@ -133,6 +133,25 @@ services:
     volumes:
       - ./backend/kpi-service:/app
 
+  math-core:
+    build: ./backend/math-core
+    ports:
+      - "8005:8004"
+    environment:
+      - DATABASE_URL=postgresql://gpubroker:gpubroker_dev_pass@postgres:5432/gpubroker_dev
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=INFO
+    depends_on:
+      - postgres
+      - redis
+    volumes:
+      - ./backend/math-core:/app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   # Kafka Price Feed Service
   price-feed-service:
     build: ./backend/provider-service
