@@ -1,7 +1,34 @@
 version: "3.8"
 
 services:
+  # ============================================
+  # SECRET MANAGEMENT - HashiCorp Vault
+  # ============================================
+  vault:
+    image: hashicorp/vault:1.15
+    container_name: gpubroker-vault
+    ports:
+      - "8200:8200"
+    environment:
+      VAULT_ADDR: "http://0.0.0.0:8200"
+      VAULT_API_ADDR: "http://0.0.0.0:8200"
+    cap_add:
+      - IPC_LOCK
+    volumes:
+      - vault_data:/vault/data
+      - ./infrastructure/vault/config:/vault/config
+      - ./infrastructure/vault/scripts:/vault/scripts
+    command: server -config=/vault/config/vault.hcl
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ============================================
   # Core Infrastructure
+  # ============================================
   postgres:
     image: postgres:15-alpine
     environment:
@@ -100,22 +127,18 @@ services:
       - DATABASE_URL=postgresql://gpubroker:gpubroker_dev_pass@postgres:5432/gpubroker_dev
       - REDIS_URL=redis://redis:6379
       - KAFKA_BROKERS=kafka:9092
-      - RUNPOD_API_KEY=${RUNPOD_API_KEY:-}
-      - VASTAI_API_KEY=${VASTAI_API_KEY:-}
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
-      - AZURE_CLIENT_ID=${AZURE_CLIENT_ID:-}
-      - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET:-}
-      - AZURE_TENANT_ID=${AZURE_TENANT_ID:-}
-      - AZURE_SUBSCRIPTION_ID=${AZURE_SUBSCRIPTION_ID:-}
-      - GOOGLE_PROJECT_ID=${GOOGLE_PROJECT_ID:-}
-      - GOOGLE_SERVICE_ACCOUNT_KEY=${GOOGLE_SERVICE_ACCOUNT_KEY:-}
+      # Vault configuration - NO API KEYS IN ENV VARS
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_ROLE_ID=${VAULT_ROLE_ID:-}
+      - VAULT_SECRET_ID=${VAULT_SECRET_ID:-}
     depends_on:
       - postgres
       - redis
       - kafka
+      - vault
     volumes:
       - ./backend/provider-service:/app
+      - ./backend/shared:/app/shared
 
   kpi-service:
     build: ./backend/kpi-service
@@ -236,6 +259,7 @@ services:
     command: npm run storybook
 
 volumes:
+  vault_data:
   postgres_data:
   redis_data:
   clickhouse_data:

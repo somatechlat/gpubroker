@@ -200,3 +200,37 @@ redis-data/
 *.crt
 *.key
 *.pem
+
+
+# ============================================
+# SECURITY - SECRETS (CRITICAL!)
+# ============================================
+# NEVER commit secrets to git!
+
+# Vault credentials
+**/unseal-keys.txt
+**/root-token.txt
+**/approle-*.txt
+vault-data/
+
+# API Keys and Secrets (explicit patterns)
+**/SECRETS*.env
+**/secrets*.env
+**/*_api_keys*.csv
+**/*_credentials*
+**/*_secrets*
+
+# Provider-specific patterns
+**/runpod_key*
+**/vastai_key*
+**/aws_credentials*
+**/gcp_credentials*
+**/azure_credentials*
+
+# Generic secret patterns
+*.secret
+*.secrets
+*.apikey
+*.api_key
+*_secret_*
+*_apikey_*
