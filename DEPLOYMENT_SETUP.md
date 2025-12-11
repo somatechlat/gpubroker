@@ -72,7 +72,7 @@ docker-compose -f docker-compose.dev.yml up postgres redis zookeeper kafka auth-
 ## 🛠️ **TROUBLESHOOTING**
 
 ### **Common Issues**
-1. **API Key Issues**: Check `.env` file and restart services
+1. **API Key Issues**: Ensure secrets are loaded in Vault (see infrastructure/vault/scripts/store-secrets.sh) and services have VAULT_* env vars.
 2. **Docker Issues**: `docker-compose down && docker-compose up --build`
 3. **Port Conflicts**: Use `docker-compose --scale` to adjust
 4. **Rate Limits**: Add retry logic in adapters
@@ -85,4 +85,4 @@ helm install gpubroker ./helm/gpubroker/
 ```
 
 ## 🎉 **FIRST PUSH COMPLETE**
-Your marketplace is **LIVE** and will populate with **real GPU pricing** as soon as you configure API keys!
+Your marketplace is **LIVE** and will populate with **real GPU pricing** as soon as you load provider API keys into Vault!

@@ -17,9 +17,9 @@ A unified dashboard that aggregates GPU offers from 23+ providers with real-time
 git clone https://github.com/your-org/gpubroker.git
 cd gpubroker
 
-# 2. Add your REAL API keys to .env file
+# 2. Configure Vault for provider/cloud API keys
 cp .env.example .env
-# Edit .env with your actual provider API keys
+# Load secrets into Vault: ./infrastructure/vault/scripts/store-secrets.sh
 
 # 3. Start the entire stack (parallel services)
 ./start-dev.sh
@@ -115,22 +115,11 @@ curl http://localhost:8002/providers/runpod/health
 curl http://localhost:8003/insights/market
 ```
 
-## 🔑 Required API Keys
+## 🔑 Required API Keys (Vault-managed)
 
-Add these **REAL** API keys to your `.env` file:
-
-```bash
-# Provider APIs (get from their dashboards)
-RUNPOD_API_KEY="your_real_runpod_key"
-VASTAI_API_KEY="your_real_vastai_key"  
-COREWEAVE_API_KEY="your_real_coreweave_key"
-HUGGINGFACE_API_KEY="your_real_hf_key"
-
-# Cloud Provider APIs
-AWS_ACCESS_KEY_ID="your_aws_key"
-GOOGLE_APPLICATION_CREDENTIALS="/path/to/gcp/creds.json"
-AZURE_CLIENT_ID="your_azure_client_id"
-```
+- Do **not** place secrets in `.env`.
+- Load provider & cloud keys into Vault via `./infrastructure/vault/scripts/store-secrets.sh`.
+- Services read them at runtime using `VAULT_ADDR`, `VAULT_ROLE_ID`, and `VAULT_SECRET_ID`.
 
 ## 📋 Roadmap & Sprint Progress
 

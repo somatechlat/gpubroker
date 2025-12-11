@@ -22,16 +22,9 @@ if [ ! -f ".env" ]; then
     echo "⚠️  .env file not found. Creating from template..."
     cp .env.example .env
     echo "✅ Created .env file from template."
-    echo "⚠️  IMPORTANT: Edit .env file with your REAL API keys before continuing!"
+    echo "🔐 Secrets belong in HashiCorp Vault, not .env."
+    echo "   Load provider/cloud API keys via infrastructure/vault/scripts/store-secrets.sh"
     echo ""
-    echo "You need to add real API keys for:"
-    echo "  - RUNPOD_API_KEY"
-    echo "  - VASTAI_API_KEY" 
-    echo "  - COREWEAVE_API_KEY"
-    echo "  - HUGGINGFACE_API_KEY"
-    echo "  - And other provider keys as needed"
-    echo ""
-    read -p "Press Enter after you've added your real API keys to .env file..."
 fi
 
 echo "🔧 Setting up development environment..."
@@ -124,7 +117,7 @@ echo ""
 echo "📝 Next Steps:"
 echo "  1. Open http://localhost:3000 in your browser"
 echo "  2. Check service logs: docker-compose logs -f [service-name]"
-echo "  3. Add more real provider API keys to .env as needed"
+echo "  3. Store provider API keys in Vault using infrastructure/vault/scripts/store-secrets.sh"
 echo "  4. Start developing new features!"
 echo ""
 

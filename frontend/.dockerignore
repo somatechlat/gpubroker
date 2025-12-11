@@ -1,0 +1,41 @@
+# Dependency & cache dirs
+node_modules
+.npm
+.yarn
+.pnp
+.pnp.*
+.turbo
+.next
+.vercel
+.cache
+.parcel-cache
+.expo
+
+# Build outputs
+out
+dist
+
+# Logs & coverage
+*.log
+logs
+coverage
+coverage-*
+
+# Env / secrets
+.env
+.env.*
+
+# VCS
+.git
+.gitignore
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.idea
+.vscode
+
+# Misc
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
