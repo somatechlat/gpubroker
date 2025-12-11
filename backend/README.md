@@ -8,28 +8,27 @@
 
 ## Microservices Architecture
 
-### Core Services
-1. **api-gateway** - Envoy-based API gateway with routing and auth
-2. **auth-service** - JWT, MFA, RBAC, user management  
-3. **provider-service** - Provider SDK and adapter management
-4. **kpi-service** - Cost calculations, analytics, KPI computation
-5. **prediction-service** - ML-based cost prediction and recommendations
-6. **project-service** - Project wizard and infrastructure planning
-7. **notification-service** - Real-time updates via WebSocket
+### Core Services (current codebase)
+1. **auth-service** — FastAPI; JWT/MFA/RBAC; depends on PostgreSQL & Redis.
+2. **provider-service** — FastAPI; provider adapters, ingestion, Kafka producer; uses PostgreSQL, Redis, Vault, Math Core.
+3. **kpi-service** — FastAPI; KPIs/analytics; PostgreSQL, ClickHouse, Redis.
+4. **math-core** — FastAPI; GPUMathBroker algorithms (TOPSIS/ALS/content/benchmarks/workload mapping).
+5. **ai-assistant** — FastAPI; SomaAgent gateway proxy and workload parser.
+6. **websocket-gateway** — FastAPI WebSocket bridge; Redis Pub/Sub → clients.
+7. **shared** — common Python utilities (e.g., Vault client).
 
 ## Development Setup
 ```bash
-# Run all services in development
-docker-compose up --build
+# Run full stack (uses ports from .env; defaults 28xxx)
+docker-compose -f docker-compose.dev.yml up --build
 
-# Run individual service
+# Run individual service (example)
 cd backend/auth-service
-poetry install
-poetry run uvicorn main:app --reload --port 8001
+pip install -r requirements.txt
+uvicorn main:app --reload --port 8000
 ```
 
 ## Service Communication
-- **Internal**: gRPC for high-performance inter-service communication
-- **External**: REST APIs with OpenAPI documentation
-- **Real-time**: WebSocket for live price updates
-- **Message Queue**: Redis Streams for async processing
+- **External**: REST APIs with OpenAPI docs.
+- **Real-time**: WebSocket gateway subscribes to Redis Pub/Sub `price_updates`.
+- **Async events**: Kafka (price updates, ingestion) where configured.

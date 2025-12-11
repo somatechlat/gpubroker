@@ -10,7 +10,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000 to see the dashboard and pages. The scaffold includes:
+Open http://localhost:${PORT_FRONTEND:-28030} to see the dashboard and pages. The scaffold includes:
 - Header/navigation
 - Login page
 - Marketplace (provider grid + filter sidebar)

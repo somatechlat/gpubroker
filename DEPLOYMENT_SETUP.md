@@ -1,45 +1,33 @@
 # 🚀 GPUBROKER - LIVE DEPLOYMENT GUIDE
 
-## 📋 **INSTANT DEPLOYMENT CHECKLIST**
+## 📋 **INSTANT DEPLOYMENT CHECKLIST (SAFE, NO SECRETS IN REPO)**
 
-### **🎯 STEP 1 - Deploy Now**
+### **🎯 STEP 1 - Prepare Environment**
 ```bash
-# Clone or use current repo
-git remote add origin https://github.com/somatechlat/gpubroker.git
-git add .
-git commit -m "feat: complete live marketplace with 19+ provider adapters"
-git push -u origin master
+cp .env.example .env
+# Adjust ports if needed (defaults are 28000+ to avoid conflicts).
+# Do NOT add API keys here.
 ```
 
-### **🎯 STEP 2 - Configure API Keys**
+### **🎯 STEP 2 - Load Secrets into Vault**
 ```bash
-# Copy your keys from API_KEYS_REQUIRED.csv
-cp API_KEYS_REQUIRED.csv .env
-
-# Fill in your actual keys:
-export AWS_ACCESS_KEY_ID="your_aws_key"
-export AWS_SECRET_ACCESS_KEY="your_aws_secret"
-export VASTAI_API_KEY="your_vastai_key"
-export RUNPOD_API_KEY="your_runpod_key"
-export GROQ_API_KEY="your_groq_key"
-# ... etc for all providers you want to enable
+./infrastructure/vault/scripts/init-vault.sh        # once per environment
+./infrastructure/vault/scripts/store-secrets.sh     # writes provider keys into Vault
 ```
 
-### **🎯 STEP 3 - Start Live Services**
+### **🎯 STEP 3 - Start Services**
 ```bash
-# Start complete dev environment
 docker-compose -f docker-compose.dev.yml up --build
-
-# OR start core services only
-docker-compose -f docker-compose.dev.yml up postgres redis zookeeper kafka auth-service provider-service
 ```
 
 ### **🎯 STEP 4 - Test Live Marketplace**
 ```bash
-# Open browser:
-# http://localhost:3000 - Frontend
-# http://localhost:8002/docs - Provider API docs
-# http://localhost:8080 - Keycloak admin
+# Frontend
+open http://localhost:${PORT_FRONTEND:-28030}
+# Provider API docs
+open http://localhost:${PORT_PROVIDER:-28021}/docs
+# Keycloak admin
+open http://localhost:${PORT_KEYCLOAK:-28006}
 ```
 
 ## 🔥 **LIVE FEATURES DEPLOYED**
@@ -65,9 +53,9 @@ docker-compose -f docker-compose.dev.yml up postgres redis zookeeper kafka auth-
 - **All others**: Live API integration ready
 
 ## 📊 **MONITORING**
-- **Prometheus**: http://localhost:9090
-- **Grafana**: http://localhost:3001
-- **Storybook**: http://localhost:6006
+- **Prometheus**: http://localhost:${PORT_PROMETHEUS:-28031}
+- **Grafana**: http://localhost:${PORT_GRAFANA:-28032}
+- **Storybook**: http://localhost:${PORT_STORYBOOK:-28033}
 
 ## 🛠️ **TROUBLESHOOTING**
 

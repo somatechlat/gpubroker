@@ -11,7 +11,10 @@ interface IntegrationStatus {
   last_checked: string
 }
 
-const API_BASE_URL = 'http://localhost:8002'
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_PROVIDER_API_URL ||
+  process.env.PROVIDER_API_URL ||
+  '/api/providers'
 
 export default function SettingsPage() {
   const [integrations, setIntegrations] = useState<IntegrationStatus[]>([])

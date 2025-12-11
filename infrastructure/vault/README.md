@@ -38,13 +38,13 @@ This will:
 docker exec -it gpubroker-vault /vault/scripts/store-secrets.sh
 ```
 
-Or manually via UI at http://localhost:8200
+Or manually via UI at http://localhost:${PORT_VAULT:-28005}
 
 ### 4. Configure Services
 
 Add to your `.env`:
 ```bash
-VAULT_ADDR=http://localhost:8200
+VAULT_ADDR=http://localhost:${PORT_VAULT:-28005}
 VAULT_ROLE_ID=<from /vault/config/approle-role-id.txt>
 VAULT_SECRET_ID=<from /vault/config/approle-secret-id.txt>
 ```

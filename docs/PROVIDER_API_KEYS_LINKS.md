@@ -179,13 +179,13 @@ After adding keys, verify connections:
 
 ```bash
 # Check provider health
-curl http://localhost:8002/health
+curl http://localhost:${PORT_PROVIDER:-28021}/health
 
 # List configured integrations
-curl http://localhost:8002/config/integrations
+curl http://localhost:${PORT_PROVIDER:-28021}/config/integrations
 
 # Test specific provider
-curl http://localhost:8002/providers?provider=runpod
+curl http://localhost:${PORT_PROVIDER:-28021}/providers?provider=runpod
 ```
 
 ---

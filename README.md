@@ -25,7 +25,7 @@ cp .env.example .env
 ./start-dev.sh
 ```
 
-🎉 **That's it!** Open http://localhost:3000 to see the dashboard.
+🎉 **That's it!** Open http://localhost:${PORT_FRONTEND:-28030} to see the dashboard.
 
 ## 🏗️ Architecture Overview
 
@@ -71,10 +71,10 @@ cp .env.example .env
 
 | Component | Status | Implementation | API Docs |
 |-----------|--------|----------------|----------|
-| 🔐 Auth Service | ✅ **Running** | Argon2, JWT, MFA ready | [/docs](http://localhost:8001/docs) |
-| 🔌 Provider Service | ✅ **Running** | RunPod + Vast.ai adapters | [/docs](http://localhost:8002/docs) |
-| 📊 KPI Service | ✅ **Running** | Cost calculations, analytics | [/docs](http://localhost:8003/docs) |
-| 🌐 Frontend | 🚧 **In Progress** | Next.js 14 + Tailwind | http://localhost:3000 |
+| 🔐 Auth Service | ✅ **Running** | Argon2, JWT, MFA ready | [/docs](http://localhost:${PORT_AUTH:-28020}/docs) |
+| 🔌 Provider Service | ✅ **Running** | RunPod + Vast.ai adapters | [/docs](http://localhost:${PORT_PROVIDER:-28021}/docs) |
+| 📊 KPI Service | ✅ **Running** | Cost calculations, analytics | [/docs](http://localhost:${PORT_KPI:-28022}/docs) |
+| 🌐 Frontend | 🚧 **In Progress** | Next.js 14 + Tailwind | http://localhost:${PORT_FRONTEND:-28030} |
 | 🤖 AI Pipeline | 🚧 **In Progress** | PyTorch + LangChain | Coming Soon |
 | ☁️ Infrastructure | ✅ **Ready** | Docker + K8s manifests | Ready to deploy |
 
@@ -85,9 +85,9 @@ cp .env.example .env
 docker-compose logs -f
 
 # Check service health
-curl http://localhost:8001/health  # Auth
-curl http://localhost:8002/health  # Providers  
-curl http://localhost:8003/health  # KPIs
+curl http://localhost:${PORT_AUTH:-28020}/health    # Auth
+curl http://localhost:${PORT_PROVIDER:-28021}/health  # Providers  
+curl http://localhost:${PORT_KPI:-28022}/health     # KPIs
 
 # Run individual service
 cd backend/auth-service && poetry run uvicorn main:app --reload
@@ -103,16 +103,16 @@ docker-compose exec postgres psql -U gpubroker -d gpubroker -f /docker-entrypoin
 
 ```bash
 # Get live GPU offers from all providers
-curl http://localhost:8002/offers
+curl http://localhost:${PORT_PROVIDER:-28021}/offers
 
 # Get cost-per-token KPIs for A100
-curl http://localhost:8003/kpis/gpu/A100
+curl http://localhost:${PORT_KPI:-28022}/kpis/gpu/A100
 
 # Check provider health status
-curl http://localhost:8002/providers/runpod/health
+curl http://localhost:${PORT_PROVIDER:-28021}/providers/runpod/health
 
 # Get market insights and trends
-curl http://localhost:8003/insights/market
+curl http://localhost:${PORT_KPI:-28022}/insights/market
 ```
 
 ## 🔑 Required API Keys (Vault-managed)
@@ -137,7 +137,7 @@ See [ROADMAP.md](./ROADMAP.md) for the complete 8-week parallel development plan
 
 - **[Architecture Details](./docs/)** - Detailed system design
 - **[Provider Integrations](./docs/)** - 23+ provider specifications  
-- **[API Documentation](http://localhost:8001/docs)** - Interactive OpenAPI specs
+- **[API Documentation](http://localhost:${PORT_AUTH:-28020}/docs)** - Interactive OpenAPI specs
 - **[Database Schema](./database/init/01-init.sql)** - Complete data model
 - **[Development Guide](./ROADMAP.md)** - Parallel sprint methodology
 
@@ -162,7 +162,7 @@ See [ROADMAP.md](./ROADMAP.md) for the complete 8-week parallel development plan
 helm install gpubroker ./infrastructure/helm/
 
 # Monitor with Grafana
-open http://localhost:3001 (admin/grafana_dev_password_2024)
+open http://localhost:${PORT_GRAFANA:-28032} (admin/grafana_dev_password_2024)
 ```
 
 ---

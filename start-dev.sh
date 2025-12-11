@@ -7,6 +7,14 @@
 
 set -e  # Exit on any error
 
+# Load env if present to pick up port overrides
+if [ -f ".env" ]; then
+  set -o allexport
+  # shellcheck disable=SC1091
+  source .env
+  set +o allexport
+fi
+
 echo "🚀 GPUBROKER Rapid Development Startup Script"
 echo "============================================="
 echo ""
@@ -70,8 +78,9 @@ done
 echo " ✅ Redis ready"
 
 # Wait for ClickHouse to be ready
-echo "🏠 Waiting for ClickHouse..."
-until curl -s http://localhost:8123/ping > /dev/null 2>&1; do
+CLICKHOUSE_HTTP_PORT=${PORT_CLICKHOUSE_HTTP:-28002}
+echo "🏠 Waiting for ClickHouse on ${CLICKHOUSE_HTTP_PORT}..."
+until curl -s "http://localhost:${CLICKHOUSE_HTTP_PORT}/ping" > /dev/null 2>&1; do
     printf "."
     sleep 2
 done
@@ -81,20 +90,22 @@ echo ""
 echo "🎉 GPUBROKER is now running!"
 echo ""
 echo "📍 Service URLs:"
-echo "  🌐 Frontend Dashboard:    http://localhost:3000"
-echo "  🔐 Auth Service:         http://localhost:8001"
-echo "  🔌 Provider Service:     http://localhost:8002"  
-echo "  📊 KPI Service:          http://localhost:8003"
-echo "  📈 Prometheus:           http://localhost:9090"
-echo "  📊 Grafana:              http://localhost:3001 (admin/grafana_dev_password_2024)"
-echo "  🐘 PostgreSQL:           localhost:5432 (gpubroker/gpubroker_dev_password_2024)"
-echo "  🔴 Redis:                localhost:6379 (redis_dev_password_2024)"
-echo "  🏠 ClickHouse:           http://localhost:8123"
+echo "  🌐 Frontend Dashboard:    http://localhost:${PORT_FRONTEND:-28030}"
+echo "  🔐 Auth Service:         http://localhost:${PORT_AUTH:-28020}"
+echo "  🔌 Provider Service:     http://localhost:${PORT_PROVIDER:-28021}"  
+echo "  📊 KPI Service:          http://localhost:${PORT_KPI:-28022}"
+echo "  🧠 Math Core:            http://localhost:${PORT_MATH:-28023}"
+echo "  🔔 WebSocket Gateway:    ws://localhost:${PORT_WS_GATEWAY:-28025}/ws"
+echo "  📈 Prometheus:           http://localhost:${PORT_PROMETHEUS:-28031}"
+echo "  📊 Grafana:              http://localhost:${PORT_GRAFANA:-28032}"
+echo "  🐘 PostgreSQL:           localhost:${PORT_POSTGRES:-28001} (gpubroker/gpubroker_dev_pass)"
+echo "  🔴 Redis:                localhost:${PORT_REDIS:-28004}"
+echo "  🏠 ClickHouse:           http://localhost:${PORT_CLICKHOUSE_HTTP:-28002}"
 echo ""
 echo "📖 API Documentation:"
-echo "  🔐 Auth Service API:     http://localhost:8001/docs"
-echo "  🔌 Provider Service API: http://localhost:8002/docs"
-echo "  📊 KPI Service API:      http://localhost:8003/docs"
+echo "  🔐 Auth Service API:     http://localhost:${PORT_AUTH:-28020}/docs"
+echo "  🔌 Provider Service API: http://localhost:${PORT_PROVIDER:-28021}/docs"
+echo "  📊 KPI Service API:      http://localhost:${PORT_KPI:-28022}/docs"
 echo ""
 echo "🔍 Health Checks:"
 docker-compose ps
@@ -102,20 +113,20 @@ docker-compose ps
 echo ""
 echo "🚀 Quick Test Commands:"
 echo "  # Check auth service health"
-echo "  curl http://localhost:8001/health"
+echo "  curl http://localhost:${PORT_AUTH:-28020}/health"
 echo ""
 echo "  # Check provider service health" 
-echo "  curl http://localhost:8002/health"
+echo "  curl http://localhost:${PORT_PROVIDER:-28021}/health"
 echo ""
 echo "  # Check KPI service health"
-echo "  curl http://localhost:8003/health"
+echo "  curl http://localhost:${PORT_KPI:-28022}/health"
 echo ""
 echo "  # List available providers"
-echo "  curl http://localhost:8002/providers"
+echo "  curl http://localhost:${PORT_PROVIDER:-28021}/providers"
 echo ""
 
 echo "📝 Next Steps:"
-echo "  1. Open http://localhost:3000 in your browser"
+echo "  1. Open http://localhost:${PORT_FRONTEND:-28030} in your browser"
 echo "  2. Check service logs: docker-compose logs -f [service-name]"
 echo "  3. Store provider API keys in Vault using infrastructure/vault/scripts/store-secrets.sh"
 echo "  4. Start developing new features!"
