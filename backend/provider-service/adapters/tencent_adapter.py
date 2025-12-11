@@ -13,7 +13,7 @@ import logging
 from datetime import datetime, timezone
 
 from .base_adapter import BaseProviderAdapter
-from ..models.provider_offer import ProviderOffer
+from models.provider_offer import ProviderOffer
 
 logger = logging.getLogger(__name__)
 

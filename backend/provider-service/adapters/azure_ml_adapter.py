@@ -11,8 +11,8 @@ import logging
 from datetime import datetime, timezone
 
 from .base_adapter import BaseProviderAdapter
-from ..models.provider_offer import ProviderOffer
-from ..core.security import hash_provider_key
+from models.provider_offer import ProviderOffer
+from core.security import hash_provider_key
 
 logger = logging.getLogger(__name__)
 

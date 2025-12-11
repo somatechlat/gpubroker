@@ -16,13 +16,13 @@
   - [x] 1.3 Write property test for GPU benchmark data validity
     - **Property 24: GPU Benchmark Data Validity**
     - **Validates: Requirements 21.6, 33.4**
-  - [x] 1.4 Implement KPI Calculator module
+- [x] 1.4 Implement KPI Calculator module
     - Create `/math/cost-per-token` endpoint
     - Create `/math/cost-per-gflop` endpoint
     - Create `/math/efficiency-score` endpoint
     - Use IEEE 754 double precision, 4 decimal rounding
     - _Requirements: 21.1, 21.2, 5.1, 5.2, 33.3_
-  - [ ] 1.5 Write property test for cost-per-token calculation
+  - [x] 1.5 Write property test for cost-per-token calculation
     - **Property 6: Math Core Cost-Per-Token Calculation**
     - **Validates: Requirements 5.1, 21.1, 33.3**
 
@@ -35,10 +35,10 @@
     - Implement relative closeness scoring
     - Create `/math/topsis` endpoint
     - _Requirements: 7.1, 33.1_
-  - [ ] 2.2 Write property test for TOPSIS determinism
+  - [x] 2.2 Write property test for TOPSIS determinism
     - **Property 7: TOPSIS Ranking Determinism**
     - **Validates: Requirements 7.1**
-  - [ ] 2.3 Write property test for TOPSIS ideal solution correctness
+  - [x] 2.3 Write property test for TOPSIS ideal solution correctness
     - **Property 8: TOPSIS Ideal Solution Correctness**
     - **Validates: Requirements 7.1**
 
@@ -49,7 +49,7 @@
     - Set latent factors k=50, convergence tolerance 1e-6
     - Create `/math/collaborative-filter` endpoint
     - _Requirements: 7.2, 33.2_
-  - [ ] 3.2 Write property test for ALS convergence
+  - [x] 3.2 Write property test for ALS convergence
     - **Property 9: Collaborative Filtering Matrix Factorization Convergence**
     - **Validates: Requirements 7.2, 33.2**
 
@@ -59,7 +59,7 @@
     - Implement feature vector extraction from offers
     - Create `/math/content-similarity` endpoint
     - _Requirements: 7.3_
-  - [ ]* 4.2 Write property test for cosine similarity bounds
+  - [x]* 4.2 Write property test for cosine similarity bounds
     - **Property 10: Content-Based Similarity Bounds**
     - **Validates: Requirements 7.3**
 
@@ -69,19 +69,19 @@
     - Create `/math/ensemble-recommend` endpoint
     - Implement cold-start fallback to popularity-based ranking
     - _Requirements: 7.4, 7.5_
-  - [ ]* 5.2 Write property test for ensemble weight sum
+  - [x]* 5.2 Write property test for ensemble weight sum
     - **Property 11: Ensemble Recommendation Weight Sum**
     - **Validates: Requirements 7.4**
 
-- [ ] 6. Implement Workload-to-GPU Mapping Engine
-  - [ ] 6.1 Create workload mapping module
+- [x] 6. Implement Workload-to-GPU Mapping Engine
+  - [x] 6.1 Create workload mapping module
     - Implement image generation workload mapping (VRAM, time estimates)
     - Implement LLM inference workload mapping (context length, TPS)
     - Implement training workload mapping (dataset size, epochs)
     - Create `/math/estimate-workload` endpoint
     - Create `/math/map-workload-to-gpu` endpoint
     - _Requirements: 22.2, 22.3, 22.4, 27.1, 27.2, 27.3_
-  - [ ]* 6.3 Write property test for workload mapping completeness
+  - [x]* 6.3 Write property test for workload mapping completeness
     - **Property 13: Workload-to-GPU Mapping Completeness**
     - **Validates: Requirements 22.2, 22.3, 22.4, 27.1, 27.2, 27.3**
 
@@ -91,43 +91,43 @@
 ## Phase 2: Enhanced Provider Service
 
 - [ ] 8. Refactor Provider Service to use Math Core
-  - [ ] 8.1 Add Math Core client to Provider Service
+  - [x] 8.1 Add Math Core client to Provider Service
     - Create MathCoreClient class with circuit breaker
     - Replace inline KPI calculations with Math Core calls
     - Add fallback to cached KPIs on Math Core failure
     - _Requirements: 21.1, 35.5_
-  - [ ] 8.2 Implement provider offer normalization validation
+  - [x] 8.2 Implement provider offer normalization validation
     - Add Pydantic validation for all required fields
     - Add data type validation and coercion
     - _Requirements: 2.2, 2.5_
-  - [ ]* 8.3 Write property test for offer normalization
+  - [x]* 8.3 Write property test for offer normalization
     - **Property 2: Provider Offer Normalization Consistency**
     - **Validates: Requirements 2.2, 2.5**
 
-- [ ] 9. Implement Real-Time Price Feed with Kafka
-  - [ ] 9.1 Add Kafka producer to ingestion pipeline
+- [x] 9. Implement Real-Time Price Feed with Kafka
+  - [x] 9.1 Add Kafka producer to ingestion pipeline
     - Publish price changes to `price_updates` topic
     - Include offer_id, old_price, new_price, timestamp
     - _Requirements: 3.1_
-  - [ ] 9.2 Create WebSocket Gateway service
+  - [x] 9.2 Create WebSocket Gateway service
     - Create `backend/websocket-gateway/` with FastAPI WebSocket
     - Subscribe to Redis Pub/Sub for price updates
     - Implement client connection management
     - Implement heartbeat pings every 30 seconds
     - _Requirements: 3.2, 3.3, 3.4_
-  - [ ]* 9.3 Write property test for WebSocket delivery latency
+  - [x]* 9.3 Write property test for WebSocket delivery latency
     - **Property 21: WebSocket Message Delivery Latency**
     - **Validates: Requirements 3.3, 32.5**
 
 - [ ] 10. Enhance Filtering and Search
-  - [ ] 10.1 Add advanced filter support
+  - [x] 10.1 Add advanced filter support
     - Implement all filter types: gpu_type, gpu_memory_gb, price range, region, availability, compliance_tags, provider_name
     - Add full-text search with Meilisearch integration
     - _Requirements: 4.1, 4.2_
-  - [ ]* 10.2 Write property test for filter correctness
+  - [x]* 10.2 Write property test for filter correctness
     - **Property 4: Filter Query Correctness**
     - **Validates: Requirements 4.1, 4.2**
-  - [ ]* 10.3 Write property test for pagination consistency
+  - [x]* 10.3 Write property test for pagination consistency
     - **Property 5: Pagination Consistency**
     - **Validates: Requirements 4.6**
 
@@ -137,28 +137,28 @@
 ## Phase 3: AI Assistant Service
 
 - [ ] 12. Create AI Assistant Service
-  - [ ] 12.1 Create `backend/ai-assistant/` directory structure
+  - [x] 12.1 Create `backend/ai-assistant/` directory structure
     - Create main.py with FastAPI scaffold
     - Set up LangChain with Ollama/Mistral-7B
     - Create conversation memory management
     - _Requirements: 8.3_
-  - [ ] 12.2 Implement natural language workload parser
+  - [x] 12.2 Implement natural language workload parser
     - Create intent extraction pipeline
     - Extract: workload_type, quantity, duration, quality, region
     - Create `/ai/parse-workload` endpoint
     - _Requirements: 22.1_
-  - [ ]* 12.3 Write property test for workload extraction
+  - [x]* 12.3 Write property test for workload extraction
     - **Property 12: Natural Language Workload Extraction**
     - **Validates: Requirements 22.1**
 
 - [ ] 13. Implement AI Chat Endpoint
-  - [ ] 13.1 Create chat endpoint with context management
+  - [x] 13.1 Create chat endpoint with context management
     - Create `/ai/chat` endpoint
     - Implement conversation history (10 turns)
     - Integrate with Math Core for calculations
     - Integrate with Recommendation Engine
     - _Requirements: 8.1, 8.2, 8.4, 8.5, 8.6_
-  - [ ]* 13.2 Write property test for AI response time
+  - [x]* 13.2 Write property test for AI response time
     - **Property 14: AI Response Time Bound**
     - **Validates: Requirements 8.1, 32.1**
 
@@ -210,7 +210,7 @@
     - _Requirements: 10.1, 10.2, 10.4, 10.5_
 
 - [ ] 20. Implement Real-Time Price Updates
-  - [ ] 20.1 Add WebSocket client to frontend
+  - [x] 20.1 Add WebSocket client to frontend
     - Connect to WebSocket Gateway
     - Handle price update messages
     - Animate price changes (3 second highlight)

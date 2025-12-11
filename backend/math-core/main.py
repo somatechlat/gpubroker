@@ -213,22 +213,6 @@ class EnsembleRecommendResponse(BaseModel):
 # API Endpoints - KPI Calculations
 # ============================================
 
-@app.get("/")
-async def root():
-    return {
-        "service": "GPUMathBroker - Math Core Service",
-        "version": "1.0.0",
-        "status": "running",
-        "endpoints": {
-            "kpi": ["/math/cost-per-token", "/math/cost-per-gflop", "/math/efficiency-score"],
-            "algorithms": ["/math/topsis", "/math/collaborative-filter", "/math/content-similarity"],
-            "workload": ["/math/estimate-workload", "/math/map-workload-to-gpu"],
-            "ensemble": ["/math/ensemble-recommend"],
-            "benchmarks": ["/math/benchmarks", "/math/benchmarks/{gpu_type}"]
-        }
-    }
-
-
 @app.post("/math/cost-per-token", response_model=CostPerTokenResponse)
 async def calculate_cost_per_token(request: CostPerTokenRequest):
     """

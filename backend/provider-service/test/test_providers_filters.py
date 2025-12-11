@@ -49,17 +49,19 @@ class _StubRepository:
                 "id": "runpod:gpu_a100:us-east",
                 "name": "gpu_a100",
                 "gpu": "A100",
+                "gpu_memory_gb": 80,
                 "price_per_hour": 2.5,
                 "availability": "available",
                 "region": "us-east",
                 "provider": "runpod",
-                "tags": ["gpu", "a100"],
+                "tags": ["gpu", "a100", "soc2"],
                 "last_updated": "2025-11-04T12:00:00Z",
             },
             {
                 "id": "runpod:gpu_a100:eu-west",
                 "name": "gpu_a100",
                 "gpu": "A100",
+                "gpu_memory_gb": 80,
                 "price_per_hour": 2.8,
                 "availability": "available",
                 "region": "eu-west",
@@ -71,6 +73,7 @@ class _StubRepository:
                 "id": "runpod:gpu_v100:us-east",
                 "name": "gpu_v100",
                 "gpu": "V100",
+                "gpu_memory_gb": 16,
                 "price_per_hour": 1.5,
                 "availability": "limited",
                 "region": "us-east",
@@ -133,6 +136,40 @@ def test_region_and_max_price_filter():
     # Only the V100 offer matches both criteria (price 1.5, region us-east)
     assert payload["total"] == 1
     assert payload["items"][0]["gpu"] == "V100"
+
+
+def test_gpu_memory_and_availability_filter():
+    with patch("ingestion.repository.OfferRepository", _StubRepository):
+        payload = _request("?gpu_memory_min=32&availability=available")
+    # Two A100 offers have 80GB and availability available
+    assert payload["total"] == 2
+    for item in payload["items"]:
+        assert item["gpu_memory_gb"] >= 32
+        assert item["availability"] == "available"
+
+
+def test_compliance_and_provider_filter():
+    with patch("ingestion.repository.OfferRepository", _StubRepository):
+        payload = _request("?compliance_tag=soc2&provider=runpod")
+    assert payload["total"] == 1
+    assert payload["items"][0]["gpu"] == "A100"
+
+
+def test_price_range_filter():
+    with patch("ingestion.repository.OfferRepository", _StubRepository):
+        payload = _request("?price_min=2.6&max_price=3.0")
+    assert payload["total"] == 1
+    assert payload["items"][0]["price_per_hour"] >= 2.6
+
+
+def test_pagination_consistency():
+    with patch("ingestion.repository.OfferRepository", _StubRepository):
+        payload_page1 = _request("?page=1&per_page=2&gpu=A100")
+        payload_page2 = _request("?page=2&per_page=2&gpu=A100")
+    assert payload_page1["total"] == 2
+    assert len(payload_page1["items"]) == 2
+    assert payload_page2["total"] == 2
+    assert len(payload_page2["items"]) == 0
 
 
 def test_pagination():

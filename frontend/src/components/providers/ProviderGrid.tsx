@@ -3,15 +3,37 @@
 import { useEffect, useState } from 'react'
 import { BookingModal } from '../booking/BookingModal'
 import { fetchProviders } from '@/lib/api/providers'
+import { connectPriceStream, PriceUpdateMessage } from '@/lib/realtime/priceUpdates'
 
 export function ProviderGrid() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [items, setItems] = useState<any[]>([])
   const [selected, setSelected] = useState<any | null>(null)
+  const [flashes, setFlashes] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     let mounted = true
+    let disconnectWs: (() => void) | null = null
+
+    const applyPriceUpdate = (msg: PriceUpdateMessage) => {
+      if (!mounted) return
+      const matchId = msg.external_id ? msg.external_id : undefined
+      setItems((prev) =>
+        prev.map((it) => {
+          const matches =
+            (matchId && it.id.includes(matchId)) ||
+            (msg.gpu_type && it.gpu === msg.gpu_type && (!msg.region || it.region === msg.region))
+          if (!matches) return it
+          const updated = { ...it, price_per_hour: msg.new_price }
+          const id = it.id
+          setFlashes((f) => ({ ...f, [id]: true }))
+          setTimeout(() => setFlashes((f) => ({ ...f, [id]: false })), 2000)
+          return updated
+        })
+      )
+    }
+
     async function load() {
       setLoading(true)
       setError(null)
@@ -34,13 +56,16 @@ export function ProviderGrid() {
     load()
 
     const onFilters = () => { load() }
-    window.addEventListener('filters:changed', onFilters)
-    window.addEventListener('popstate', onFilters)
+      window.addEventListener('filters:changed', onFilters)
+      window.addEventListener('popstate', onFilters)
+
+      disconnectWs = connectPriceStream(applyPriceUpdate)
 
     return () => {
       mounted = false
       window.removeEventListener('filters:changed', onFilters)
       window.removeEventListener('popstate', onFilters)
+      disconnectWs?.()
     }
   }, [])
 
@@ -66,7 +91,7 @@ export function ProviderGrid() {
     <div>
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {items.map((p: any) => (
-          <div key={p.id} className="card">
+          <div key={p.id} className={`card ${flashes[p.id] ? 'price-flash' : ''}`}>
             <div className="flex items-start justify-between">
               <div>
                 <div className="text-sm font-medium text-gray-600">{p.name}</div>

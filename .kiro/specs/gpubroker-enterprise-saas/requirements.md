@@ -102,12 +102,13 @@ The platform must support thousands of transactions per minute, provide real-tim
 
 #### Acceptance Criteria
 
-1. WHEN a user submits valid credentials THEN THE Auth Service SHALL issue a JWT access token with 15-minute expiry and a refresh token with 7-day expiry
+1. WHEN a user submits valid credentials THEN THE Auth Service SHALL issue a JWT access token with 15-minute expiry and a refresh token with 7-day expiry, RS256-signed
 2. WHEN a user enables MFA THEN THE Auth Service SHALL require TOTP or WebAuthn verification before issuing tokens
 3. WHILE a user session is active THEN THE Auth Service SHALL validate JWT signatures and expiry on every protected request
 4. WHEN a user attempts an action outside their role permissions THEN THE Auth Service SHALL return HTTP 403 and log the attempt
 5. IF a refresh token is expired or revoked THEN THE Auth Service SHALL require full re-authentication
 6. WHEN an admin creates a new user THEN THE Auth Service SHALL assign default role "user" and send verification email
+7. WHEN requests pass through the gateway THEN per-plan rate limits SHALL apply (free 10/s, pro 100/s, enterprise 1000/s) returning HTTP 429 with Retry-After on exceed
 
 ---
 
@@ -120,9 +121,11 @@ The platform must support thousands of transactions per minute, provide real-tim
 1. WHEN the ingestion scheduler runs THEN THE Provider Service SHALL fetch offers from all configured provider adapters within 5 minutes
 2. WHEN a provider adapter receives API response THEN THE Provider Service SHALL normalize data into the standard ProviderOffer schema
 3. WHEN an offer is ingested THEN THE Provider Service SHALL upsert to gpu_offers table and append to price_history table
+4. WHEN an offer is normalized THEN THE Provider Service SHALL validate required fields and reject negative prices or invalid availability enums, logging any rejection
 4. IF a provider API returns an error THEN THE Provider Service SHALL log the failure, increment error counter, and continue with other providers
 5. WHEN offers are stored THEN THE Provider Service SHALL include: provider_id, gpu_type, gpu_memory_gb, cpu_cores, ram_gb, storage_gb, price_per_hour, currency, region, availability_status, compliance_tags, last_seen_at
 6. WHEN a provider has not responded for 15 minutes THEN THE Provider Service SHALL mark its offers as "stale" in availability_status
+7. WHEN Math Core enrichment is enabled THEN the Provider Service SHALL append cost_per_token and cost_per_gflop to offers, falling back gracefully on errors
 
 ---
 
@@ -134,7 +137,7 @@ The platform must support thousands of transactions per minute, provide real-tim
 
 1. WHEN a price change is detected during ingestion THEN THE Price Feed Service SHALL publish a message to Kafka topic "price_updates"
 2. WHEN a WebSocket client connects THEN THE WebSocket Gateway SHALL subscribe to Redis Pub/Sub channel for price updates
-3. WHEN a price update message arrives THEN THE WebSocket Gateway SHALL broadcast to all connected clients within 500ms
+3. WHEN a price update message arrives THEN THE WebSocket Gateway SHALL broadcast to all connected clients within 500ms end-to-end
 4. WHILE a client is connected THEN THE WebSocket Gateway SHALL send heartbeat pings every 30 seconds
 5. IF a WebSocket connection drops THEN THE Frontend SHALL automatically reconnect with exponential backoff (1s, 2s, 4s, max 30s)
 6. WHEN displaying price updates THEN THE Frontend SHALL highlight changed prices with visual animation for 3 seconds
@@ -148,7 +151,7 @@ The platform must support thousands of transactions per minute, provide real-tim
 #### Acceptance Criteria
 
 1. WHEN a user applies filters THEN THE Provider Service SHALL support filtering by: gpu_type, gpu_memory_gb (min/max), price_per_hour (min/max), region, availability_status, compliance_tags, provider_name
-2. WHEN a user enters a search query THEN THE Provider Service SHALL perform full-text search across gpu_type, provider_name, and tags
+2. WHEN a user enters a search query THEN THE Provider Service SHALL perform full-text search across gpu_type, provider_name, and tags using Meilisearch/OpenSearch if configured, else fall back to database search
 3. WHEN filters are applied THEN THE Provider Service SHALL return results within 200ms for 95th percentile of requests
 4. WHEN displaying results THEN THE Frontend SHALL support sorting by: price_per_hour (asc/desc), gpu_memory_gb, availability, last_updated
 5. WHEN a user saves a filter combination THEN THE Provider Service SHALL persist it as a "saved_search" linked to user_id
@@ -207,12 +210,15 @@ The platform must support thousands of transactions per minute, provide real-tim
 
 #### Acceptance Criteria
 
-1. WHEN a user sends a chat message THEN THE AI Assistant SHALL respond within 2 seconds end-to-end
-2. WHEN parsing user intent THEN THE AI Assistant SHALL extract: workload_type, gpu_preference, budget_constraint, region_preference, duration_estimate
-3. WHEN generating responses THEN THE AI Assistant SHALL use LangChain with Mistral-7B (or compatible LLM) for natural language generation
-4. WHEN recommendations are requested via chat THEN THE AI Assistant SHALL call the Recommendation Engine and format results conversationally
-5. WHEN a user asks "find the best option for my current search" THEN THE AI Assistant SHALL apply recommendation algorithms to the active filter state
-6. WHEN conversation context is needed THEN THE AI Assistant SHALL maintain session history for up to 10 message turns
+1. WHEN a user sends a chat message THEN THE AI Assistant SHALL respond within 2 seconds end-to-end via SomaAgent Gateway `/v1/llm/invoke`
+2. WHEN conversation history is forwarded THEN THE AI Assistant SHALL include at most the last 10 turns plus the current user message
+3. WHEN parsing user intent THEN THE AI Assistant SHALL extract: workload_type, gpu_preference, budget_constraint, region_preference, duration_estimate
+4. WHEN generating responses THEN THE AI Assistant SHALL call the configured LLM provider through SomaAgent Gateway (no local mock responses)
+5. WHEN recommendations are requested via chat THEN THE AI Assistant SHALL call Math Core `/math/ensemble-recommend` with live candidate offers and format results conversationally
+6. WHEN a session_id is present THEN THE AI Assistant SHALL support fetching session history via SomaAgent `/v1/sessions/{session_id}/history`
+7. WHEN tools are requested THEN THE AI Assistant SHALL list available tools via SomaAgent `/v1/tools` (read-only)
+8. WHEN a user asks "find the best option for my current search" THEN THE AI Assistant SHALL apply recommendation algorithms to the active filter state
+9. WHEN conversation context is needed THEN THE AI Assistant SHALL maintain session history for up to 10 message turns
 
 ---
 
@@ -374,7 +380,7 @@ The platform must support thousands of transactions per minute, provide real-tim
 
 1. WHEN external traffic arrives THEN THE Platform SHALL terminate TLS 1.3 at the ingress controller
 2. WHEN services communicate internally THEN THE Service Mesh SHALL enforce mTLS between all pods
-3. WHEN secrets are needed THEN THE Service SHALL fetch from HashiCorp Vault using Kubernetes auth method
+3. WHEN secrets are needed THEN THE Service SHALL fetch from HashiCorp Vault using Kubernetes auth method; `.env` and source code SHALL contain only non-secret configuration (URLs, feature toggles)
 4. WHEN user input is received THEN THE Service SHALL validate and sanitize to prevent injection attacks (SQL, XSS, command)
 5. WHEN container images are built THEN THE CI Pipeline SHALL scan with Trivy and fail on HIGH/CRITICAL vulnerabilities
 6. WHEN rate limits are exceeded THEN THE API Gateway SHALL return HTTP 429 with Retry-After header

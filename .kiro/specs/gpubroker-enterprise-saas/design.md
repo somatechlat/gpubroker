@@ -206,8 +206,39 @@ class BaseProviderAdapter(ABC):
     async def validate_credentials(self, credentials: Dict) -> bool
     
     @abstractmethod
-    async def book_instance(self, offer_id: str, duration: int) -> BookingResult
+async def book_instance(self, offer_id: str, duration: int) -> BookingResult
 ```
+
+### 4. AI Assistant Service (SomaAgent-backed)
+
+**Purpose:** Primary conversational interface; delegates LLM/tooling to SomaAgent Gateway to avoid embedding models or tools locally.
+
+**SomaAgent endpoints used/planned**
+- **LLM**: `/v1/llm/invoke`, `/v1/llm/invoke/stream` (future streaming).
+- **Sessions**: `/v1/sessions`, `/v1/sessions/{session_id}/history|events|context-window` to hydrate conversational context.
+- **Memory**: `/v1/memory/export`, `/v1/memory/export/jobs` for long-term recall; `/v1/admin/memory*` for ops.
+- **Tools**: `/v1/tools`, `/v1/tool-catalog/*`, `/v1/tasks/*` to list/route/execute agent tools.
+- **Notifications/SSE**: `/v1/sse/enabled` and `/v1/session/{session_id}/events?stream=true` for live agent events.
+- **Health/Admin**: `/v1/health`, `/v1/admin/ping`.
+
+**Key behaviors**
+- API: `/ai/chat` (non-streaming), `/ai/parse-workload`, `/ai/sessions/{id}/history`, `/ai/tools`, `/ai/health`.
+- For each chat call: trims history to 10 turns, forwards to SomaAgent with session_id; no fabricated replies—propagate upstream errors (502).
+- Optional enrichment: fetch candidate offers from Provider Service + call Math Core `/math/ensemble-recommend`; return recommendations with chat reply.
+- Target p95 latency ≤ 2s (Property 14). Future: streaming via `/v1/llm/invoke/stream`.
+
+**Config**
+```
+SOMA_AGENT_BASE=http://somagent01:21016
+LLM_PROVIDER=somagent
+AI_MAX_HISTORY_TURNS=10
+PROVIDER_API_URL=http://provider-service:8000
+MATH_CORE_URL=http://math-core:8004
+```
+
+**Data**: Short-term history in request payload; persistent history possible in `ai_conversations` (PostgreSQL) by storing session_id and messages when enabled.
+
+**Secrets**: All API keys and credentials (provider keys, LLM keys, etc.) are fetched at runtime from Vault via `shared.vault_client`; no secrets are stored in source, env files, or compose. Only non-secret service URLs/toggles are provided via environment variables.
 
 ### 4. Math Core Service (GPUMathBroker)
 

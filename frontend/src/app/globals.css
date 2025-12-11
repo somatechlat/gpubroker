@@ -28,6 +28,10 @@
   .input-field {
     @apply w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500;
   }
+
+  .price-flash {
+    animation: priceFlash 1.5s ease-in-out;
+  }
 }
 
 /* Animation classes */
@@ -49,4 +53,10 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+@keyframes priceFlash {
+  0%   { background-color: rgba(34,197,94,0.15); }
+  50%  { background-color: rgba(34,197,94,0.35); }
+  100% { background-color: transparent; }
 }

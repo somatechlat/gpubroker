@@ -1,1 +1,2 @@
-# Ingestion package: scheduler, pipeline, repository, metrics
+# Ingestion components (scheduler, repository)
+

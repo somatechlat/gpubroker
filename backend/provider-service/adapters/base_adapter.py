@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import List, Dict
 
-from ..models.provider_offer import ProviderOffer
+from models.provider_offer import ProviderOffer
 
 
 class BaseProviderAdapter(ABC):

@@ -13,7 +13,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 from .base_adapter import BaseProviderAdapter
-from ..models.provider_offer import ProviderOffer
+from models.provider_offer import ProviderOffer
 
 logger = logging.getLogger(__name__)
 

@@ -3,10 +3,19 @@ from __future__ import annotations
 from typing import List, Dict, Optional
 from datetime import datetime
 
-from ..db import get_pool
+from db import get_pool
+from .kafka_producer import send_price_update
+import json
+try:
+    from redis.asyncio import Redis  # type: ignore
+except Exception:  # pragma: no cover
+    Redis = None  # type: ignore
 
 
 class OfferRepository:
+    def __init__(self, redis_client: Optional[Redis] = None):
+        self.redis = redis_client
+
     async def ensure_provider(
         self, name: str, display_name: str, api_base_url: str
     ) -> str:
@@ -47,6 +56,11 @@ class OfferRepository:
         async with pool.acquire() as conn:
             async with conn.transaction():
                 for o in offers:
+                    previous = await conn.fetchrow(
+                        "SELECT id, price_per_hour, availability_status FROM gpu_offers WHERE provider_id = $1 AND external_id = $2",
+                        provider_id,
+                        o["external_id"],
+                    )
                     row = await conn.fetchrow(
                         """
                         INSERT INTO gpu_offers (
@@ -97,6 +111,26 @@ class OfferRepository:
                         row["availability_status"],
                     )
                     total += 1
+
+                    old_price = float(previous["price_per_hour"]) if previous else None
+                    if old_price is None or abs(old_price - float(row["price_per_hour"])) > 1e-9:
+                        payload = {
+                            "offer_id": str(row["id"]),
+                            "provider_id": str(provider_id),
+                            "external_id": o["external_id"],
+                            "old_price": old_price,
+                            "new_price": float(row["price_per_hour"]),
+                            "availability_status": row["availability_status"],
+                            "timestamp": datetime.utcnow().isoformat(),
+                        }
+                        # Redis pub/sub (optional)
+                        if self.redis:
+                            try:
+                                await self.redis.publish("price_updates", json.dumps(payload))
+                            except Exception:
+                                pass
+                        # Kafka publish (optional)
+                        await send_price_update(payload)
         return total
 
     async def list_offers(
@@ -104,6 +138,12 @@ class OfferRepository:
         *,
         gpu_term: Optional[str] = None,
         region: Optional[str] = None,
+        availability: Optional[str] = None,
+        compliance_tag: Optional[str] = None,
+        provider_name: Optional[str] = None,
+        gpu_memory_min: Optional[int] = None,
+        gpu_memory_max: Optional[int] = None,
+        price_min: Optional[float] = None,
         max_price: Optional[float] = None,
         page: int = 1,
         per_page: int = 20,
@@ -125,6 +165,24 @@ class OfferRepository:
         if region:
             where.append("go.region = $%d" % (len(params) + 1))
             params.append(region)
+        if availability:
+            where.append("go.availability_status = $%d" % (len(params) + 1))
+            params.append(availability)
+        if compliance_tag:
+            where.append("$%d = ANY(go.compliance_tags)" % (len(params) + 1))
+            params.append(compliance_tag)
+        if provider_name:
+            where.append("p.name = $%d" % (len(params) + 1))
+            params.append(provider_name)
+        if gpu_memory_min is not None:
+            where.append("go.gpu_memory_gb >= $%d" % (len(params) + 1))
+            params.append(gpu_memory_min)
+        if gpu_memory_max is not None:
+            where.append("go.gpu_memory_gb <= $%d" % (len(params) + 1))
+            params.append(gpu_memory_max)
+        if price_min is not None:
+            where.append("go.price_per_hour >= $%d" % (len(params) + 1))
+            params.append(price_min)
         if max_price is not None:
             where.append("go.price_per_hour <= $%d" % (len(params) + 1))
             params.append(max_price)
@@ -148,10 +206,12 @@ class OfferRepository:
                   p.name AS provider_name,
                   go.external_id,
                   go.gpu_type,
+                  go.gpu_memory_gb,
                   go.price_per_hour,
                   go.region,
                   go.availability_status,
                   go.compliance_tags,
+                  go.provider_id,
                   go.updated_at
                 FROM gpu_offers go
                 JOIN providers p ON p.id = go.provider_id
@@ -172,8 +232,10 @@ class OfferRepository:
                     "id": f"{r['provider_name']}:{r['external_id']}:{r['region']}",
                     "name": r["gpu_type"],
                     "gpu": r["gpu_type"],
+                    "gpu_memory_gb": r["gpu_memory_gb"],
                     "price_per_hour": float(r["price_per_hour"]),
                     "availability": r["availability_status"],
+                    "availability_status": r["availability_status"],
                     "region": r["region"],
                     "provider": r["provider_name"],
                     "tags": r["compliance_tags"] or [],
