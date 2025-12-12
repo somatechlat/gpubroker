@@ -13,7 +13,7 @@ services:
     environment:
       POSTGRES_DB: gpubroker
       POSTGRES_USER: gpubroker
-      POSTGRES_PASSWORD: gpubroker_dev_pass
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./database/init:/docker-entrypoint-initdb.d
@@ -30,7 +30,7 @@ services:
     environment:
       CLICKHOUSE_DB: gpubroker_analytics
       CLICKHOUSE_USER: gpubroker
-      CLICKHOUSE_PASSWORD: gpubroker_dev_pass
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?set CLICKHOUSE_PASSWORD}
     volumes:
       - clickhouse_data:/var/lib/clickhouse
     ports:
@@ -39,7 +39,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    command: redis-server --requirepass redis_dev_password_2024
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?set REDIS_PASSWORD}"]
     volumes:
       - redis_data:/data
     ports:
@@ -53,9 +53,10 @@ services:
     build:
       context: ./backend/auth-service
     environment:
-      DATABASE_URL: postgresql://gpubroker:gpubroker_dev_pass@postgres:5432/gpubroker
-      JWT_SECRET_KEY: auth_jwt_secret_key_dev_2024_change_in_production
-      REDIS_URL: redis://:redis_dev_password_2024@redis:6379/0
+      DATABASE_URL: ${DATABASE_URL_AUTH:?set DATABASE_URL_AUTH}
+      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY:?set JWT_PRIVATE_KEY}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:?set JWT_PUBLIC_KEY}
+      REDIS_URL: ${REDIS_URL_AUTH:?set REDIS_URL_AUTH}
     ports:
       - "${PORT_AUTH:-28020}:8000"
     depends_on:
@@ -72,8 +73,8 @@ services:
       VAULT_ADDR: ${VAULT_ADDR}
       VAULT_ROLE_ID: ${VAULT_ROLE_ID}
       VAULT_SECRET_ID: ${VAULT_SECRET_ID}
-      REDIS_URL: redis://:redis_dev_password_2024@redis:6379/1
-      DATABASE_URL: postgresql://gpubroker:gpubroker_dev_pass@postgres:5432/gpubroker
+      REDIS_URL: ${REDIS_URL_PROVIDER:?set REDIS_URL_PROVIDER}
+      DATABASE_URL: ${DATABASE_URL_PROVIDER:?set DATABASE_URL_PROVIDER}
       ENABLE_INGESTION: "true"
       MATH_CORE_URL: http://math-core:8004
       ENABLE_MATH_CORE_ENRICH: "false"
@@ -90,9 +91,9 @@ services:
     build:
       context: ./backend/kpi-service
     environment:
-      DATABASE_URL: postgresql://gpubroker:gpubroker_dev_pass@postgres:5432/gpubroker
-      CLICKHOUSE_URL: http://gpubroker:gpubroker_dev_pass@clickhouse:8123/gpubroker_analytics
-      REDIS_URL: redis://:redis_dev_password_2024@redis:6379/2
+      DATABASE_URL: ${DATABASE_URL_KPI:?set DATABASE_URL_KPI}
+      CLICKHOUSE_URL: ${CLICKHOUSE_URL:?set CLICKHOUSE_URL}
+      REDIS_URL: ${REDIS_URL_KPI:?set REDIS_URL_KPI}
     ports:
       - "${PORT_KPI:-28022}:8000"
     depends_on:
@@ -131,7 +132,7 @@ services:
     build:
       context: ./backend/websocket-gateway
     environment:
-      REDIS_URL: redis://:redis_dev_password_2024@redis:6379/1
+      REDIS_URL: ${REDIS_URL_WS:?set REDIS_URL_WS}
       PRICE_UPDATES_CHANNEL: price_updates
       WS_HEARTBEAT_SECONDS: 30
     depends_on:
@@ -146,8 +147,8 @@ services:
     build:
       context: ./backend/ai-assistant
     environment:
-      SOMA_AGENT_BASE: http://somagent01:21016
-      LLM_PROVIDER: somagent
+      SOMA_AGENT_BASE: ${SOMA_AGENT_BASE:?set SOMA_AGENT_BASE}
+      LLM_PROVIDER: ${LLM_PROVIDER:-somagent}
     depends_on:
       - redis
     ports:

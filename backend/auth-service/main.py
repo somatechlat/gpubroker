@@ -54,11 +54,12 @@ app.add_middleware(
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 security = HTTPBearer()
 
-# JWT Configuration
-SECRET_KEY = os.getenv("JWT_SECRET_KEY")
-if not SECRET_KEY:
-    raise RuntimeError("JWT_SECRET_KEY must be set (no hardcoded defaults allowed)")
-ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+# JWT Configuration (RS256 required)
+JWT_PRIVATE_KEY = os.getenv("JWT_PRIVATE_KEY")
+JWT_PUBLIC_KEY = os.getenv("JWT_PUBLIC_KEY")
+ALGORITHM = "RS256"
+if not JWT_PRIVATE_KEY or not JWT_PUBLIC_KEY:
+    raise RuntimeError("JWT_PRIVATE_KEY and JWT_PUBLIC_KEY must be set (no hardcoded defaults allowed)")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "15"))
 
 # Database connection
@@ -117,7 +118,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     else:
         expire = datetime.now(timezone.utc) + timedelta(minutes=15)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, JWT_PRIVATE_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
 
@@ -127,7 +128,7 @@ async def get_current_user(
     """Extract and validate JWT token"""
     token = credentials.credentials
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, JWT_PUBLIC_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
             raise HTTPException(status_code=401, detail="Invalid token")

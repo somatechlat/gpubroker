@@ -17,9 +17,15 @@ A unified dashboard that aggregates GPU offers from 23+ providers with real-time
 git clone https://github.com/your-org/gpubroker.git
 cd gpubroker
 
-# 2. Configure Vault for provider/cloud API keys
+# 2. Configure Vault for provider/cloud API keys and export required secrets
 cp .env.example .env
 # Load secrets into Vault: ./infrastructure/vault/scripts/store-secrets.sh
+# Set runtime secrets as environment variables before compose/start-dev:
+#   POSTGRES_PASSWORD, CLICKHOUSE_PASSWORD, REDIS_PASSWORD
+#   DATABASE_URL_AUTH / DATABASE_URL_PROVIDER / DATABASE_URL_KPI / DATABASE_URL_MATH
+#   REDIS_URL_AUTH / REDIS_URL_PROVIDER / REDIS_URL_KPI / REDIS_URL_WS
+#   JWT_PRIVATE_KEY (PEM), JWT_PUBLIC_KEY (PEM)
+#   SOMA_AGENT_BASE (AI Assistant upstream URL), LLM_PROVIDER
 # Set frontend API targets (required):
 #   NEXT_PUBLIC_PROVIDER_API_URL=http://localhost:${PORT_PROVIDER:-28021}
 #   NEXT_PUBLIC_KPI_API_URL=http://localhost:${PORT_KPI:-28022}

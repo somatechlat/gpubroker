@@ -32,7 +32,7 @@ class BaseRanker(ABC):
         criteria_types: List[str]
     ) -> Dict[str, Any]:
         """Rank alternatives based on criteria."""
-        pass
+        raise NotImplementedError("Rankers must implement rank()")
 
 
 class WeightedSumModel(BaseRanker):

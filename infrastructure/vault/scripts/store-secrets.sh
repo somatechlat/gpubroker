@@ -163,13 +163,19 @@ echo "--- INTERNAL SERVICES ---"
 
 # Database
 echo "Database credentials:"
-store_secret "database" "postgres_password" "${POSTGRES_PASSWORD:-gpubroker_dev_pass}"
-store_secret "database" "redis_password" "${REDIS_PASSWORD:-}"
-store_secret "database" "clickhouse_password" "${CLICKHOUSE_PASSWORD:-gpubroker_dev_pass}"
+POSTGRES_PASSWORD_VALUE=$(prompt_key "PostgreSQL password" "POSTGRES_PASSWORD")
+store_secret "database" "postgres_password" "${POSTGRES_PASSWORD_VALUE}"
+REDIS_PASSWORD_VALUE=$(prompt_key "Redis password" "REDIS_PASSWORD")
+store_secret "database" "redis_password" "${REDIS_PASSWORD_VALUE}"
+CLICKHOUSE_PASSWORD_VALUE=$(prompt_key "ClickHouse password" "CLICKHOUSE_PASSWORD")
+store_secret "database" "clickhouse_password" "${CLICKHOUSE_PASSWORD_VALUE}"
 
 # JWT
-echo "JWT Secret:"
-store_secret "auth" "jwt_secret" "${JWT_SECRET_KEY:-$(openssl rand -hex 32)}"
+echo "JWT RSA keys:"
+JWT_PRIVATE_KEY_VALUE=$(prompt_key "JWT private key (PEM)" "JWT_PRIVATE_KEY")
+store_secret "auth" "jwt_private_key" "${JWT_PRIVATE_KEY_VALUE}"
+JWT_PUBLIC_KEY_VALUE=$(prompt_key "JWT public key (PEM)" "JWT_PUBLIC_KEY")
+store_secret "auth" "jwt_public_key" "${JWT_PUBLIC_KEY_VALUE}"
 
 echo ""
 echo "============================================"

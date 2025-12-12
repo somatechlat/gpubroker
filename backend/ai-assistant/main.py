@@ -17,7 +17,7 @@ from client import SomaAgentClient
 logger = logging.getLogger(__name__)
 
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "somagent")
-SOMA_BASE = os.getenv("SOMA_AGENT_BASE", "http://localhost:21016")
+SOMA_BASE = os.getenv("SOMA_AGENT_BASE")
 PROVIDER_API_URL = os.getenv("PROVIDER_API_URL", "http://provider-service:8000")
 MATH_CORE_URL = os.getenv("MATH_CORE_URL", "http://math-core:8004")
 MAX_HISTORY_TURNS = int(os.getenv("AI_MAX_HISTORY_TURNS", "10"))
@@ -26,7 +26,7 @@ MAX_HISTORY_TURNS = int(os.getenv("AI_MAX_HISTORY_TURNS", "10"))
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     if not SOMA_BASE:
-        raise RuntimeError("SOMA_AGENT_BASE is not configured")
+        raise RuntimeError("SOMA_AGENT_BASE must be set (no hardcoded defaults allowed)")
     yield
 
 

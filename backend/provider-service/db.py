@@ -12,10 +12,9 @@ async def init_db_pool() -> None:
     global _pool
     if _pool is not None:
         return
-    dsn = os.getenv(
-        "DATABASE_URL",
-        "postgresql://gpubroker:gpubroker_dev_pass@postgres:5432/gpubroker",
-    )
+    dsn = os.getenv("DATABASE_URL")
+    if not dsn:
+        raise RuntimeError("DATABASE_URL must be set (no hardcoded defaults allowed)")
     # Lazy import to avoid hard dependency during test runs where asyncpg
     # may not be available for the local Python version.
     asyncpg = importlib.import_module("asyncpg")

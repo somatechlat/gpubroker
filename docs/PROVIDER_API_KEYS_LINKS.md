@@ -127,27 +127,6 @@ IBM_WATSON_URL=
 KAGGLE_USERNAME=
 KAGGLE_KEY=
 
-# ============================================
-# Internal Services
-# ============================================
-JWT_SECRET_KEY=your-secret-key-change-in-production
-DATABASE_URL=postgresql://gpubroker:gpubroker_dev_password_2024@postgres:5432/gpubroker
-REDIS_URL=redis://:redis_dev_password_2024@redis:6379/0
-```
-
----
-
-## ✅ Verification
-
-After adding keys, verify connections:
-
-```bash
-# Check provider health
-curl http://localhost:${PORT_PROVIDER:-28021}/health
-
-# List configured integrations
-curl http://localhost:${PORT_PROVIDER:-28021}/config/integrations
-
 # Test specific provider
 curl http://localhost:${PORT_PROVIDER:-28021}/providers?provider=runpod
 ```

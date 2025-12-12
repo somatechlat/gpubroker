@@ -49,6 +49,6 @@ async def close_producer() -> None:
     if _producer:
         try:
             await _producer.stop()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Failed to stop Kafka producer cleanly: %s", e)
         _producer = None

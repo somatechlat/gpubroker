@@ -127,8 +127,8 @@ class OfferRepository:
                         if self.redis:
                             try:
                                 await self.redis.publish("price_updates", json.dumps(payload))
-                            except Exception:
-                                pass
+                            except Exception as e:
+                                logger.warning("Price update publish to Redis failed: %s", e)
                         # Kafka publish (optional)
                         await send_price_update(payload)
         return total

@@ -31,7 +31,7 @@ services:
     image: postgres:15-alpine
     environment:
       POSTGRES_USER: gpubroker
-      POSTGRES_PASSWORD: gpubroker_dev_pass
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
       POSTGRES_DB: gpubroker_dev
     ports:
       - "${PORT_POSTGRES:-28001}:5432"
@@ -93,7 +93,7 @@ services:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
       KC_DB_USERNAME: gpubroker
-      KC_DB_PASSWORD: gpubroker_dev_pass
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
     ports:
       - "${PORT_KEYCLOAK:-28006}:8080"
     depends_on:
@@ -106,10 +106,11 @@ services:
     ports:
       - "${PORT_AUTH:-28020}:8000"
     environment:
-      - DATABASE_URL=postgresql://gpubroker:gpubroker_dev_pass@postgres:5432/gpubroker_dev
-      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=${DATABASE_URL_AUTH:?set DATABASE_URL_AUTH}
+      - REDIS_URL=${REDIS_URL_AUTH:?set REDIS_URL_AUTH}
       - KEYCLOAK_URL=http://keycloak:8080
-      - JWT_SECRET_KEY=dev-secret-key-change-in-production
+      - JWT_PRIVATE_KEY=${JWT_PRIVATE_KEY:?set JWT_PRIVATE_KEY}
+      - JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY:?set JWT_PUBLIC_KEY}
     depends_on:
       - postgres
       - redis
@@ -122,8 +123,8 @@ services:
     ports:
       - "${PORT_PROVIDER:-28021}:8000"
     environment:
-      - DATABASE_URL=postgresql://gpubroker:gpubroker_dev_pass@postgres:5432/gpubroker_dev
-      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=${DATABASE_URL_PROVIDER:?set DATABASE_URL_PROVIDER}
+      - REDIS_URL=${REDIS_URL_PROVIDER:?set REDIS_URL_PROVIDER}
       - KAFKA_BROKERS=kafka:9092
       # Vault configuration - NO API KEYS IN ENV VARS
       - VAULT_ADDR=http://vault:8200
@@ -143,10 +144,10 @@ services:
     ports:
       - "${PORT_KPI:-28022}:8000"
     environment:
-      - DATABASE_URL=postgresql://gpubroker:gpubroker_dev_pass@postgres:5432/gpubroker_dev
-      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=${DATABASE_URL_KPI:?set DATABASE_URL_KPI}
+      - REDIS_URL=${REDIS_URL_KPI:?set REDIS_URL_KPI}
       - KAFKA_BROKERS=kafka:9092
-      - CLICKHOUSE_URL=http://clickhouse:8123
+      - CLICKHOUSE_URL=${CLICKHOUSE_URL:?set CLICKHOUSE_URL}
     depends_on:
       - postgres
       - redis
@@ -159,8 +160,8 @@ services:
     ports:
       - "${PORT_MATH:-28023}:8004"
     environment:
-      - DATABASE_URL=postgresql://gpubroker:gpubroker_dev_pass@postgres:5432/gpubroker_dev
-      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=${DATABASE_URL_MATH:?set DATABASE_URL_MATH}
+      - REDIS_URL=${REDIS_URL_MATH:?set REDIS_URL_MATH}
       - LOG_LEVEL=INFO
     depends_on:
       - postgres
@@ -178,7 +179,7 @@ services:
     ports:
       - "${PORT_WS_GATEWAY:-28025}:8005"
     environment:
-      - REDIS_URL=redis://redis:6379/1
+      - REDIS_URL=${REDIS_URL_WS:?set REDIS_URL_WS}
       - PRICE_UPDATES_CHANNEL=price_updates
       - WS_HEARTBEAT_SECONDS=30
     depends_on:
@@ -186,6 +187,23 @@ services:
     volumes:
       - ./backend/websocket-gateway:/app
     command: uvicorn main:app --host 0.0.0.0 --port 8005 --reload
+
+  ai-assistant:
+    build: ./backend/ai-assistant
+    ports:
+      - "${PORT_AI_ASSISTANT:-28026}:8006"
+    environment:
+      - SOMA_AGENT_BASE=${SOMA_AGENT_BASE:?set SOMA_AGENT_BASE}
+      - LLM_PROVIDER=${LLM_PROVIDER:-somagent}
+      - PROVIDER_API_URL=http://provider-service:8000
+      - MATH_CORE_URL=http://math-core:8004
+      - AI_MAX_HISTORY_TURNS=${AI_MAX_HISTORY_TURNS:-10}
+    depends_on:
+      - provider-service
+      - math-core
+    volumes:
+      - ./backend/ai-assistant:/app
+    command: uvicorn main:app --host 0.0.0.0 --port 8006 --reload
 
   # ClickHouse for Analytics
   clickhouse:
@@ -196,7 +214,7 @@ services:
     environment:
       CLICKHOUSE_DB: gpubroker
       CLICKHOUSE_USER: gpubroker
-      CLICKHOUSE_PASSWORD: gpubroker_dev_pass
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?set CLICKHOUSE_PASSWORD}
     volumes:
       - clickhouse_data:/var/lib/clickhouse
 

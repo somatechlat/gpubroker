@@ -15,3 +15,18 @@
 - 2025-12-11: Frontend relied on Next internal proxy `/api/providers` and placeholder marketplace/detail stub; now requires real `NEXT_PUBLIC_PROVIDER_API_URL`, removed stub routes/components.
 - 2025-12-11: README/DEPLOYMENT docs claimed Helm/K8s assets and wrong port mapping; aligned with actual stack and removed nonexistent artifacts.
 - 2025-12-11: AWS SageMaker adapter contained dead duplicated block causing IndentationError; cleaned live pricing parser.
+- 2025-12-12: Removed hardcoded database DSN default from `backend/provider-service/db.py`; DATABASE_URL now required (no embedded secrets).
+- 2025-12-12: Enforced explicit REDIS_URL for WebSocket gateway (was hardcoded with password); service now rejects missing env.
+- 2025-12-12: Sanitized `docs/PROVIDER_API_KEYS_LINKS.md` by deleting inline internal credentials section to prevent secret leakage.
+- 2025-12-12: Purged hardcoded dev passwords from `docker-compose.yml`/`.dev.yml`; all secrets now provided via required environment variables (POSTGRES_PASSWORD, CLICKHOUSE_PASSWORD, JWT_PRIVATE_KEY, JWT_PUBLIC_KEY, database/redis URLs).
+- 2025-12-12: Updated `infrastructure/vault/scripts/store-secrets.sh` to prompt for DB/Redis/ClickHouse passwords instead of defaulting to dev values; aligns with “no hardcoded secrets”.
+- 2025-12-12: `start-dev.sh` no longer prints example database credentials; points to env/Vault instead.
+- 2025-12-12: Removed silent `pass` handlers in provider-service (lifespan cleanup, config save validation, cache get/set) and ingestion Kafka/Redis publishers; now validate credentials, log failures, and avoid swallowed errors.
+- 2025-12-12: WebSocket gateway now logs Redis close failures instead of swallowing exceptions.
+- 2025-12-12: Ranking engine abstract method now raises `NotImplementedError` to prevent stub behavior.
+- 2025-12-12: Frontend FilterPanel expanded to full production filters (gpu_type, memory min/max, price min/max, region, availability, compliance tags, provider_name) with URL-driven state; removed placeholder two-option filter.
+- 2025-12-12: `.env.example` updated to include required secret and connection variables (POSTGRES_PASSWORD, CLICKHOUSE_PASSWORD, REDIS_PASSWORD, JWT_PRIVATE_KEY, JWT_PUBLIC_KEY, DATABASE_URL_*, REDIS_URL_*, CLICKHOUSE_URL) without hardcoded defaults.
+- 2025-12-12: Auth service now mandates RS256 JWTs with required `JWT_PRIVATE_KEY`/`JWT_PUBLIC_KEY`; removed shared-secret default and compose/env/Vault scripts updated accordingly.
+- 2025-12-12: AI Assistant now requires SOMA_AGENT_BASE env (no localhost default) in both client and service; compose updated to require explicit value.
+- 2025-12-12: Added AI Assistant service to dev compose with required env (SOMA_AGENT_BASE, LLM_PROVIDER) and removed missing-service gap; `.env.example`/README updated accordingly.
+- 2025-12-12: Removed dev credential defaults from `.env.example` (DB/ClickHouse/Redis URLs) to eliminate hardcoded secrets; single source of env placeholders only.

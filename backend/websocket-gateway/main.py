@@ -31,8 +31,8 @@ async def lifespan(app: FastAPI):
         if redis_subscriber:
             try:
                 await redis_subscriber.close()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Redis subscriber close failed: %s", e)
 
 
 app = FastAPI(title="GPUBROKER WebSocket Gateway", version="1.0.0", lifespan=lifespan)
@@ -44,7 +44,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-REDIS_URL = os.getenv("REDIS_URL", "redis://:redis_dev_password_2024@redis:6379/0")
+REDIS_URL = os.getenv("REDIS_URL")
+if not REDIS_URL:
+    raise RuntimeError("REDIS_URL must be set (no hardcoded defaults allowed)")
 CHANNEL = os.getenv("PRICE_UPDATES_CHANNEL", "price_updates")
 HEARTBEAT_SECONDS = int(os.getenv("WS_HEARTBEAT_SECONDS", "30"))
 

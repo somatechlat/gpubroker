@@ -99,13 +99,13 @@ async def lifespan(app: FastAPI):
         if math_client:
             try:
                 await math_client.close()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Failed to close MathCore client cleanly: %s", e)
         if meili_client:
             try:
                 await meili_client.close()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Failed to close Meili client cleanly: %s", e)
 
 app = FastAPI(
     title="GPUBROKER Provider Service",
@@ -313,11 +313,7 @@ async def save_integration_config(config: IntegrationConfig):
     if config.api_key:
         is_valid = await _validate_provider_creds(config.provider, config.api_key)
         if not is_valid:
-            # We allow saving but warn? Or block?
-            # Prompt implies "green icon if connected... yellow if not healthy".
-            # So we save it, but maybe the frontend checks status separately.
-            # Let's verify implicitly by just saving.
-            pass
+            raise HTTPException(status_code=400, detail="Invalid provider credentials")
 
     key_name = f"provider_config:{config.provider}"
     value_json = json.dumps(config.model_dump())
@@ -431,8 +427,8 @@ async def list_providers(
             if cached:
                 payload = json.loads(cached)
                 return ProviderListResponse(**payload)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Cache read failed for key %s: %s", key, e)
 
     # Fast-path for unit tests when no DB/cache is configured to avoid slow live adapter calls
     is_pytest = bool(os.getenv("PYTEST_CURRENT_TEST"))
@@ -639,8 +635,8 @@ async def list_providers(
     if redis_client:
         try:
             await redis_client.set(key, response.model_dump_json(), ex=60)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Cache write failed for key %s: %s", key, e)
 
     return response
 

@@ -4,7 +4,9 @@ import os
 import httpx
 from typing import List, Dict, Any, Optional
 
-SOMA_BASE = os.getenv("SOMA_AGENT_BASE", "http://localhost:21016")
+SOMA_BASE = os.getenv("SOMA_AGENT_BASE")
+if not SOMA_BASE:
+    raise RuntimeError("SOMA_AGENT_BASE must be set (no hardcoded defaults allowed)")
 SOMA_TIMEOUT = float(os.getenv("SOMA_AGENT_TIMEOUT", "30"))
 SOMA_STREAM_TIMEOUT = float(os.getenv("SOMA_AGENT_STREAM_TIMEOUT", "60"))
 SOMA_TOOLS_INDEX = os.getenv("SOMA_AGENT_TOOLS_INDEX", "offers")

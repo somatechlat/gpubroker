@@ -90,7 +90,7 @@ VAULT_SECRET_ID=<from /vault/config/approle-secret-id.txt>
 | Replicate | `secret/gpubroker/replicate` | `api_token` |
 | Groq | `secret/gpubroker/groq` | `api_key` |
 | Database | `secret/gpubroker/database` | `postgres_password`, `redis_password` |
-| Auth | `secret/gpubroker/auth` | `jwt_secret` |
+| Auth | `secret/gpubroker/auth` | `jwt_private_key`, `jwt_public_key` |
 
 ## Usage in Code
 

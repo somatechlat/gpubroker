@@ -12,7 +12,8 @@ GPUBROKER is an AI-First enterprise SaaS platform for GPU and cloud inference se
 - Supports thousands of transactions per minute with sub-200ms latency
 - Implements zero-trust security, chaos engineering, and self-healing infrastructure
 
-## Architecture
+## Architif tehre is any other branch pleas removeir an leava only main local and remote 
+cture
 
 ### High-Level System Architecture
 
@@ -74,7 +75,7 @@ GPUBROKER is an AI-First enterprise SaaS platform for GPU and cloud inference se
 │  │                                                                           │   │
 │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────────┐  │   │
 │  │  │ PostgreSQL  │  │ ClickHouse  │  │    Redis    │  │     Kafka       │  │   │
-│  │  │   (OLTP)    │  │   (OLAP)    │  │   Cluster   │  │   (Events)      │  │   │
+│  │ dadasd │   (OLTP)    │  │   (OLAP)    │  │   Cluster   │  │   (Events)      │  │   │
 │  │  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────────┘  │   │
 │  │                                                                           │   │
 │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────────┐  │   │
