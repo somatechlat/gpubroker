@@ -17,12 +17,12 @@ Goal: Finalize repository structure, CI, dev environments; complete Next.js + Ta
 
 Deliverables:
 - Working dev environment (docker-compose start-dev) and frontend dev server instructions
-- Frontend scaffold with Header, Layout, Login/Register pages, KPI shell, Provider Grid wired to provider-service (no mock data)
-- API contract stubs (OpenAPI) for Auth and Provider endpoints
+- Frontend scaffold with Header, Layout, Login/Register pages, KPI shell, Provider Grid wired to provider-service (live data only)
+- API contracts (OpenAPI) for Auth and Provider endpoints
 - CI pipeline skeleton (lint + build)
 
 Acceptance criteria:
-- `frontend` starts locally (documented commands) and pages render without committed mock provider data
+- `frontend` starts locally (documented commands) and pages render with live provider-service data
 - CI runs lint checks and build steps on PRs
 - Dev environment documented in `frontend/README.md` and repo README
 
@@ -30,7 +30,17 @@ Key next tasks (Sprint 1):
 1. Install frontend dependencies locally and confirm `npm run dev` (developer).
 2. Add CI workflow (this repo contains a starter `.github/workflows/ci.yml`).
 3. Finalize minimal OpenAPI contract for Auth and Provider (see `docs/openapi.yaml`).
-4. Ensure no committed mock provider data; UI uses live provider-service responses.
+4. Ensure no committed sample provider data; UI uses live provider-service responses.
+
+#### Sprint 1 detailed checklist (canonical; replaces SPRINT1_CHECKLIST.md)
+- [ ] Install frontend dependencies and verify `npm run dev` renders pages (owner: frontend)
+- [x] Remove any remaining committed sample providers (owner: frontend)
+- [ ] Add CI workflow (owner: devops) — starter workflow added
+- [x] Create minimal OpenAPI contract for Auth and Provider endpoints (owner: backend/frontend)
+- [ ] Document integration expectations in `docs/integration_contracts.md` (owner: frontend) — added
+- [ ] Ensure README has local dev steps and environment variable notes (owner: frontend/devops)
+- [ ] Add API proxy route and configure `PROVIDER_API_URL` for dev (owner: frontend/devops) — deprecated: frontend now calls `NEXT_PUBLIC_PROVIDER_API_URL` directly
+- [ ] Create GitHub issues for Sprint 1 subtasks and assign owners (owner: PM)
 
 ---
 
@@ -336,7 +346,7 @@ If you want, I can now:
 - [ ] **Cost Savings**: Average 25% reduction in GPU spending
 - [ ] **User Adoption**: 80% of users complete onboarding
 - [ ] **Feature Utilization**: 60% use AI recommendations
-- [ ] **Provider Satisfaction**: All APIs working without mocking
+- [ ] **Provider Satisfaction**: All APIs working end-to-end with real integrations
 
 ---
 

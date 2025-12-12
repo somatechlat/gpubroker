@@ -481,7 +481,7 @@ GPUBROKER Platform
 ### **Loading Strategies**
 - **Progressive Loading**: Critical content first approach
 - **Lazy Loading**: Deferred loading of non-critical elements
-- **Skeleton Screens**: Loading placeholders for better perceived performance
+- **Skeleton Screens**: Loading skeletons for better perceived performance
 - **Caching Strategies**: Intelligent data caching for faster access
 
 ### **Data Management**

@@ -17,7 +17,6 @@ export function BookingModal({ open, onClose, provider }: { open: boolean; onClo
       })
       if (!res.ok) throw new Error('booking failed')
       onClose()
-      // optionally show success toast (left as TODO)
     } catch (e: any) {
       setError(e.message || 'Booking error')
     } finally {

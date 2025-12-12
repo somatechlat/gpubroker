@@ -9,6 +9,10 @@ Standards: ISO/IEC/IEEE 29148, ISO/IEC 25010, ISO/IEC 27001, ISO/IEC 12207
 
 Note on naming: GOUBROKER (aka “GPU Broker”, “GPUBROKER”) is the project codename. All references refer to the same SaaS.
 
+Current implementation status (December 2025):
+- Implemented services in this repo: Auth, Provider Aggregator, KPI, Math Core, AI Assistant, WebSocket Gateway, Next.js frontend, Vault/DB/Redis/ClickHouse dev compose.
+- Not yet implemented in repo: Booking/Billing/Kill Bill integration, Helm charts, Kubernetes manifests, payment flows. These remain planned requirements.
+
 ## 1. Introduction
 ### 1.1 Purpose
 Define the complete, testable requirements for GOUBROKER, a SaaS marketplace that aggregates GPU/AI compute from multiple providers, normalizes catalogs, offers AI-assisted recommendations and cost forecasts, and enables booking, billing, analytics, and compliance operations. This SRS serves as the single source of truth for implementation, testing, and audit.
@@ -136,6 +140,13 @@ Security and Privacy
 - SEC-OWASP-1 OWASP Top 10 mitigations; ZAP scans per build.
 - SEC-AUDIT-1 Immutable audit log with hash chain; retention ≥2 years.
 - PRIV-PII-1 Data minimization; classification; DSR (export/delete) supported; logging excludes sensitive data.
+// Compliance-grade logging & monitoring (FedRAMP High / PCI DSS 4.0 / ISO 27001 / SOC 2)
+- SEC-LOG-REQ-1 All events (HTTP/gRPC/WS/Kafka) log: user_id (or client id), event type, timestamp, outcome (success/fail), source (ip/ua/service), target resource, tenant_id, trace_id/span_id. No secrets/PII beyond necessity.
+- SEC-LOG-REQ-2 Tamper evidence: audit logs append-only with SHA-256 hash chain; FIM on log storage; alert on change within 5 minutes.
+- SEC-LOG-REQ-3 Review cadence: automated daily review for security/audit/admin events; risk-based periodic review for others; reviewer identity logged; exceptions tracked to closure.
+- SEC-LOG-REQ-4 Retention/time: ≥12 months retention with ≥90 days hot; time sync drift <100 ms across nodes (authenticated NTP).
+- SEC-CONMON-1 Monthly Continuous Monitoring package: counts of open vulns by severity, patch latency, scan coverage %, exploitable vulns, POA&M status, incidents and MTTR, change log.
+- OBS-DASH-1 Grafana dashboards for Security Posture, Access Anomalies, Control Health (logging pipeline, FIM status, time sync), and Performance SLOs; alert routes defined (pager/email/webhook).
 
 Reliability and Availability
 - NFR-REL-1 Uptime 99.9% (excluding maintenance).
@@ -203,6 +214,73 @@ Retention
 - Some providers expose limited metadata; normalization must gracefully handle nulls.
 - Payment and identity providers’ availability impacts flows.
 
+### 3.6 Detailed Functional Requirement Breakdown
+- FR-PROV-3 Caching: Provider list responses cached by filter key; TTL 60s; must be purged on ingestion success. AC: cache hit rate ≥70% under read-heavy load; stale reads never exceed TTL.
+- FR-PROV-4 Health: /providers/health returns per-adapter status {provider, last_sync_ts, last_error, latency_ms}. AC: updated after every sync; 5xx on unknown state is forbidden (must return degraded with reason).
+- FR-WS-1 WebSocket Price Stream: Topic `price_updates` carries {external_id, gpu_type, region, new_price, ts}. Gateway fan-out to clients; reconnect with exponential backoff (max 30s). AC: message delivery ≤2s end-to-end for 95%; duplicates allowed but must be idempotent client-side.
+- FR-BOOK-2 Booking Lifecycle: states = Draft → PendingProvision → Active → Completed | Failed | Cancelled; transitions via webhooks or timeout. AC: illegal transitions rejected with 409; state persisted atomically with audit.
+- FR-BILL-2 Tax and Currency: Support multi-currency display; normalize to tenant currency using FX feed (hourly). AC: invoices show both raw currency and converted totals; FX rate source logged.
+- FR-ADMIN-1 Tenant Management: CRUD tenants, assign roles, set plan limits (rate, seats). AC: audit log entry for each change; limits enforced at gateway.
+- FR-OBS-2 Traces: Propagate trace_id/span_id via W3C Trace Context across all services. AC: Every HTTP handler emits trace; missing header generates new root.
+- FR-DX-1 Local Dev: `start-dev.sh` provisions full stack with sample env; failure exits non-zero. AC: script validates Docker, .env, waits for DB/Redis/ClickHouse; prints service URLs.
+
+### 3.7 Interface Specifications
+- **API Gateway**: REST+gRPC passthrough; CORS per-tenant origins; rate-limiter headers `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `Retry-After`.
+- **Kafka Topics**:
+  - `price_updates`: key=offer_id, value schema versioned; retention 24h; consumers: websocket-gateway, kpi-service.
+  - `booking_events`: key=booking_id; value {state, ts, source}; retention 7d; consumer: billing.
+  - `audit_events`: append-only; retention 2y; sink to object storage for archive.
+- **Redis Usage**: DB0 auth sessions (if used), DB1 price cache, DB2 KPI cache; keys prefixed by service; TTLs documented.
+- **Vault Paths**: `secret/providers/<name>/apikey`; policies restrict tenant/service; renewal before ttl/2.
+- **Health Endpoints**: /health (liveness), /ready (readiness), /metrics (Prometheus); all authenticated for private services except /health liveness.
+
+### 3.8 Data Dictionary (key entities)
+- **User**: id (uuid), email, password_hash, role, tenant_id, mfa_enabled (bool), created_at, updated_at.
+- **Tenant**: id, name, plan (enum: free/pro/enterprise), rate_limit_rps, ws_limit, created_at.
+- **GPU_Offer**: id, provider_id, external_id, name, gpu_type, vcpu, memory_gb, storage_gb, price_per_hour (decimal), currency, region, availability (enum up/down/degraded), tags[], last_seen_at, updated_at.
+- **Price_History**: id, offer_id, price_per_hour, availability, recorded_at (ts).
+- **Booking**: id, tenant_id, user_id, offer_id, start_time, end_time, status (enum per FR-BOOK-2), external_booking_id, cost_estimate, cost_actual, created_at, updated_at.
+- **Invoice**: id, tenant_id, period_start, period_end, currency, subtotal, tax, total, pdf_url, status (draft/final/paid/void).
+- **Audit_Log**: id, tenant_id, user_id, action, target_type, target_id, ts, ip, user_agent, hash_prev, hash_curr.
+- **WS Message (price_updates)**: version, offer_id, gpu_type, region, new_price, ts, signature? (optional for enterprise).
+
+### 3.9 State and Flow Definitions
+- **Booking State Machine**:
+  - Draft → PendingProvision (on submit)
+  - PendingProvision → Active (provider success webhook)
+  - PendingProvision → Failed (error webhook/timeout 10m)
+  - Active → Completed (on end_time reached or provider event)
+  - Active → Cancelled (user request before end_time)
+  - Any → Failed if provider signals irrecoverable error.
+- **Provider Ingestion Flow**: schedule → fetch provider API → normalize → validate schema → upsert offers → write price_history → invalidate caches → emit price_updates for deltas → update health row.
+- **GDPR DSR Flow**: user request → verify identity → aggregate data (User, Bookings, Audit, Invoices) → deliver export → schedule deletion if requested → log audit.
+
+### 3.10 Performance Budgets (per endpoint, p95)
+- GET /providers (cache hit): ≤120 ms; miss ≤200 ms.
+- GET /providers/export (≤10k rows): ≤3 s.
+- POST /ai/chat: ≤2 s (LLM included); streaming first token ≤800 ms when streaming mode used.
+- WebSocket price propagation: ingest-to-client ≤2 s; heartbeat every 30 s.
+- POST /bookings: ≤500 ms to accept and enqueue; provisioning async.
+
+### 3.11 Operational Requirements
+- Backups: Postgres hourly WAL + daily full; ClickHouse daily; Redis snapshot 15m. Test restores monthly.
+- Secrets Rotation: Vault tokens rotated every 24h; API keys rotated per provider policy; database credentials rotated monthly.
+- Deploy: Blue/green or canary via ArgoCD; health-gated rollouts; rollback on 5% error spike or readiness fail >2 min.
+- Logs Retention: 30 days hot in Loki; archive to object storage 2 years.
+- SBOM: Generated for every image; stored with build artifacts; scanned by Trivy/Grype.
+- Time Sync: All nodes use NTP; timestamps UTC ISO8601.
+
+### 3.12 Migration and Rollout Strategy
+- Phase 1: Stand up core (auth, provider, frontend) with read-only marketplace.
+- Phase 2: Enable WebSocket price updates and KPI charts; introduce AI chat behind feature flag.
+- Phase 3: Enable bookings with limited providers; billing shadow mode to validate totals.
+- Phase 4: Turn on invoices/payments; enforce rate limits and quotas per plan.
+- Rollback Plan: Feature flags for AI, booking, billing; traffic splitting at gateway; data migrations backward compatible (additive columns, dual-write when needed).
+
+### 3.13 Acceptance Criteria Summary (per release)
+- R1 (MVP): FR-AUTH-1/3, FR-PROV-1/3, FR-MKT-1, FR-WS-1 (basic), FR-DX-1; NFR-PERF-1.
+- R2: FR-AI-1, FR-COST-1, FR-BOOK-1/2, FR-OBS-1/2, FR-SEC-2; NFR-PERF-2/4.
+- R3: FR-BILL-1/2, COMP-ISO-1, COMP-GDPR-1, SEC-AUDIT-1, PRIV-PII-1; NFR-REL-1/3.
 ## 4. System Architecture
 ### 4.1 Components (Mermaid)
 ```mermaid

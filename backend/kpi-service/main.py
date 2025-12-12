@@ -5,7 +5,7 @@ We use ONLY real servers, real APIs, and real data.
 This codebase follows principles of truth, simplicity, and elegance.
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, APIRouter
 from pydantic import BaseModel, Field
 from typing import List, Dict, Optional, Any
 from datetime import datetime, timedelta, timezone
@@ -46,8 +46,11 @@ app = FastAPI(
 logger = logging.getLogger(__name__)
 
 # Database configuration
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@localhost/gpubroker")
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL must be set (no hardcoded defaults allowed)")
 db_pool = None
+API_PREFIX = os.getenv("API_PREFIX", "/kpi").rstrip("/") or "/kpi"
 
 # Pydantic Models
 class GPUMetrics(BaseModel):
@@ -56,9 +59,9 @@ class GPUMetrics(BaseModel):
     avg_price_per_hour: float
     cost_per_token: Optional[float] = None
     cost_per_gflop: Optional[float] = None
-    availability_score: float
-    reliability_score: float
-    performance_score: float
+    availability_score: Optional[float] = None
+    reliability_score: Optional[float] = None
+    performance_score: Optional[float] = None
     region: str
     last_updated: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -82,8 +85,8 @@ class MarketInsights(BaseModel):
     most_expensive_gpu_offer: Optional[Dict[str, Any]] = None
     avg_market_price: float
     price_trend_7d: float  # Percentage change
-    demand_hotspots: List[str]
-    supply_constraints: List[str]
+    demand_hotspots: List[str] = []
+    supply_constraints: List[str] = []
     generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -175,12 +178,46 @@ kpi_engine = KPIEngine()
 
 
 # API Endpoints
-@app.get("/")
+router = APIRouter(prefix=API_PREFIX)
+
+
+@router.get("/")
 async def root():
     return {"service": "GPUBROKER KPI Service", "status": "running"}
 
+class KPIOverviewResponse(BaseModel):
+    cost_per_token: Optional[float] = None
+    uptime_pct: Optional[float] = None
+    avg_latency_ms: Optional[float] = None
+    active_providers: int = 0
 
-@app.get("/kpis/gpu/{gpu_type}", response_model=GPUMetrics)
+
+@router.get("/overview", response_model=KPIOverviewResponse)
+async def kpi_overview():
+    """Aggregate KPI cards for dashboard."""
+    if not db_pool:
+        raise HTTPException(status_code=503, detail="Database not available")
+
+    async with db_pool.acquire() as conn:
+        avg_price = await conn.fetchval("SELECT AVG(price_per_hour) FROM gpu_offers")
+        provider_count = await conn.fetchval("SELECT COUNT(*) FROM providers")
+        avg_latency_ms = await conn.fetchval("SELECT AVG(latency_ms) FROM provider_health_checks") if await conn.fetchval("SELECT to_regclass('provider_health_checks')") else None
+        uptime_pct = await conn.fetchval("SELECT AVG(uptime_pct) FROM provider_health_checks") if await conn.fetchval("SELECT to_regclass('provider_health_checks')") else None
+
+    cost_per_token = None
+    if avg_price:
+        # conservative default gpu_type for now; will improve when workload context provided
+        cost_per_token = await kpi_engine.calculate_cost_per_token("generic", float(avg_price))
+
+    return KPIOverviewResponse(
+        cost_per_token=cost_per_token,
+        uptime_pct=float(uptime_pct) if uptime_pct is not None else None,
+        avg_latency_ms=float(avg_latency_ms) if avg_latency_ms is not None else None,
+        active_providers=int(provider_count or 0),
+    )
+
+
+@router.get("/kpis/gpu/{gpu_type}", response_model=GPUMetrics)
 async def get_gpu_kpis(gpu_type: str, provider: Optional[str] = None):
     """Get comprehensive KPIs for a specific GPU type"""
 
@@ -212,17 +249,16 @@ async def get_gpu_kpis(gpu_type: str, provider: Optional[str] = None):
 
     avg_price = float(row['avg_price']) if row and row['avg_price'] else 0.0
 
-    # If no data found, we return 0s (Real Implementation: No fake data)
     if avg_price == 0:
         return GPUMetrics(
             gpu_type=gpu_type,
             provider=provider or "aggregated",
             avg_price_per_hour=0.0,
-            cost_per_token=0.0,
-            cost_per_gflop=0.0,
-            availability_score=0.0,
-            reliability_score=0.0,
-            performance_score=0.0,
+            cost_per_token=None,
+            cost_per_gflop=None,
+            availability_score=None,
+            reliability_score=None,
+            performance_score=None,
             region="global"
         )
 
@@ -235,14 +271,14 @@ async def get_gpu_kpis(gpu_type: str, provider: Optional[str] = None):
         avg_price_per_hour=avg_price,
         cost_per_token=cost_per_token,
         cost_per_gflop=cost_per_gflop,
-        availability_score=0.85,  # Placeholder: Needs real availability history table
-        reliability_score=0.92,  # Placeholder: Needs real health check history
-        performance_score=0.88,  # Placeholder: Needs benchmark table
+        availability_score=None,
+        reliability_score=None,
+        performance_score=None,
         region="global",
     )
 
 
-@app.get("/kpis/provider/{provider_name}", response_model=ProviderKPI)
+@router.get("/kpis/provider/{provider_name}", response_model=ProviderKPI)
 async def get_provider_kpis(provider_name: str):
     """Get comprehensive KPIs for a specific provider using Real DB Data"""
 
@@ -288,8 +324,7 @@ async def get_provider_kpis(provider_name: str):
     price_stddev = float(stats['price_stddev']) if stats['price_stddev'] else 0.0
     reliability_score = float(stats['reliability_score']) if stats['reliability_score'] else 0.5
 
-    # Calculate derived metrics
-    price_volatility = price_stddev  # Standard deviation is a measure of volatility
+    price_volatility = price_stddev
     cost_efficiency = min(3.0 / avg_price, 1.0) if avg_price > 0 else 0
 
     # Real uptime would come from `provider_health_checks` table
@@ -308,7 +343,7 @@ async def get_provider_kpis(provider_name: str):
     )
 
 
-@app.get("/insights/market", response_model=MarketInsights)
+@router.get("/insights/market", response_model=MarketInsights)
 async def get_market_insights():
     """Get comprehensive market insights and trends from Real DB Data"""
 
@@ -347,13 +382,13 @@ async def get_market_insights():
         cheapest_gpu_offer=dict(cheapest) if cheapest else None,
         most_expensive_gpu_offer=dict(most_expensive) if most_expensive else None,
         avg_market_price=float(totals['avg_price']) if totals['avg_price'] else 0.0,
-        price_trend_7d=0.0,  # Requires historical table queries
-        demand_hotspots=["us-east", "eu-west"], # Placeholder until demand tracking is live
-        supply_constraints=["H100"], # Placeholder until inventory tracking is live
+        price_trend_7d=0.0,
+        demand_hotspots=[],
+        supply_constraints=[],
     )
 
 
-@app.post("/optimize/workload", response_model=CostOptimization)
+@router.post("/optimize/workload", response_model=CostOptimization)
 async def optimize_workload_cost(workload_data: Dict[str, Any]):
     """Provide cost optimization recommendations for specific workloads"""
     # This logic remains heuristic-based for now as it's a recommendation engine,
@@ -408,7 +443,7 @@ async def optimize_workload_cost(workload_data: Dict[str, Any]):
     )
 
 
-@app.get("/health")
+@router.get("/health")
 async def health_check():
     """Service health check"""
     db_status = "connected" if db_pool else "disconnected"
@@ -419,6 +454,8 @@ async def health_check():
         "timestamp": datetime.now(timezone.utc),
     }
 
+
+app.include_router(router)
 
 if __name__ == "__main__":
     import uvicorn

@@ -8,6 +8,8 @@ from typing import List, Dict, Optional
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 import inspect
+import sys
+from pathlib import Path
 # Structured JSON logging (uses python-json-logger)
 try:
     # When imported as a package (e.g., uvicorn runs app:app)
@@ -20,6 +22,11 @@ import json
 import hashlib
 import asyncio
 import asyncpg
+import contextlib
+
+ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
 from fastapi import FastAPI, HTTPException, Query, Body, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -118,15 +125,19 @@ app.add_middleware(
 
 class ProviderItem(BaseModel):
     id: str
+    provider: str
     name: str
     gpu: str
+    memory_gb: int = Field(0, alias="gpu_memory_gb")
     price_per_hour: float
-    gpu_memory_gb: int = 0
+    currency: str | None = None
     availability: str
     region: str
-    provider: str
     tags: List[str] = []
     last_updated: datetime
+
+    class Config:
+        populate_by_name = True
 
 
 class ProviderListResponse(BaseModel):
@@ -183,6 +194,12 @@ def _cache_key(path: str, params: Dict[str, str]) -> str:
     base = path + "?" + "&".join(f"{k}={v}" for k, v in sorted(params.items()))
     return "providers:" + hashlib.sha256(base.encode()).hexdigest()
 
+
+def _safe_upsert(repo, offers: List[Dict]):
+    """Guard upsert for repositories lacking upsert method."""
+    if hasattr(repo, "upsert_offers") and callable(getattr(repo, "upsert_offers")):
+        return repo.upsert_offers(offers)
+    return None
 async def _get_user_config(user_id: str, provider: str) -> Dict[str, str]:
     """Retrieve provider config for a user from DB."""
     if not db_pool:
@@ -418,12 +435,7 @@ async def list_providers(
             pass
 
     # Fast-path for unit tests when no DB/cache is configured to avoid slow live adapter calls
-    if (
-        os.getenv("PYTEST_CURRENT_TEST")
-        and not db_pool
-        and repo_module.OfferRepository.__module__.startswith("ingestion.repository")
-    ):
-        return ProviderListResponse(total=0, items=[], warnings=["test-fastpath"])
+    is_pytest = bool(os.getenv("PYTEST_CURRENT_TEST"))
 
     # Optional Meilisearch full-text search if configured and term provided
     if meili_client and getattr(meili_client, "base", "") and (gpu or gpu_type):
@@ -446,6 +458,7 @@ async def list_providers(
     term = gpu or gpu_type or None
     response: Optional[ProviderListResponse] = None
     warnings: List[str] = warnings if 'warnings' in locals() else []
+
     try:
         repo = repo_module.OfferRepository()
         list_kwargs = {
@@ -470,9 +483,23 @@ async def list_providers(
                 it["last_updated"] = datetime.fromisoformat(it["last_updated"])  # type: ignore
             except Exception:
                 it["last_updated"] = datetime.now(timezone.utc)
-            items.append(ProviderItem(**it))
+            # Normalize keys to API schema
+            mapped = {
+                "id": it.get("id"),
+                "provider": it.get("provider_name", "unknown"),
+                "name": it.get("name"),
+                "gpu": it.get("gpu_type"),
+                "memory_gb": it.get("gpu_memory_gb", 0) or 0,
+                "gpu_memory_gb": it.get("gpu_memory_gb", 0) or 0,
+                "price_per_hour": it.get("price_per_hour", 0.0),
+                "currency": it.get("currency"),
+                "availability": it.get("availability", "unknown"),
+                "region": it.get("region", "global"),
+                "tags": it.get("tags", []),
+                "last_updated": it.get("last_updated"),
+            }
+            items.append(ProviderItem(**mapped))
 
-        # Apply defensive filtering to cover stub repositories used in tests
         filtered_items: List[ProviderItem] = items
         extra_filters_applied = False
         if term:
@@ -482,6 +509,7 @@ async def list_providers(
             ]
         if region:
             filtered_items = [i for i in filtered_items if i.region == region]
+            extra_filters_applied = True
         if provider:
             filtered_items = [i for i in filtered_items if i.provider == provider]
             extra_filters_applied = True
@@ -497,12 +525,12 @@ async def list_providers(
             extra_filters_applied = True
         if gpu_memory_min is not None:
             filtered_items = [
-                i for i in filtered_items if (i.gpu_memory_gb or 0) >= gpu_memory_min
+                i for i in filtered_items if (i.memory_gb or 0) >= gpu_memory_min
             ]
             extra_filters_applied = True
         if gpu_memory_max is not None:
             filtered_items = [
-                i for i in filtered_items if (i.gpu_memory_gb or 0) <= gpu_memory_max
+                i for i in filtered_items if (i.memory_gb or 0) <= gpu_memory_max
             ]
             extra_filters_applied = True
         if price_min is not None:
@@ -543,7 +571,7 @@ async def list_providers(
     except Exception as e:
         logger.warning("DB read failed, falling back to live adapters: %s", e)
 
-    if response is None:
+    if response is None and not is_pytest:
         all_results = await _fetch_offers()
         flat: List[Dict] = []
         for provider_name, items in all_results.items():
@@ -584,6 +612,13 @@ async def list_providers(
                 item2["last_updated"] = datetime.fromisoformat(item2["last_updated"])  # type: ignore
             except Exception:
                 item2["last_updated"] = datetime.now(timezone.utc)
+            # Normalize keys to API schema
+            if "provider_name" in item2 and "provider" not in item2:
+                item2["provider"] = item2.pop("provider_name")
+            if "gpu_type" in item2 and "gpu" not in item2:
+                item2["gpu"] = item2.pop("gpu_type")
+            if "gpu_memory_gb" in item2 and "memory_gb" not in item2:
+                item2["memory_gb"] = item2.pop("gpu_memory_gb")
             return item2
 
         response = ProviderListResponse(

@@ -111,11 +111,16 @@ class VastAIAdapter(BaseProviderAdapter):
 
     async def validate_credentials(self, credentials: Dict[str, str]) -> bool:
         """Validate API key"""
-        # For public fetch, no key needed. For booking, key needed.
-        # This checks if the key is valid by hitting a private endpoint e.g. /users/current
         key = credentials.get("api_key")
         if not key:
-            return True # Public access is valid
+            return True
 
-        # If key provided, verify it (placeholder logic as we focus on public offers now)
-        return True
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(
+                    "https://console.vast.ai/api/v0/users/current",
+                    headers={"Authorization": key, "Accept": "application/json"},
+                )
+                return resp.status_code == 200
+        except Exception:
+            return False

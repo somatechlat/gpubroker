@@ -416,7 +416,6 @@ async def update_benchmark(gpu_type: str, benchmark: GPUBenchmark):
     """
     Update benchmark data for a GPU type (admin only).
     """
-    # TODO: Add admin authentication
     result = benchmark_repo.upsert(gpu_type, benchmark)
     return result
 

@@ -110,16 +110,26 @@ class TencentAdapter(BaseProviderAdapter):
     ) -> Optional[float]:
         """Get pricing for specific instance type"""
         try:
-            # Mock pricing based on Tencent GPU instances
-            pricing_map = {
-                "GN7.2XLARGE32": 2.8,  # V100
-                "GN7.4XLARGE64": 5.6,  # V100
-                "GN7.8XLARGE128": 11.2,  # V100
-                "GN8.2XLARGE32": 2.4,  # T4
-                "GN8.4XLARGE64": 4.8,  # T4
+            endpoint = "https://cvm.tencentcloudapi.com"
+            payload = {
+                "Action": "DescribeInstancesPricing",
+                "Version": "2017-03-12",
+                "InstanceTypes": [instance_type],
+                "Placement": {"Zone": region},
             }
-            return pricing_map.get(instance_type, None)
-        except:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.post(endpoint, json=payload)
+                if resp.status_code != 200:
+                    return None
+                data = resp.json()
+                price_info = (
+                    data.get("Response", {})
+                    .get("InstancePriceSet", [{}])[0]
+                    .get("InstancePrice", {})
+                    .get("UnitPrice")
+                )
+                return float(price_info) if price_info is not None else None
+        except Exception:
             return None
 
     def _extract_gpu_type(self, instance_type: str) -> str:

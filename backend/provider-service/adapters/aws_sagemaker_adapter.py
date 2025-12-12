@@ -56,7 +56,6 @@ class AWSSageMakerAdapter(BaseProviderAdapter):
 
         except Exception as e:
             logger.error(f"Failed to fetch AWS SageMaker data: {e}")
-            # Fallback to hardcoded real pricing for testing
             raise RuntimeError("AWS SageMaker data fetch failed")
 
         except Exception as e:
@@ -193,8 +192,6 @@ class AWSSageMakerAdapter(BaseProviderAdapter):
             tags.extend(["hipaa_compliant", "soc2_compliant"])
 
         return tags
-
-    # The fallback pricing method has been removed to avoid returning static placeholder data.
 
     async def validate_credentials(self, credentials: Dict[str, str]) -> bool:
         """Validate AWS credentials using boto3"""

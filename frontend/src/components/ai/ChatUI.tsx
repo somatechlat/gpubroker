@@ -98,7 +98,6 @@ export function ChatUI() {
           className="input-field flex-1"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask the assistant"
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault()

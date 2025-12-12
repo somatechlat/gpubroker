@@ -3,7 +3,7 @@ Auth Service (FastAPI) — DB-backed, JWT-based authentication.
 Legacy in-memory scaffolding removed. Standardized on python-jose for JWT.
 """
 
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException, Depends, status, APIRouter
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -55,16 +55,18 @@ pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 security = HTTPBearer()
 
 # JWT Configuration
-SECRET_KEY = os.getenv(
-    "JWT_SECRET_KEY", "your-secret-key-here"
-)  # Use Vault in production
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 15
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("JWT_SECRET_KEY must be set (no hardcoded defaults allowed)")
+ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "15"))
 
 # Database connection
-DATABASE_URL = os.getenv(
-    "DATABASE_URL", "postgresql://user:password@localhost/gpubroker"
-)
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL must be set (no hardcoded defaults allowed)")
+
+API_PREFIX = os.getenv("API_PREFIX", "/auth").rstrip("/") or "/auth"
 
 
 # Pydantic models
@@ -145,16 +147,10 @@ async def get_current_user(
 
 
 # API Endpoints
-@app.get("/")
-async def root():
-    return {
-        "service": "GPUBROKER Auth Service",
-        "status": "running",
-        "version": "1.0.0",
-    }
+router = APIRouter(prefix=API_PREFIX)
 
 
-@app.post("/register", response_model=User)
+@router.post("/register", response_model=User)
 async def register_user(user_data: UserCreate):
     """Register a new user"""
     user_id = str(uuid.uuid4())
@@ -190,7 +186,7 @@ async def register_user(user_data: UserCreate):
         raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
 
 
-@app.post("/login", response_model=Token)
+@router.post("/login", response_model=Token)
 async def login_user(login_data: UserLogin):
     """Authenticate user and return JWT tokens"""
     try:
@@ -229,13 +225,13 @@ async def login_user(login_data: UserLogin):
         raise HTTPException(status_code=500, detail=f"Login failed: {str(e)}")
 
 
-@app.get("/me", response_model=User)
+@router.get("/me", response_model=User)
 async def get_current_user_info(current_user: User = Depends(get_current_user)):
     """Get current user information"""
     return current_user
 
 
-@app.get("/health")
+@router.get("/health")
 async def health_check():
     """Health check endpoint"""
     try:
@@ -257,3 +253,5 @@ if __name__ == "__main__":
 
     port = int(os.getenv("PORT", os.getenv("SERVICE_PORT", "8000")))
     uvicorn.run(app, host="0.0.0.0", port=port, reload=True)
+
+app.include_router(router)
