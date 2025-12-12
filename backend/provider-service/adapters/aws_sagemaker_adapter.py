@@ -157,38 +157,6 @@ class AWSSageMakerAdapter(BaseProviderAdapter):
                 last_updated=datetime.now(timezone.utc)
             )
             offers.append(offer)
-            
-        return offers
-
-            for instance in instances:
-                instance_type = instance.get("instanceType")
-
-                # Skip non-GPU instances
-                if not self._is_gpu_instance(instance_type):
-                    continue
-
-                # Get pricing details
-                pricing = instance.get("pricing", {})
-                on_demand_price = pricing.get("onDemand", {}).get("pricePerHourUSD")
-
-                if not on_demand_price:
-                    continue
-
-                # Calculate tokens per second (estimation)
-                tokens_per_second = self._estimate_tps(instance_type)
-
-                offer = ProviderOffer(
-                    provider="aws_sagemaker",
-                    region=region_code,
-                    instance_type=instance_type,
-                    price_per_hour=float(on_demand_price),
-                    tokens_per_second=tokens_per_second,
-                    availability="available",
-                    compliance_tags=self._get_compliance_tags(region_code),
-                    last_updated=datetime.now(timezone.utc),
-                )
-                offers.append(offer)
-
         return offers
 
     def _is_gpu_instance(self, instance_type: str) -> bool:

@@ -173,21 +173,6 @@ services:
       timeout: 10s
       retries: 3
 
-  # Kafka Price Feed Service
-  price-feed-service:
-    build: ./backend/provider-service
-    environment:
-      - SERVICE_NAME=price-feed-service
-      - KAFKA_BROKERS=kafka:9092
-      - PROVIDER_SERVICE_URL=http://provider-service:8000
-      - UPDATE_INTERVAL_SECONDS=300
-    depends_on:
-      - kafka
-      - provider-service
-    command: python -m services.price_feed_service
-    volumes:
-      - ./backend/provider-service:/app
-
   websocket-gateway:
     build: ./backend/websocket-gateway
     ports:
@@ -226,6 +211,7 @@ services:
       - NEXT_PUBLIC_PROVIDER_API_URL=http://localhost:${PORT_PROVIDER:-28021}
       - NEXT_PUBLIC_KPI_API_URL=http://localhost:${PORT_KPI:-28022}
       - NEXT_PUBLIC_PRICE_WS_URL=ws://localhost:${PORT_WS_GATEWAY:-28025}/ws
+      - NEXT_PUBLIC_AI_API_URL=http://localhost:${PORT_AI_ASSISTANT:-28026}
     depends_on:
       - auth-service
       - provider-service

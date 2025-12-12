@@ -7,6 +7,10 @@
 cp .env.example .env
 # Adjust ports if needed (defaults are 28000+ to avoid conflicts).
 # Do NOT add API keys here.
+# Required frontend targets:
+#   NEXT_PUBLIC_PROVIDER_API_URL=http://localhost:${PORT_PROVIDER:-28021}
+#   NEXT_PUBLIC_KPI_API_URL=http://localhost:${PORT_KPI:-28022}
+#   NEXT_PUBLIC_AI_API_URL=http://localhost:${PORT_AI_ASSISTANT:-28026}
 ```
 
 ### **🎯 STEP 2 - Load Secrets into Vault**
@@ -30,27 +34,24 @@ open http://localhost:${PORT_PROVIDER:-28021}/docs
 open http://localhost:${PORT_KEYCLOAK:-28006}
 ```
 
-## 🔥 **LIVE FEATURES DEPLOYED**
+## 🔥 **CURRENT CAPABILITIES**
 
-### **✅ ADAPTERS (19 LIVE)**
-- **Cloud Giants**: AWS SageMaker, Azure ML, Google Vertex AI
-- **GPU Marketplaces**: Vast.ai, RunPod, Lambda Labs, Paperspace
-- **AI APIs**: Groq, Replicate, HuggingFace, CoreWeave
-- **Enterprise**: IBM Watson, Oracle OCI, NVIDIA DGX
-- **APAC**: Alibaba, Tencent
-- **Specialized**: DeepInfra, Cerebras, ScaleAI, Spell, Kaggle, Run:AI
+### **Adapters Available**
+- AWS SageMaker, Azure ML, Google Vertex AI
+- Vast.ai, RunPod, Lambda Labs, Paperspace
+- Groq, Replicate, HuggingFace, CoreWeave
+- IBM Watson, Oracle OCI, NVIDIA DGX
+- Alibaba, Tencent, DeepInfra, Cerebras, ScaleAI, Spell, Kaggle, Run:AI
+- Adapters return live pricing once provider API keys are loaded into Vault. No credentials or pricing data are bundled in the repo.
 
-### **✅ LIVE ENDPOINTS**
-- `/providers` - Real-time pricing from all providers
-- `/providers/{provider}/offers` - Individual provider data
-- `/ws/price-updates` - WebSocket real-time updates
-- `/health` - Service health checks
+### **Exposed Endpoints**
+- `/providers` — paginated offers with filters
+- `/config/integrations` — list/save provider credentials (Vault-backed)
+- `/health` — service health checks
+- WebSocket gateway at `/ws` for price broadcasts (consumes Redis Pub/Sub `price_updates`)
 
-### **✅ REAL PRICING DATA**
-- **AWS**: $3.06/hr for ml.p3.2xlarge (V100)
-- **Vast.ai**: $0.35/hr for RTX 4090 instances
-- **Groq**: $0.20/million tokens for LPU inference
-- **All others**: Live API integration ready
+### **Data Sources**
+- Provider pricing is fetched from upstream APIs at runtime; availability depends on supplied credentials and provider uptime.
 
 ## 📊 **MONITORING**
 - **Prometheus**: http://localhost:${PORT_PROMETHEUS:-28031}
@@ -66,11 +67,7 @@ open http://localhost:${PORT_KEYCLOAK:-28006}
 4. **Rate Limits**: Add retry logic in adapters
 
 ## 🌍 **SCALING**
-```bash
-# Production deployment
-kubectl apply -f infrastructure/k8s/
-helm install gpubroker ./helm/gpubroker/
-```
+- Kubernetes and Helm manifests are not included in this repository yet. Use Docker Compose for local and staging environments.
 
-## 🎉 **FIRST PUSH COMPLETE**
-Your marketplace is **LIVE** and will populate with **real GPU pricing** as soon as you load provider API keys into Vault!
+## 🎉 **NEXT STEPS**
+- Load provider credentials into Vault, start the stack, and verify `/providers` returns live offers.

@@ -100,7 +100,6 @@ export function ProviderGrid() {
               </div>
               <div className="flex flex-col items-end">
                 <button className="btn-primary" onClick={() => setSelected(p)}>Book</button>
-                <a href={`/marketplace/${p.id}`} className="btn-secondary mt-2">Details</a>
               </div>
             </div>
           </div>

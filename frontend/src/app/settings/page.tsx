@@ -12,9 +12,9 @@ interface IntegrationStatus {
 }
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_PROVIDER_API_URL ||
-  process.env.PROVIDER_API_URL ||
-  '/api/providers'
+  (process.env.NEXT_PUBLIC_PROVIDER_API_URL ||
+    process.env.PROVIDER_API_URL ||
+    '').replace(/\/$/, '')
 
 export default function SettingsPage() {
   const [integrations, setIntegrations] = useState<IntegrationStatus[]>([])
@@ -29,6 +29,10 @@ export default function SettingsPage() {
 
   const fetchIntegrations = async () => {
     try {
+      if (!API_BASE_URL) {
+        setSaveStatus('❌ Configure NEXT_PUBLIC_PROVIDER_API_URL first.')
+        return
+      }
       const res = await fetch(`${API_BASE_URL}/config/integrations`)
       if (res.ok) {
         const data = await res.json()
@@ -51,6 +55,9 @@ export default function SettingsPage() {
     setSaveStatus(null)
 
     try {
+      if (!API_BASE_URL) {
+        throw new Error('NEXT_PUBLIC_PROVIDER_API_URL is not set')
+      }
       const res = await fetch(`${API_BASE_URL}/config/integrations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

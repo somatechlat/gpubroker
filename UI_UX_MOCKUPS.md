@@ -1348,20 +1348,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import ProviderCard from '@/components/providers/ProviderCard'
 
-const mockOffer: GPUOffer = {
-  id: 'test-1',
-  provider: 'runpod',
-  gpu_type: 'A100',
-  gpu_memory_gb: 40,
-  cpu_cores: 8,
-  ram_gb: 32,
-  storage_gb: 100,
-  price_per_hour: 2.50,
-  region: 'us-east',
-  availability: 'available',
-  compliance_tags: ['us-east'],
-  last_updated: new Date()
-}
+// Use real offers fetched from provider-service in tests by seeding a fixture or contract sample.
 
 describe('ProviderCard', () => {
   let queryClient: QueryClient

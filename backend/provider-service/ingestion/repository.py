@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import List, Dict, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from db import get_pool
 from .kafka_producer import send_price_update
@@ -121,7 +121,7 @@ class OfferRepository:
                             "old_price": old_price,
                             "new_price": float(row["price_per_hour"]),
                             "availability_status": row["availability_status"],
-                            "timestamp": datetime.utcnow().isoformat(),
+                            "timestamp": datetime.now(timezone.utc).isoformat(),
                         }
                         # Redis pub/sub (optional)
                         if self.redis:
@@ -241,7 +241,7 @@ class OfferRepository:
                     "tags": r["compliance_tags"] or [],
                     "last_updated": r["updated_at"].isoformat()
                     if r["updated_at"]
-                    else datetime.utcnow().isoformat(),
+                    else datetime.now(timezone.utc).isoformat(),
                 }
             )
 

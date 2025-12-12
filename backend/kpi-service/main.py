@@ -8,7 +8,8 @@ This codebase follows principles of truth, simplicity, and elegance.
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from typing import List, Dict, Optional, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from contextlib import asynccontextmanager
 import numpy as np
 import pandas as pd
 import asyncio
@@ -19,10 +20,27 @@ from dataclasses import dataclass
 import statistics
 import os
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global db_pool
+    try:
+        db_pool = await asyncpg.create_pool(DATABASE_URL, min_size=5, max_size=20)
+        logger.info("KPI Service connected to PostgreSQL database")
+    except Exception as e:
+        logger.error(f"KPI Service failed to connect to database: {e}")
+        db_pool = None
+    try:
+        yield
+    finally:
+        if db_pool:
+            await db_pool.close()
+
+
 app = FastAPI(
     title="GPUBROKER KPI Service",
     description="Real-time KPI calculation, analytics, and performance metrics",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 logger = logging.getLogger(__name__)
@@ -30,24 +48,6 @@ logger = logging.getLogger(__name__)
 # Database configuration
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@localhost/gpubroker")
 db_pool = None
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialize database connection pool"""
-    global db_pool
-    try:
-        db_pool = await asyncpg.create_pool(DATABASE_URL, min_size=5, max_size=20)
-        logger.info("KPI Service connected to PostgreSQL database")
-    except Exception as e:
-        logger.error(f"KPI Service failed to connect to database: {e}")
-        # We don't raise here to allow the service to start even if DB is temporarily down,
-        # but endpoints needing DB will fail gracefully.
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Close database connection pool"""
-    if db_pool:
-        await db_pool.close()
 
 # Pydantic Models
 class GPUMetrics(BaseModel):
@@ -60,7 +60,7 @@ class GPUMetrics(BaseModel):
     reliability_score: float
     performance_score: float
     region: str
-    last_updated: datetime = Field(default_factory=datetime.utcnow)
+    last_updated: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class ProviderKPI(BaseModel):
@@ -84,7 +84,7 @@ class MarketInsights(BaseModel):
     price_trend_7d: float  # Percentage change
     demand_hotspots: List[str]
     supply_constraints: List[str]
-    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class CostOptimization(BaseModel):
@@ -416,11 +416,12 @@ async def health_check():
         "status": "healthy" if db_pool else "degraded",
         "database": db_status,
         "kpi_engine": "operational",
-        "timestamp": datetime.utcnow(),
+        "timestamp": datetime.now(timezone.utc),
     }
 
 
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8003, reload=True)
+    port = int(os.getenv("PORT", os.getenv("SERVICE_PORT", "8000")))
+    uvicorn.run(app, host="0.0.0.0", port=port, reload=True)

@@ -1,11 +1,13 @@
 openapi: 3.0.3
 info:
-  title: GPUBROKER API (Contract Stubs)
+  title: GPUBROKER API (Current Endpoints)
   version: 0.1.0
-  description: Minimal OpenAPI contract to guide frontend integration for Auth and Provider endpoints. These are stubs to be expanded by backend teams.
+  description: Minimal OpenAPI contract aligned with implemented Auth and Provider endpoints. Keep this file in sync with FastAPI /docs outputs.
 
 servers:
-  - url: https://api.example.com
+  - url: http://localhost:28020
+  - url: http://localhost:28021
+  - url: http://localhost:28026
 
 paths:
   /auth/login:
@@ -77,35 +79,67 @@ paths:
                         availability:
                           type: string
 
-  /providers/{id}:
+  /config/integrations:
     get:
-      summary: Provider details
-      parameters:
-        - in: path
-          name: id
-          required: true
-          schema:
-            type: string
+      summary: List provider integrations
       responses:
         '200':
-          description: Provider details
+          description: Integration statuses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    provider:
+                      type: string
+                    status:
+                      type: string
+                    message:
+                      type: string
+                    last_checked:
+                      type: string
+                      format: date-time
+    post:
+      summary: Save provider credentials
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                provider:
+                  type: string
+                api_key:
+                  type: string
+                api_url:
+                  type: string
+      responses:
+        '200':
+          description: Saved
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  id:
+                  status:
                     type: string
-                  name:
+
+  /health:
+    get:
+      summary: Service health
+      responses:
+        '200':
+          description: Health status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
                     type: string
-                  gpu_catalog:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        sku:
-                          type: string
-                        memory_gb:
-                          type: integer
-                        price_per_hour:
-                          type: number
+                  timestamp:
+                    type: string
+                    format: date-time

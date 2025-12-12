@@ -33,12 +33,13 @@ class TencentAdapter(BaseProviderAdapter):
 
             secret_id, secret_key, region = credentials
 
+            now_ts = int(datetime.now(timezone.utc).timestamp())
             params = {
                 "Action": "DescribeInstanceTypeConfigs",
                 "Version": "2017-03-12",
                 "Region": region,
-                "Nonce": str(int(datetime.utcnow().timestamp())),
-                "Timestamp": int(datetime.utcnow().timestamp()),
+                "Nonce": str(now_ts),
+                "Timestamp": now_ts,
                 "SecretId": secret_id,
             }
 
@@ -146,11 +147,12 @@ class TencentAdapter(BaseProviderAdapter):
 
             secret_id, secret_key, region = parts
 
+            now_ts = int(datetime.now(timezone.utc).timestamp())
             params = {
                 "Action": "DescribeRegions",
                 "Version": "2017-03-12",
-                "Nonce": str(int(datetime.utcnow().timestamp())),
-                "Timestamp": int(datetime.utcnow().timestamp()),
+                "Nonce": str(now_ts),
+                "Timestamp": now_ts,
                 "SecretId": secret_id,
             }
 

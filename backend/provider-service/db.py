@@ -14,7 +14,7 @@ async def init_db_pool() -> None:
         return
     dsn = os.getenv(
         "DATABASE_URL",
-        "postgresql://gpubroker:gpubroker_dev_password_2024@postgres:5432/gpubroker",
+        "postgresql://gpubroker:gpubroker_dev_pass@postgres:5432/gpubroker",
     )
     # Lazy import to avoid hard dependency during test runs where asyncpg
     # may not be available for the local Python version.

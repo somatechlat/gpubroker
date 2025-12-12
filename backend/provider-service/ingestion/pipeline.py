@@ -21,8 +21,7 @@ def _provider_base_url(adapter: BaseProviderAdapter) -> str:
     base = getattr(adapter, "BASE_URL", None)
     if isinstance(base, str) and base:
         return base
-    # Fallback placeholder; will be updated when adapter provides it
-    return f"https://unknown.local/{adapter.PROVIDER_NAME or 'provider'}"
+    return adapter.PROVIDER_NAME or ""
 
 
 def _to_db_offer(item) -> Dict:

@@ -21,7 +21,8 @@ from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import List, Dict, Optional, Any, Union
-from datetime import datetime
+from datetime import datetime, timezone
+from contextlib import asynccontextmanager
 import numpy as np
 import logging
 import os
@@ -49,6 +50,13 @@ logger = logging.getLogger(__name__)
 # ============================================
 # FastAPI Application
 # ============================================
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    if not benchmark_repo:
+        raise RuntimeError("Benchmark repository not initialized")
+    yield
+
+
 app = FastAPI(
     title="GPUMathBroker - Master Data Analysis Engine",
     description="""
@@ -67,6 +75,7 @@ app = FastAPI(
     version="2.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # CORS middleware
@@ -622,7 +631,7 @@ async def health_check():
             "mcda-ranking",
             "sensitivity-analysis"
         ],
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
 

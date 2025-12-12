@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from pydantic import BaseModel, Field, field_validator
@@ -24,7 +24,7 @@ class NormalizedOffer(BaseModel):
     ram_gb: int = Field(0, ge=0)
     storage_gb: int = Field(0, ge=0)
     external_id: str = Field(..., min_length=1)
-    last_updated: datetime = Field(default_factory=datetime.utcnow)
+    last_updated: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     # Optional performance metrics
     tokens_per_second: Optional[float] = Field(None, ge=0)

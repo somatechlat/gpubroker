@@ -4,53 +4,17 @@ This document provides direct links to obtain API keys for all 30+ GPU providers
 
 ---
 
-## �  API Keys Status Summary (December 8, 2024)
+## API Keys Guidance
 
-| # | Provider | Status | API Key (truncated) | API Base URL |
-|---|----------|--------|---------------------|--------------|
-| 1 | AWS SageMaker | ✅ | `AKIAUM7X...` | `https://runtime.sagemaker.us-east-1.amazonaws.com` |
-| 2 | Google Vertex AI | ✅ | `AIzaSyD8...` | `https://us-central1-aiplatform.googleapis.com` |
-| 3 | Azure ML | ❌ | – | `https://management.azure.com` |
-| 4 | Oracle OCI | ❌ | – | `https://iaas.us-ashburn-1.oraclecloud.com` |
-| 5 | Alibaba Cloud | ❌ | – | `https://ecs.aliyuncs.com` |
-| 6 | Tencent Cloud | ❌ | – | `https://cvm.tencentcloudapi.com` |
-| 7 | RunPod | ✅ | `rpa_VY740...` | `https://api.runpod.io/graphql` |
-| 8 | Vast.ai | ✅ | `62546715...` | `https://console.vast.ai/api/v0` |
-| 9 | CoreWeave | ❌ | – | `https://api.coreweave.com` |
-| 10 | Lambda Labs | ❌ | – | `https://cloud.lambdalabs.com/api/v1` |
-| 11 | Paperspace | ❌ | – | `https://api.paperspace.io` |
-| 12 | HuggingFace | ✅ | `hf_HvhVq...` | `https://api-inference.huggingface.co` |
-| 13 | Replicate | ✅ | `r8_HbBY1...` | `https://api.replicate.com/v1` |
-| 14 | DeepInfra | ❌ | – | `https://api.deepinfra.com/v1` |
-| 15 | Groq | ✅ | `gsk_oty8...` | `https://api.groq.com/openai/v1` |
-| 16 | Cerebras | ✅ | `csk-kx3x...` | `https://api.cerebras.ai/v1` |
-| 17 | Scale AI | ✅ | `scale_pro...` | `https://api.scale.com/v1` |
-| 18 | Together AI | ❌ | – | `https://api.together.xyz/v1` |
-| 19 | Fireworks AI | ✅ | `fw_3ZWY2...` | `https://api.fireworks.ai/inference/v1` |
-| 20 | Run:AI | ❌ | – | `https://app.run.ai/api/v1` |
-| 21 | NVIDIA DGX Cloud | ❌ | – | `https://api.ngc.nvidia.com/v2` |
-| 22 | IBM Watson | ❌ | – | `https://us-south.ml.cloud.ibm.com/ml/v4` |
-| 23 | Kaggle | ✅ | `KGAT_83c1...` | `https://www.kaggle.com/api/v1` |
-| 24 | Salad Cloud | ✅ | `salad_cloud...` | `https://api.salad.com/api/public` |
-| 25 | CLORE.ai | ✅ | `CLORE.ai` | `https://api.clore.ai/v1` |
-| 26 | RPA | ✅ | `rpa_VY740...` | `https://api.rpa.ai/v1` |
-| 27 | RIUNPOND | ✅ | `RIUNPOND` | `https://api.riunpond.io/v1` |
-| 28 | Inception | ✅ | `sk_37418...` | `https://api.inception.ai/v1` |
-| 29 | OpenRouter | ✅ | `sk-or-v1...` | `https://openrouter.ai/api/v1` |
-| 30 | DFB | ✅ | `dfbQ2nzh...` | `https://api.dfb.ai/v1` |
-
-**Summary: 19 providers configured ✅ | 11 providers missing ❌**
-
-> Full keys stored in: `docs/SECRETS_VAULT_KEYS.env` and `docs/provider_api_keys_complete.csv`
+Do not store or share API keys in the repository. Keys belong in HashiCorp Vault using the provided scripts (`infrastructure/vault/scripts/store-secrets.sh`). Use the links below to obtain keys, then load them into Vault.
 
 ---
 
 ## 🚀 Quick Setup
 
-1. Click the link for each provider you want to enable
-2. Create an account (if needed) and generate an API key
-3. Add the key to your `.env` file using the variable name shown
-4. Restart the services
+1. Open the provider link, generate an API key.
+2. Store it in Vault via `store-secrets.sh` (do not place in .env).
+3. Restart services so provider-service fetches from Vault.
 
 ---
 

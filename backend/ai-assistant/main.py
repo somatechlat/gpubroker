@@ -1,6 +1,6 @@
 """
-AI Assistant Service scaffold per tasks Phase 3.
-FastAPI + LangChain placeholder (requires real LLM key; no fake responses beyond echo).
+AI Assistant Service gateway to SomaAgent.
+Requires valid LLM credentials; current implementation proxies tools and parses workloads without mock responses.
 """
 
 from fastapi import FastAPI, HTTPException
@@ -10,10 +10,10 @@ import os
 import logging
 import time
 import httpx
+from contextlib import asynccontextmanager
 
 from client import SomaAgentClient
 
-app = FastAPI(title="GPUBROKER AI Assistant", version="0.1.0", docs_url="/docs")
 logger = logging.getLogger(__name__)
 
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "somagent")
@@ -21,6 +21,16 @@ SOMA_BASE = os.getenv("SOMA_AGENT_BASE", "http://localhost:21016")
 PROVIDER_API_URL = os.getenv("PROVIDER_API_URL", "http://provider-service:8000")
 MATH_CORE_URL = os.getenv("MATH_CORE_URL", "http://math-core:8004")
 MAX_HISTORY_TURNS = int(os.getenv("AI_MAX_HISTORY_TURNS", "10"))
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    if not SOMA_BASE:
+        raise RuntimeError("SOMA_AGENT_BASE is not configured")
+    yield
+
+
+app = FastAPI(title="GPUBROKER AI Assistant", version="0.1.0", docs_url="/docs", lifespan=lifespan)
 
 
 class ChatRequest(BaseModel):
@@ -44,6 +54,7 @@ async def chat(req: ChatRequest):
     client = SomaAgentClient(base_url=SOMA_BASE)
     recommendations: Optional[List[Dict[str, Any]]] = None
     history_payload: Optional[List[Dict[str, Any]]] = None
+    rec_data: Dict[str, Any] = {}
     try:
         trimmed_history = req.history[-MAX_HISTORY_TURNS:] if req.history else []
         messages = trimmed_history + [{"role": "user", "content": req.message}]
@@ -91,8 +102,8 @@ async def chat(req: ChatRequest):
                     }
                     rec_resp = await http.post(f"{MATH_CORE_URL}/math/ensemble-recommend", json=payload)
                     rec_resp.raise_for_status()
-                    data = rec_resp.json()
-                recommendations = data.get("recommendations", [])
+                    rec_data = rec_resp.json()
+                recommendations = rec_data.get("recommendations", []) if rec_data else None
         except Exception as rec_err:
             logger.warning("Recommendation enrichment failed: %s", rec_err)
 

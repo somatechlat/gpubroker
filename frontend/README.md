@@ -14,7 +14,7 @@ Open http://localhost:${PORT_FRONTEND:-28030} to see the dashboard and pages. Th
 - Header/navigation
 - Login page
 - Marketplace (provider grid + filter sidebar)
-- Analytics and AI assistant stub pages
+- Settings for provider integrations
 - Basic design tokens and Tailwind setup
 
-Next steps: wire pages to real backend APIs and replace placeholder/mock content with live data.
+Next steps: extend coverage for analytics and AI assistant flows once backend endpoints are ready.

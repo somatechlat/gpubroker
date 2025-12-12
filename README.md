@@ -20,6 +20,10 @@ cd gpubroker
 # 2. Configure Vault for provider/cloud API keys
 cp .env.example .env
 # Load secrets into Vault: ./infrastructure/vault/scripts/store-secrets.sh
+# Set frontend API targets (required):
+#   NEXT_PUBLIC_PROVIDER_API_URL=http://localhost:${PORT_PROVIDER:-28021}
+#   NEXT_PUBLIC_KPI_API_URL=http://localhost:${PORT_KPI:-28022}
+#   NEXT_PUBLIC_AI_API_URL=http://localhost:${PORT_AI_ASSISTANT:-28026}
 
 # 3. Start the entire stack (parallel services)
 ./start-dev.sh
@@ -30,10 +34,13 @@ cp .env.example .env
 ## 🏗️ Architecture Overview
 
 ### **Microservices Stack**
-- **🔐 Auth Service** (Port 8001) - JWT, MFA, RBAC, user management
-- **🔌 Provider Service** (Port 8002) - Real provider API integrations
-- **📊 KPI Service** (Port 8003) - Cost calculations, analytics, recommendations
-- **🌐 Frontend** (Port 3000) - Next.js dashboard with real-time updates
+- **🔐 Auth Service** — FastAPI on 8000 (exposed as `PORT_AUTH`, default 28020)
+- **🔌 Provider Service** — FastAPI on 8000 (`PORT_PROVIDER` 28021)
+- **📊 KPI Service** — FastAPI on 8000 (`PORT_KPI` 28022)
+- **🧠 Math Core** — FastAPI on 8004 (`PORT_MATH` 28023)
+- **🤖 AI Assistant** — FastAPI on 8006 (`PORT_AI_ASSISTANT` 28026)
+- **🌐 Frontend** — Next.js on 3000 (`PORT_FRONTEND` 28030)
+- **🔔 WebSocket Gateway** — FastAPI on 8005 (`PORT_WS_GATEWAY` 28025)
 
 ### **Data Layer**
 - **🐘 PostgreSQL** - User data, providers, offers, audit logs
@@ -42,18 +49,13 @@ cp .env.example .env
 - **📦 MinIO** - Object storage for ML models and exports
 
 ### **Observability**
-- **📈 Prometheus** (Port 9090) - Metrics collection
-- **📊 Grafana** (Port 3001) - Dashboards and visualization  
-- **📝 Loki** (Port 3100) - Log aggregation
+- **📈 Prometheus** (`PORT_PROMETHEUS` default 28031) - Metrics collection
+- **📊 Grafana** (`PORT_GRAFANA` default 28032) - Dashboards and visualization  
 
 ## 🎯 Key Features
 
-### **Real Provider Integrations (No Mocking!)**
-✅ **RunPod** - GraphQL API with real GPU pricing  
-✅ **Vast.ai** - REST API with live marketplace data  
-✅ **CoreWeave** - Kubernetes-native GPU cloud  
-✅ **HuggingFace** - Inference API for model hosting  
-🚧 **23+ more providers** (see `docs/` folder)
+### **Provider Adapters**
+Adapters are implemented for RunPod, Vast.ai, Lambda Labs, Paperspace, AWS SageMaker, Azure ML, Google Vertex AI, Groq, Replicate, CoreWeave, IBM Watson, Oracle OCI, Alibaba, Tencent, DeepInfra, Cerebras, ScaleAI, Spell, Kaggle, Run:AI, NVIDIA DGX. Live pricing is returned when corresponding API keys are loaded into Vault; no keys are bundled in the repository.
 
 ### **AI-Powered Intelligence**
 - **Cost-per-Token KPIs** - Real calculations for LLM workloads
@@ -71,12 +73,11 @@ cp .env.example .env
 
 | Component | Status | Implementation | API Docs |
 |-----------|--------|----------------|----------|
-| 🔐 Auth Service | ✅ **Running** | Argon2, JWT, MFA ready | [/docs](http://localhost:${PORT_AUTH:-28020}/docs) |
-| 🔌 Provider Service | ✅ **Running** | RunPod + Vast.ai adapters | [/docs](http://localhost:${PORT_PROVIDER:-28021}/docs) |
-| 📊 KPI Service | ✅ **Running** | Cost calculations, analytics | [/docs](http://localhost:${PORT_KPI:-28022}/docs) |
-| 🌐 Frontend | 🚧 **In Progress** | Next.js 14 + Tailwind | http://localhost:${PORT_FRONTEND:-28030} |
-| 🤖 AI Pipeline | 🚧 **In Progress** | PyTorch + LangChain | Coming Soon |
-| ☁️ Infrastructure | ✅ **Ready** | Docker + K8s manifests | Ready to deploy |
+| 🔐 Auth Service | Implemented | FastAPI, Argon2, JWT/MFA endpoints | [/docs](http://localhost:${PORT_AUTH:-28020}/docs) |
+| 🔌 Provider Service | Implemented | FastAPI adapters + DB/Vault integration | [/docs](http://localhost:${PORT_PROVIDER:-28021}/docs) |
+| 📊 KPI Service | Implemented | FastAPI with Postgres/ClickHouse KPIs | [/docs](http://localhost:${PORT_KPI:-28022}/docs) |
+| 🔔 WebSocket Gateway | Implemented | Redis Pub/Sub bridge at `/ws` | — |
+| 🌐 Frontend | In Progress | Next.js 14 dashboard wired to APIs | http://localhost:${PORT_FRONTEND:-28030} |
 
 ## 🛠️ Development Commands
 
@@ -155,15 +156,10 @@ See [ROADMAP.md](./ROADMAP.md) for the complete 8-week parallel development plan
 - **Compliance**: GDPR, SOC-2, audit trails, data residency
 - **Infrastructure**: TLS, rate limiting, OPA policies
 
-## 🚀 Production Deployment
-
-```bash
-# Kubernetes deployment (coming soon)
-helm install gpubroker ./infrastructure/helm/
-
-# Monitor with Grafana
-open http://localhost:${PORT_GRAFANA:-28032} (admin/grafana_dev_password_2024)
-```
+## 🚀 Deployment Notes
+- Local/dev: `./start-dev.sh` (uses `docker-compose.dev.yml` and 28xxx host ports)
+- Docker Compose: `docker-compose -f docker-compose.yml up --build` for the trimmed stack
+- Kubernetes: manifests not yet published in this repository.
 
 ---
 

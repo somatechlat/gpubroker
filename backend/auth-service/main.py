@@ -9,18 +9,36 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from passlib.context import CryptContext
 from jose import jwt, JWTError
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from contextlib import asynccontextmanager
 from typing import Optional
 import uuid
 import asyncio
 import asyncpg
 import os
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global db_pool
+    try:
+        db_pool = await asyncpg.create_pool(DATABASE_URL, min_size=5, max_size=20)
+        print("✅ Connected to PostgreSQL database")
+    except Exception as e:
+        print(f"❌ Failed to connect to database: {e}")
+        db_pool = None
+    try:
+        yield
+    finally:
+        if db_pool:
+            await db_pool.close()
+
+
 app = FastAPI(
     title="GPUBROKER Auth Service",
     description="Authentication, authorization, and user management service",
     version="1.0.0",
     docs_url="/docs",
+    lifespan=lifespan,
 )
 
 # CORS middleware
@@ -81,25 +99,6 @@ class User(BaseModel):
 db_pool = None
 
 
-@app.on_event("startup")
-async def startup_event():
-    """Initialize database connection pool"""
-    global db_pool
-    try:
-        db_pool = await asyncpg.create_pool(DATABASE_URL, min_size=5, max_size=20)
-        print("✅ Connected to PostgreSQL database")
-    except Exception as e:
-        print(f"❌ Failed to connect to database: {e}")
-        raise
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Close database connection pool"""
-    if db_pool:
-        await db_pool.close()
-
-
 # Utility functions
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
@@ -112,9 +111,9 @@ def get_password_hash(password: str) -> str:
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
@@ -183,7 +182,7 @@ async def register_user(user_data: UserCreate):
                 user_data.full_name,
                 user_data.organization,
                 True,
-                datetime.utcnow(),
+                datetime.now(timezone.utc),
             )
 
             return User(**dict(user_record))
@@ -247,7 +246,7 @@ async def health_check():
         return {
             "status": "healthy",
             "database": "connected",
-            "timestamp": datetime.utcnow(),
+            "timestamp": datetime.now(timezone.utc),
         }
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"Service unhealthy: {str(e)}")
@@ -256,4 +255,5 @@ async def health_check():
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8001, reload=True)
+    port = int(os.getenv("PORT", os.getenv("SERVICE_PORT", "8000")))
+    uvicorn.run(app, host="0.0.0.0", port=port, reload=True)

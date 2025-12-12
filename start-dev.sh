@@ -15,6 +15,8 @@ if [ -f ".env" ]; then
   set +o allexport
 fi
 
+COMPOSE_FILE=${COMPOSE_FILE:-docker-compose.dev.yml}
+
 echo "🚀 GPUBROKER Rapid Development Startup Script"
 echo "============================================="
 echo ""
@@ -56,14 +58,14 @@ cd ..
 echo "🐳 Building and starting services with Docker Compose..."
 
 # Build and start all services
-docker-compose up --build -d
+docker-compose -f "$COMPOSE_FILE" up --build -d
 
 echo ""
 echo "⏳ Waiting for services to be ready..."
 
 # Wait for PostgreSQL to be ready
 echo "🐘 Waiting for PostgreSQL..."
-until docker-compose exec postgres pg_isready -U gpubroker > /dev/null 2>&1; do
+until docker-compose -f "$COMPOSE_FILE" exec postgres pg_isready -U gpubroker > /dev/null 2>&1; do
     printf "."
     sleep 2
 done
@@ -71,7 +73,7 @@ echo " ✅ PostgreSQL ready"
 
 # Wait for Redis to be ready  
 echo "🔴 Waiting for Redis..."
-until docker-compose exec redis redis-cli --raw incr ping > /dev/null 2>&1; do
+until docker-compose -f "$COMPOSE_FILE" exec redis redis-cli --raw incr ping > /dev/null 2>&1; do
     printf "."
     sleep 2
 done
@@ -108,7 +110,7 @@ echo "  🔌 Provider Service API: http://localhost:${PORT_PROVIDER:-28021}/docs
 echo "  📊 KPI Service API:      http://localhost:${PORT_KPI:-28022}/docs"
 echo ""
 echo "🔍 Health Checks:"
-docker-compose ps
+docker-compose -f "$COMPOSE_FILE" ps
 
 echo ""
 echo "🚀 Quick Test Commands:"
@@ -127,13 +129,13 @@ echo ""
 
 echo "📝 Next Steps:"
 echo "  1. Open http://localhost:${PORT_FRONTEND:-28030} in your browser"
-echo "  2. Check service logs: docker-compose logs -f [service-name]"
+echo "  2. Check service logs: docker-compose -f $COMPOSE_FILE logs -f [service-name]"
 echo "  3. Store provider API keys in Vault using infrastructure/vault/scripts/store-secrets.sh"
 echo "  4. Start developing new features!"
 echo ""
 
 echo "🛑 To stop all services:"
-echo "  docker-compose down"
+echo "  docker-compose -f $COMPOSE_FILE down"
 echo ""
 
 echo "✨ Happy coding with REAL data and REAL APIs! ✨"

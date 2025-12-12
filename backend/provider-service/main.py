@@ -5,7 +5,8 @@ Returns { total, items } and supports basic filters & pagination.
 """
 
 from typing import List, Dict, Optional
-from datetime import datetime
+from datetime import datetime, timezone
+from contextlib import asynccontextmanager
 import inspect
 # Structured JSON logging (uses python-json-logger)
 try:
@@ -47,10 +48,63 @@ except Exception:
 
 logger = get_logger(__name__)
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global redis_client, db_pool, math_client, meili_client
+    redis_url = os.getenv("REDIS_URL")
+    if Redis and redis_url:
+        try:
+            redis_client = Redis.from_url(redis_url, decode_responses=True)
+            await redis_client.ping()
+            logger.info("Connected to Redis cache")
+        except Exception as e:
+            logger.warning(f"Redis not available: {e}")
+            redis_client = None
+    logger.info("Provider adapters: %s", ProviderRegistry.list_adapters())
+    try:
+        Instrumentator().instrument(app).expose(app)
+        logger.info("/metrics exposed")
+    except Exception as e:
+        logger.warning(f"Failed to expose metrics: {e}")
+    try:
+        await init_db_pool()
+        db_pool = await asyncpg.create_pool(os.getenv("DATABASE_URL"))
+        logger.info("DB pool initialized for Config")
+    except Exception as e:
+        logger.warning(f"DB not available: {e}")
+    try:
+        math_client = MathCoreClient(os.getenv("MATH_CORE_URL", "http://math-core:8004"))
+        logger.info("MathCore client initialized")
+    except Exception as e:
+        logger.warning(f"MathCore client init failed: {e}")
+    try:
+        meili_client = MeiliSearchClient(os.getenv("MEILISEARCH_URL", ""))
+    except Exception as e:
+        logger.warning(f"Meili client init failed: {e}")
+    if os.getenv("ENABLE_INGESTION", "false").lower() in {"1", "true", "yes"}:
+        start_scheduler(asyncio.get_event_loop(), redis_client)
+
+    try:
+        yield
+    finally:
+        if db_pool:
+            await db_pool.close()
+        if math_client:
+            try:
+                await math_client.close()
+            except Exception:
+                pass
+        if meili_client:
+            try:
+                await meili_client.close()
+            except Exception:
+                pass
+
 app = FastAPI(
     title="GPUBROKER Provider Service",
     description="Provider aggregation and marketplace API",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 # CORS configuration to allow frontend access
@@ -124,53 +178,6 @@ def _provider_api_key(provider_name: str) -> Optional[str]:
     env_key = os.getenv(f"{provider_name}_API_KEY".upper())
     return env_key
 
-@app.on_event("startup")
-async def on_startup():
-    global redis_client, db_pool, math_client, meili_client
-    redis_url = os.getenv("REDIS_URL")
-    if Redis and redis_url:
-        try:
-            redis_client = Redis.from_url(redis_url, decode_responses=True)
-            await redis_client.ping()
-            logger.info("Connected to Redis cache")
-        except Exception as e:
-            logger.warning(f"Redis not available: {e}")
-            redis_client = None
-    logger.info("Provider adapters: %s", ProviderRegistry.list_adapters())
-    # Metrics
-    try:
-        Instrumentator().instrument(app).expose(app)
-        logger.info("/metrics exposed")
-    except Exception as e:
-        logger.warning(f"Failed to expose metrics: {e}")
-    # DB pool
-    try:
-        await init_db_pool()
-        db_pool = await asyncpg.create_pool(os.getenv("DATABASE_URL"))
-        logger.info("DB pool initialized for Config")
-    except Exception as e:
-        logger.warning(f"DB not available: {e}")
-    try:
-        math_client = MathCoreClient(os.getenv("MATH_CORE_URL", "http://math-core:8004"))
-        logger.info("MathCore client initialized")
-    except Exception as e:
-        logger.warning(f"MathCore client init failed: {e}")
-    try:
-        meili_client = MeiliSearchClient(os.getenv("MEILISEARCH_URL", ""))
-    except Exception as e:
-        logger.warning(f"Meili client init failed: {e}")
-    # Ingestion scheduler (optional)
-    if os.getenv("ENABLE_INGESTION", "false").lower() in {"1", "true", "yes"}:
-        start_scheduler(asyncio.get_event_loop(), redis_client)
-
-@app.on_event("shutdown")
-async def on_shutdown():
-    if db_pool:
-        await db_pool.close()
-    if math_client:
-        await math_client.close()
-    if meili_client:
-        await meili_client.close()
 
 def _cache_key(path: str, params: Dict[str, str]) -> str:
     base = path + "?" + "&".join(f"{k}={v}" for k, v in sorted(params.items()))
@@ -355,7 +362,7 @@ async def list_integrations():
             provider=name,
             status=status,
             message=msg,
-            last_checked=datetime.utcnow()
+            last_checked=datetime.now(timezone.utc)
         ))
 
     return statuses
@@ -426,7 +433,7 @@ async def list_providers(
             items = []
             for h in hits:
                 try:
-                    h["last_updated"] = datetime.fromisoformat(h.get("last_updated")) if h.get("last_updated") else datetime.utcnow()
+                    h["last_updated"] = datetime.fromisoformat(h.get("last_updated")) if h.get("last_updated") else datetime.now(timezone.utc)
                     items.append(ProviderItem(**h))
                 except Exception:
                     continue
@@ -462,7 +469,7 @@ async def list_providers(
             try:
                 it["last_updated"] = datetime.fromisoformat(it["last_updated"])  # type: ignore
             except Exception:
-                it["last_updated"] = datetime.utcnow()
+                it["last_updated"] = datetime.now(timezone.utc)
             items.append(ProviderItem(**it))
 
         # Apply defensive filtering to cover stub repositories used in tests
@@ -576,7 +583,7 @@ async def list_providers(
             try:
                 item2["last_updated"] = datetime.fromisoformat(item2["last_updated"])  # type: ignore
             except Exception:
-                item2["last_updated"] = datetime.utcnow()
+                item2["last_updated"] = datetime.now(timezone.utc)
             return item2
 
         response = ProviderListResponse(
@@ -608,11 +615,12 @@ async def health():
     return {
         "status": "ok",
         "providers": ProviderRegistry.list_adapters(),
-        "timestamp": datetime.utcnow(),
+        "timestamp": datetime.now(timezone.utc),
     }
 
 
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8002, reload=True)
+    port = int(os.getenv("PORT", os.getenv("SERVICE_PORT", "8000")))
+    uvicorn.run(app, host="0.0.0.0", port=port, reload=True)

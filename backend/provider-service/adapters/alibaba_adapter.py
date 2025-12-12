@@ -33,6 +33,7 @@ class AlibabaAdapter(BaseProviderAdapter):
 
             access_key, secret_key, region = credentials
 
+            now = datetime.now(timezone.utc)
             params = {
                 "Action": "DescribePrice",
                 "RegionId": region,
@@ -42,9 +43,9 @@ class AlibabaAdapter(BaseProviderAdapter):
                 "Version": "2014-05-26",
                 "AccessKeyId": access_key,
                 "SignatureMethod": "HMAC-SHA1",
-                "Timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "Timestamp": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
                 "SignatureVersion": "1.0",
-                "SignatureNonce": str(int(datetime.utcnow().timestamp())),
+                "SignatureNonce": str(int(now.timestamp())),
             }
 
             signature = self._sign_request(params, secret_key)
@@ -121,15 +122,16 @@ class AlibabaAdapter(BaseProviderAdapter):
 
             access_key, secret_key, region = parts
 
+            now = datetime.now(timezone.utc)
             params = {
                 "Action": "DescribeRegions",
                 "AccessKeyId": access_key,
                 "Format": "JSON",
                 "Version": "2014-05-26",
                 "SignatureMethod": "HMAC-SHA1",
-                "Timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "Timestamp": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
                 "SignatureVersion": "1.0",
-                "SignatureNonce": str(int(datetime.utcnow().timestamp())),
+                "SignatureNonce": str(int(now.timestamp())),
             }
 
             signature = self._sign_request(params, secret_key)

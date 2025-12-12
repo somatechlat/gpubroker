@@ -17,7 +17,7 @@ Goal: Finalize repository structure, CI, dev environments; complete Next.js + Ta
 
 Deliverables:
 - Working dev environment (docker-compose start-dev) and frontend dev server instructions
-- Frontend scaffold with Header, Layout, Login/Register pages, KPI placeholders, Provider Grid placeholder
+- Frontend scaffold with Header, Layout, Login/Register pages, KPI shell, Provider Grid wired to provider-service (no mock data)
 - API contract stubs (OpenAPI) for Auth and Provider endpoints
 - CI pipeline skeleton (lint + build)
 
@@ -30,7 +30,7 @@ Key next tasks (Sprint 1):
 1. Install frontend dependencies locally and confirm `npm run dev` (developer).
 2. Add CI workflow (this repo contains a starter `.github/workflows/ci.yml`).
 3. Finalize minimal OpenAPI contract for Auth and Provider (see `docs/openapi.yaml`).
-4. Ensure no committed mock provider data; UI placeholders only.
+4. Ensure no committed mock provider data; UI uses live provider-service responses.
 
 ---
 

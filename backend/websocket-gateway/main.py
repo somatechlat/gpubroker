@@ -11,6 +11,7 @@ import os
 from typing import Set
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 
 try:
@@ -21,7 +22,20 @@ except Exception:  # pragma: no cover
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-app = FastAPI(title="GPUBROKER WebSocket Gateway", version="1.0.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    asyncio.create_task(_redis_listener())
+    try:
+        yield
+    finally:
+        if redis_subscriber:
+            try:
+                await redis_subscriber.close()
+            except Exception:
+                pass
+
+
+app = FastAPI(title="GPUBROKER WebSocket Gateway", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -97,20 +111,6 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception as e:
         manager.disconnect(websocket)
         logger.warning("WebSocket error: %s", e)
-
-
-@app.on_event("startup")
-async def startup_event():
-    asyncio.create_task(_redis_listener())
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    if redis_subscriber:
-        try:
-            await redis_subscriber.close()
-        except Exception:
-            pass
 
 
 @app.get("/health")
