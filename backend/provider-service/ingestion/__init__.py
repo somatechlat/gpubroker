@@ -1,2 +1,0 @@
-# Ingestion components (scheduler, repository)
-

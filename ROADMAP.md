@@ -1,52 +1,48 @@
 # GPUBROKER Roadmap (Canonical)
 
-This file is the canonical source of truth for the GPUBROKER development roadmap. All roadmap updates should be made only here. It maps work into 8 two-week sprints (16 weeks total) and includes acceptance criteria, dependencies, and immediate next steps for Sprint 1.
+This file is the canonical source of truth for the GPUBROKER development roadmap. All roadmap updates should be made only here. It maps work into 8 two-week sprints (16 weeks total) and includes acceptance criteria, dependencies, and immediate next steps.
 
-Document version: 1.0
-Last updated: 2025-10-12
+Document version: 2.0
+Last updated: 2025-12-28
+
+---
+
+## Architecture
+
+GPUBROKER uses Django 5 + Django Ninja as the unified backend framework:
+- **Backend**: Django 5 monolith with Django Ninja API (`/api/v2/`)
+- **Frontend**: Next.js 14 with TypeScript
+- **Database**: PostgreSQL with Django ORM
+- **Cache**: Redis
+- **WebSocket**: Django Channels
+- **Observability**: Prometheus, Grafana, Loki, Tempo
 
 ---
 
 ## High-level plan (16 weeks — 8 sprints)
 
-Each sprint is two weeks. Keep this file updated with progress, owners, and any changes to acceptance criteria. Use the repo todo list and issue tracker to track individual tasks, but edit this file to update the official roadmap.
+Each sprint is two weeks. Keep this file updated with progress, owners, and any changes to acceptance criteria.
 
-### Sprint 1 — Project & Core Scaffold (Weeks 1–2)
+### Sprint 1 — Project & Core Scaffold (Weeks 1–2) ✅ COMPLETE
 
 Goal: Finalize repository structure, CI, dev environments; complete Next.js + Tailwind frontend scaffold and core backend auth service integration points.
 
 Deliverables:
 - Working dev environment (docker-compose start-dev) and frontend dev server instructions
-- Frontend scaffold with Header, Layout, Login/Register pages, KPI shell, Provider Grid wired to provider-service (live data only)
+- Frontend scaffold with Header, Layout, Login/Register pages, KPI shell, Provider Grid wired to Django API
 - API contracts (OpenAPI) for Auth and Provider endpoints
 - CI pipeline skeleton (lint + build)
 
 Acceptance criteria:
-- `frontend` starts locally (documented commands) and pages render with live provider-service data
+- `frontend` starts locally (documented commands) and pages render with live Django API data
 - CI runs lint checks and build steps on PRs
 - Dev environment documented in `frontend/README.md` and repo README
-
-Key next tasks (Sprint 1):
-1. Install frontend dependencies locally and confirm `npm run dev` (developer).
-2. Add CI workflow (this repo contains a starter `.github/workflows/ci.yml`).
-3. Finalize minimal OpenAPI contract for Auth and Provider (see `docs/openapi.yaml`).
-4. Ensure no committed sample provider data; UI uses live provider-service responses.
-
-#### Sprint 1 detailed checklist (canonical; replaces SPRINT1_CHECKLIST.md)
-- [ ] Install frontend dependencies and verify `npm run dev` renders pages (owner: frontend)
-- [x] Remove any remaining committed sample providers (owner: frontend)
-- [ ] Add CI workflow (owner: devops) — starter workflow added
-- [x] Create minimal OpenAPI contract for Auth and Provider endpoints (owner: backend/frontend)
-- [ ] Document integration expectations in `docs/integration_contracts.md` (owner: frontend) — added
-- [ ] Ensure README has local dev steps and environment variable notes (owner: frontend/devops)
-- [ ] Add API proxy route and configure `PROVIDER_API_URL` for dev (owner: frontend/devops) — deprecated: frontend now calls `NEXT_PUBLIC_PROVIDER_API_URL` directly
-- [ ] Create GitHub issues for Sprint 1 subtasks and assign owners (owner: PM)
 
 ---
 
 ### Sprint 2 — Marketplace Core UI (Weeks 3–4)
 
-Goals, deliverables, acceptance criteria: see detailed sprint list in original roadmap (keep here as canonical). [See expanded plan below.]
+Goals, deliverables, acceptance criteria: see detailed sprint list below.
 
 ---
 
@@ -82,12 +78,12 @@ Goals, deliverables, acceptance criteria: see detailed sprint list in original r
 ## How to update this file
 
 1. Edit this file directly for roadmap-level changes.
-2. For task-level changes, create issues or update project board and reference the sprint header (e.g., "Sprint 2 — Marketplace Core UI").
+2. For task-level changes, create issues or update project board and reference the sprint header.
 3. Tag the change with a short changelog entry at the top of this file (date + author + summary).
 
 ---
 
-## Immediate commands to start Sprint 1 (developer local)
+## Immediate commands to start development (developer local)
 
 Run these from the repo root (macOS zsh):
 
@@ -105,10 +101,6 @@ If you prefer Docker Compose local dev (recommended):
 
 ---
 
-If you want, I can now:
-- Add CI workflow (created in this commit) and extend it to run tests and linters for backend services.
-- Expand `docs/openapi.yaml` with more detailed models and examples.
-- Create issue templates for each sprint deliverable so the team can begin assigning tasks.
 ⚠️ **WARNING: REAL IMPLEMENTATION ONLY** ⚠️
 
 > **We do NOT mock, bypass, or invent data. We use ONLY real servers, real APIs, and real data. This codebase follows principles of truth, simplicity, and elegance in every line of code.**
@@ -127,15 +119,15 @@ If you want, I can now:
 
 ---
 
-## 🎯 **PHASE 1: FOUNDATION (Weeks 1-2)**
+## 🎯 **PHASE 1: FOUNDATION (Weeks 1-2)** ✅ COMPLETE
 
-### **Sprint 1A: Core Infrastructure** 
+### **Sprint 1A: Core Infrastructure** ✅
 **Track Lead**: Backend Infrastructure
-- [ ] FastAPI project structure with microservices architecture
-- [ ] Docker & docker-compose setup with hot reload
-- [ ] PostgreSQL + ClickHouse + Redis + MinIO containers
-- [ ] Basic health checks and service discovery
-- [ ] API Gateway with Envoy proxy configuration
+- [x] Django 5 project structure with Django Ninja API
+- [x] Docker & docker-compose setup with hot reload
+- [x] PostgreSQL + Redis containers
+- [x] Basic health checks and service discovery
+- [x] Nginx reverse proxy configuration
 
 ### **Sprint 1B: Frontend Foundation**
 **Track Lead**: Frontend Architecture
@@ -145,44 +137,42 @@ If you want, I can now:
 - [ ] Dark/light theme support
 - [ ] Responsive grid system for provider cards
 
-### **Sprint 1C: Database Schema**
+### **Sprint 1C: Database Schema** ✅
 **Track Lead**: Data Architecture
-- [ ] PostgreSQL schema for users, providers, offers, predictions
-- [ ] ClickHouse schema for analytics and KPI data
-- [ ] Database migrations with Alembic
-- [ ] Seed data for development
-- [ ] Connection pooling and optimization
+- [x] PostgreSQL schema for users, providers, offers, predictions
+- [x] Django ORM models with migrations
+- [x] Seed data for development
+- [x] Connection pooling and optimization
 
-### **Sprint 1D: Security Foundation**
+### **Sprint 1D: Security Foundation** ✅
 **Track Lead**: Security Architecture
-- [ ] JWT token generation and validation
-- [ ] Argon2id password hashing implementation
-- [ ] Basic RBAC with user roles
-- [ ] API key encryption in Vault
-- [ ] Rate limiting middleware
+- [x] JWT token generation and validation (RS256)
+- [x] Argon2id password hashing implementation
+- [x] Basic RBAC with user roles
+- [x] API key encryption in Vault
+- [x] Rate limiting middleware
 
-### **Sprint 1E: Provider SDK Base**
+### **Sprint 1E: Provider SDK Base** ✅
 **Track Lead**: Integration Architecture
-- [ ] Abstract `ProviderInterface` definition
-- [ ] Provider registry and adapter pattern
-- [ ] HTTP client with retry logic and circuit breakers
-- [ ] Error handling and standardization
-- [ ] Basic RunPod adapter implementation
+- [x] Abstract `ProviderAdapter` definition
+- [x] Provider registry and adapter pattern
+- [x] HTTP client with retry logic and circuit breakers
+- [x] Error handling and standardization
+- [x] RunPod and Vast.ai adapter implementations
 
-### **Sprint 1F: DevOps Pipeline**
+### **Sprint 1F: DevOps Pipeline** ✅
 **Track Lead**: Platform Engineering
-- [ ] GitHub Actions CI/CD pipeline
-- [ ] Automated testing framework setup
-- [ ] Code quality checks (ruff, pytest, eslint)
-- [ ] Docker image building and optimization
-- [ ] Development environment automation
+- [x] GitHub Actions CI/CD pipeline
+- [x] Automated testing framework setup (pytest-django)
+- [x] Code quality checks (ruff, pytest, eslint)
+- [x] Docker image building and optimization
+- [x] Development environment automation
 
 ---
 
 ## 🚀 **PHASE 2: CORE FEATURES (Weeks 3-4)**
 
 ### **Sprint 2A: Authentication System**
-- [ ] Keycloak integration with OIDC
 - [ ] MFA implementation (TOTP + WebAuthn)
 - [ ] Session management with refresh tokens
 - [ ] SSO connectors (Google, Azure AD)
@@ -191,7 +181,7 @@ If you want, I can now:
 ### **Sprint 2B: Provider Marketplace**
 - [ ] Provider card component with real-time data
 - [ ] Advanced filtering and sorting system
-- [ ] Search functionality with elasticsearch
+- [ ] Search functionality
 - [ ] Pagination and infinite scroll
 - [ ] Favorite providers and saved searches
 
@@ -209,12 +199,12 @@ If you want, I can now:
 - [ ] AWS SageMaker pricing feed
 - [ ] Price data normalization pipeline
 
-### **Sprint 2E: KPI Engine**
-- [ ] Cost-per-token calculation engine
-- [ ] Risk-adjusted pricing algorithms
-- [ ] ROI calculation framework
-- [ ] Compliance scoring system
-- [ ] Real-time KPI updates via WebSocket
+### **Sprint 2E: KPI Engine** ✅
+- [x] Cost-per-token calculation engine
+- [x] Risk-adjusted pricing algorithms
+- [x] ROI calculation framework
+- [x] Compliance scoring system
+- [x] Real-time KPI updates via WebSocket
 
 ### **Sprint 2F: Basic Dashboard**
 - [ ] Provider comparison table
@@ -248,18 +238,18 @@ If you want, I can now:
 - [ ] Anomaly detection for pricing
 - [ ] Market trend analysis
 
-### **Sprint 3D: Recommendation Engine**
-- [ ] Multi-objective optimization algorithms
-- [ ] Provider ranking system
-- [ ] Personalized recommendations
+### **Sprint 3D: Recommendation Engine** ✅
+- [x] Multi-objective optimization algorithms (TOPSIS)
+- [x] Provider ranking system
+- [x] Personalized recommendations
 - [ ] A/B testing framework for recommendations
 - [ ] Feedback loop integration
 
-### **Sprint 3E: Real-time Data Pipeline**
-- [ ] Kafka streaming for price updates
-- [ ] Apache Airflow for data orchestration
-- [ ] Real-time provider health monitoring
-- [ ] WebSocket updates for frontend
+### **Sprint 3E: Real-time Data Pipeline** ✅
+- [x] Django Channels for WebSocket updates
+- [x] Redis Pub/Sub for price updates
+- [x] Real-time provider health monitoring
+- [x] WebSocket updates for frontend
 - [ ] Data quality monitoring
 
 ### **Sprint 3F: Compliance Engine**
@@ -273,8 +263,8 @@ If you want, I can now:
 
 ## 🚀 **PHASE 4: PRODUCTION READY (Weeks 7-8)**
 
-### **Sprint 4A: Observability**
-- [ ] Prometheus metrics collection
+### **Sprint 4A: Observability** ✅
+- [x] Prometheus metrics collection
 - [ ] Grafana dashboard creation
 - [ ] Loki log aggregation
 - [ ] Tempo distributed tracing
@@ -289,7 +279,7 @@ If you want, I can now:
 
 ### **Sprint 4C: Performance Optimization**
 - [ ] Database query optimization
-- [ ] Redis caching strategies
+- [x] Redis caching strategies
 - [ ] CDN integration with Cloudflare
 - [ ] API response compression
 - [ ] Frontend bundle optimization
@@ -321,8 +311,8 @@ If you want, I can now:
 
 | Week | Backend | Frontend | AI/ML | Integrations | Security | DevOps |
 |------|---------|----------|-------|--------------|----------|---------|
-| 1 | API Structure | Next.js Setup | Model Planning | SDK Framework | JWT + Auth | CI/CD Pipeline |
-| 2 | Microservices | Dashboard UI | Cost Engine | Provider APIs | RBAC + MFA | K8s Manifests |
+| 1 | Django Setup | Next.js Setup | Model Planning | SDK Framework | JWT + Auth | CI/CD Pipeline |
+| 2 | API Endpoints | Dashboard UI | Cost Engine | Provider APIs | RBAC + MFA | Docker Config |
 | 3 | KPI Engine | Charts + Viz | ML Training | Real Data Feeds | Audit Logging | Monitoring |
 | 4 | WebSockets | AI Chat UI | Predictions | Provider Testing | Compliance | Observability |
 | 5 | Project API | Wizard UI | NLP Pipeline | More Providers | Security Scan | Helm Charts |
@@ -362,5 +352,5 @@ If you want, I can now:
 
 **LET'S BUILD THIS BABY! 🔥**
 
-*Last Updated: October 12, 2025*
+*Last Updated: December 28, 2025*
 *Next Review: Daily at 9 AM EST*

@@ -33,7 +33,7 @@ Define the complete, testable requirements for GOUBROKER, a SaaS marketplace tha
 
 ### 1.4 References
 - ISO/IEC/IEEE 29148, ISO/IEC 25010, ISO/IEC 27001.
-- FastAPI, Next.js, ClickHouse, PostgreSQL, Redis, Kafka, Keycloak, Vault, OPA.
+- Django 5, Django Ninja, Next.js, ClickHouse, PostgreSQL, Redis, Kafka, Vault, OPA.
 
 ## 2. Overall Description
 ### 2.1 Product Perspective

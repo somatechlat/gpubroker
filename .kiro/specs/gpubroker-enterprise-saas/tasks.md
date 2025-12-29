@@ -1,9 +1,15 @@
 # Implementation Plan
 
+> **⚠️ SUPERSEDED**: This spec was created for the original microservices architecture. 
+> The project has been migrated to Django 5 + Django Ninja. 
+> See `.kiro/specs/django-migration/` for the current implementation.
+
 ## Phase 1: Math Core Service (GPUMathBroker) - Foundation
 
+> **Status**: ✅ Migrated to `backend/gpubroker/apps/math_core/`
+
 - [-] 1. Create Math Core Service structure
-  - [x] 1.1 Create `backend/math-core/` directory with FastAPI scaffold
+  - [x] 1.1 Create Django app `backend/gpubroker/apps/math_core/`
     - Create main.py, requirements.txt, Dockerfile
     - Set up project structure: core/, algorithms/, models/, tests/
     - _Requirements: 21.1, 21.2, 21.3_
@@ -110,7 +116,7 @@
     - Include offer_id, old_price, new_price, timestamp
     - _Requirements: 3.1_
   - [x] 9.2 Create WebSocket Gateway service
-    - Create `backend/websocket-gateway/` with FastAPI WebSocket
+    - Migrated to `backend/gpubroker/apps/websocket_gateway/` with Django Channels
     - Subscribe to Redis Pub/Sub for price updates
     - Implement client connection management
     - Implement heartbeat pings every 30 seconds
@@ -137,8 +143,8 @@
 ## Phase 3: AI Assistant Service
 
 - [ ] 12. Create AI Assistant Service
-  - [x] 12.1 Create `backend/ai-assistant/` directory structure
-    - Create main.py with FastAPI scaffold
+  - [x] 12.1 Migrated to `backend/gpubroker/apps/ai_assistant/`
+    - Django Ninja API endpoints
     - Set up LangChain with Ollama/Mistral-7B
     - Create conversation memory management
     - _Requirements: 8.3_
@@ -163,14 +169,14 @@
     - **Validates: Requirements 8.1, 32.1**
 
 - [ ] 14. Implement Workload Templates
-  - [ ] 14.1 Create template system
+  - [x] 14.1 Create template system
     - Define templates: Image Generation, LLM Inference, Model Training, Video Processing, Data Processing
     - Create mini-wizard question flows per template
     - Create `/ai/templates` endpoint
     - _Requirements: 23.1, 23.2, 23.3, 23.4, 23.5_
 
 - [ ] 15. Implement AI Context Awareness
-  - [ ] 15.1 Add screen context integration
+  - [x] 15.1 Add screen context integration
     - Pass current filters to AI context
     - Pass visible offers to AI context
     - Implement "analyze my current search" capability

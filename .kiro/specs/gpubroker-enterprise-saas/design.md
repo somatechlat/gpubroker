@@ -233,8 +233,8 @@ async def book_instance(self, offer_id: str, duration: int) -> BookingResult
 SOMA_AGENT_BASE=http://somagent01:21016
 LLM_PROVIDER=somagent
 AI_MAX_HISTORY_TURNS=10
-PROVIDER_API_URL=http://provider-service:8000
-MATH_CORE_URL=http://math-core:8004
+PROVIDER_API_URL=http://localhost:8080/api/v2
+MATH_CORE_URL=http://localhost:8080/api/v2
 ```
 
 **Data**: Short-term history in request payload; persistent history possible in `ai_conversations` (PostgreSQL) by storing session_id and messages when enabled.
