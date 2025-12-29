@@ -1,3 +1,7 @@
+# GPUBROKER - Django 5 Development Stack
+# All services migrated to Django 5 + Django Ninja
+# FastAPI legacy services have been removed
+
 services:
   # ============================================
   # SECRET MANAGEMENT - HashiCorp Vault
@@ -70,8 +74,7 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
     healthcheck:
-      test:
-        ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list"]
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -84,128 +87,51 @@ services:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
 
-  # Keycloak (Auth Service)
-  keycloak:
-    image: quay.io/keycloak/keycloak:23.0
-    environment:
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
-      KC_DB_USERNAME: gpubroker
-      KC_DB_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+  # ============================================
+  # Django Backend (All Services Unified)
+  # ============================================
+  django:
+    build: ./backend/gpubroker
+    container_name: gpubroker-django
     ports:
-      - "${PORT_KEYCLOAK:-28006}:8080"
-    depends_on:
-      - postgres
-    command: start-dev
-
-  # Services
-  auth-service:
-    build: ./backend/auth-service
-    ports:
-      - "${PORT_AUTH:-28020}:8000"
+      - "${PORT_DJANGO:-28080}:8000"
     environment:
-      - DATABASE_URL=${DATABASE_URL_AUTH:?set DATABASE_URL_AUTH}
-      - REDIS_URL=${REDIS_URL_AUTH:?set REDIS_URL_AUTH}
-      - KEYCLOAK_URL=http://keycloak:8080
-      - JWT_PRIVATE_KEY=${JWT_PRIVATE_KEY:?set JWT_PRIVATE_KEY}
-      - JWT_PUBLIC_KEY=${JWT_PUBLIC_KEY:?set JWT_PUBLIC_KEY}
+      DJANGO_SETTINGS_MODULE: gpubroker.settings.development
+      DATABASE_URL: postgresql://gpubroker:${POSTGRES_PASSWORD}@postgres:5432/gpubroker_dev
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${DJANGO_SECRET_KEY:-django-insecure-dev-key-change-in-production}
+      DEBUG: "True"
+      ALLOWED_HOSTS: localhost,127.0.0.1,django
+      CORS_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:${PORT_FRONTEND:-28030}
+      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY:-}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
+      VAULT_ADDR: http://vault:8200
+      VAULT_ROLE_ID: ${VAULT_ROLE_ID:-}
+      VAULT_SECRET_ID: ${VAULT_SECRET_ID:-}
+      SOMA_AGENT_BASE: ${SOMA_AGENT_BASE:-http://localhost:8080}
+      KAFKA_BROKERS: kafka:9092
+      CLICKHOUSE_URL: ${CLICKHOUSE_URL:-http://clickhouse:8123}
     depends_on:
-      - postgres
-      - redis
-      - keycloak
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      vault:
+        condition: service_started
     volumes:
-      - ./backend/auth-service:/app
-
-  provider-service:
-    build: ./backend/provider-service
-    ports:
-      - "${PORT_PROVIDER:-28021}:8000"
-    environment:
-      - DATABASE_URL=${DATABASE_URL_PROVIDER:?set DATABASE_URL_PROVIDER}
-      - REDIS_URL=${REDIS_URL_PROVIDER:?set REDIS_URL_PROVIDER}
-      - KAFKA_BROKERS=kafka:9092
-      # Vault configuration - NO API KEYS IN ENV VARS
-      - VAULT_ADDR=http://vault:8200
-      - VAULT_ROLE_ID=${VAULT_ROLE_ID:-}
-      - VAULT_SECRET_ID=${VAULT_SECRET_ID:-}
-    depends_on:
-      - postgres
-      - redis
-      - kafka
-      - vault
-    volumes:
-      - ./backend/provider-service:/app
+      - ./backend/gpubroker:/app
       - ./backend/shared:/app/shared
-
-  kpi-service:
-    build: ./backend/kpi-service
-    ports:
-      - "${PORT_KPI:-28022}:8000"
-    environment:
-      - DATABASE_URL=${DATABASE_URL_KPI:?set DATABASE_URL_KPI}
-      - REDIS_URL=${REDIS_URL_KPI:?set REDIS_URL_KPI}
-      - KAFKA_BROKERS=kafka:9092
-      - CLICKHOUSE_URL=${CLICKHOUSE_URL:?set CLICKHOUSE_URL}
-    depends_on:
-      - postgres
-      - redis
-      - kafka
-    volumes:
-      - ./backend/kpi-service:/app
-
-  math-core:
-    build: ./backend/math-core
-    ports:
-      - "${PORT_MATH:-28023}:8004"
-    environment:
-      - DATABASE_URL=${DATABASE_URL_MATH:?set DATABASE_URL_MATH}
-      - REDIS_URL=${REDIS_URL_MATH:?set REDIS_URL_MATH}
-      - LOG_LEVEL=INFO
-    depends_on:
-      - postgres
-      - redis
-    volumes:
-      - ./backend/math-core:/app
+    command: daphne -b 0.0.0.0 -p 8000 gpubroker.asgi:application
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 40s
 
-  websocket-gateway:
-    build: ./backend/websocket-gateway
-    ports:
-      - "${PORT_WS_GATEWAY:-28025}:8005"
-    environment:
-      - REDIS_URL=${REDIS_URL_WS:?set REDIS_URL_WS}
-      - PRICE_UPDATES_CHANNEL=price_updates
-      - WS_HEARTBEAT_SECONDS=30
-    depends_on:
-      - redis
-    volumes:
-      - ./backend/websocket-gateway:/app
-    command: uvicorn main:app --host 0.0.0.0 --port 8005 --reload
-
-  ai-assistant:
-    build: ./backend/ai-assistant
-    ports:
-      - "${PORT_AI_ASSISTANT:-28026}:8006"
-    environment:
-      - SOMA_AGENT_BASE=${SOMA_AGENT_BASE:?set SOMA_AGENT_BASE}
-      - LLM_PROVIDER=${LLM_PROVIDER:-somagent}
-      - PROVIDER_API_URL=http://provider-service:8000
-      - MATH_CORE_URL=http://math-core:8004
-      - AI_MAX_HISTORY_TURNS=${AI_MAX_HISTORY_TURNS:-10}
-    depends_on:
-      - provider-service
-      - math-core
-    volumes:
-      - ./backend/ai-assistant:/app
-    command: uvicorn main:app --host 0.0.0.0 --port 8006 --reload
-
+  # ============================================
   # ClickHouse for Analytics
+  # ============================================
   clickhouse:
     image: clickhouse/clickhouse-server:23.8
     ports:
@@ -218,27 +144,49 @@ services:
     volumes:
       - clickhouse_data:/var/lib/clickhouse
 
+  # ============================================
+  # Nginx Reverse Proxy
+  # ============================================
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: gpubroker-nginx
+    ports:
+      - "${PORT_NGINX:-80}:80"
+    volumes:
+      - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - django
+      - frontend
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # ============================================
   # Frontend
+  # ============================================
   frontend:
     build: ./frontend
     ports:
       - "${PORT_FRONTEND:-28030}:3000"
     environment:
-      - PROVIDER_API_URL=http://provider-service:8000
-      - KPI_API_URL=http://kpi-service:8000
-      - NEXT_PUBLIC_PROVIDER_API_URL=http://localhost:${PORT_PROVIDER:-28021}
-      - NEXT_PUBLIC_KPI_API_URL=http://localhost:${PORT_KPI:-28022}
-      - NEXT_PUBLIC_PRICE_WS_URL=ws://localhost:${PORT_WS_GATEWAY:-28025}/ws
-      - NEXT_PUBLIC_AI_API_URL=http://localhost:${PORT_AI_ASSISTANT:-28026}
+      NEXT_PUBLIC_API_URL: http://localhost/api/v2
+      NEXT_PUBLIC_WS_URL: ws://localhost/ws
+      NEXT_PUBLIC_PROVIDER_API_URL: http://localhost/api/v2/providers
+      NEXT_PUBLIC_KPI_API_URL: http://localhost/api/v2/kpi
+      NEXT_PUBLIC_PRICE_WS_URL: ws://localhost/ws/prices
+      NEXT_PUBLIC_AI_API_URL: http://localhost/api/v2/ai
     depends_on:
-      - auth-service
-      - provider-service
-      - websocket-gateway
+      - django
     volumes:
       - ./frontend:/app
       - /app/node_modules
 
+  # ============================================
   # Observability
+  # ============================================
   prometheus:
     image: prom/prometheus:latest
     ports:
@@ -258,19 +206,21 @@ services:
     ports:
       - "${PORT_GRAFANA:-28032}:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
     volumes:
       - grafana_data:/var/lib/grafana
       - ./infrastructure/grafana/dashboards:/etc/grafana/provisioning/dashboards
       - ./infrastructure/grafana/datasources:/etc/grafana/provisioning/datasources
 
+  # ============================================
   # Storybook (Development)
+  # ============================================
   storybook:
     build: ./frontend
     ports:
       - "${PORT_STORYBOOK:-28033}:6006"
     environment:
-      - STORYBOOK_MODE=true
+      STORYBOOK_MODE: "true"
     volumes:
       - ./frontend:/app
       - /app/node_modules

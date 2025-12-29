@@ -55,9 +55,10 @@ VAULT_SECRET_ID=<from /vault/config/approle-secret-id.txt>
 ┌─────────────────────────────────────────────────────────┐
 │                    GPUBROKER Services                    │
 ├─────────────────────────────────────────────────────────┤
-│  provider-service  │  auth-service  │  kpi-service      │
-│         │                  │                │           │
-│         └──────────────────┼────────────────┘           │
+│                   Django 5 Backend                       │
+│  ┌─────────────┬─────────────┬─────────────────────┐    │
+│  │  auth_app   │  providers  │  kpi / math_core    │    │
+│  └─────────────┴─────────────┴─────────────────────┘    │
 │                            │                            │
 │                    ┌───────▼───────┐                    │
 │                    │  VaultClient  │                    │

@@ -10,143 +10,156 @@
 
 A unified dashboard that aggregates GPU offers from 23+ providers with real-time pricing, AI-powered recommendations, and intelligent cost optimization.
 
-## ⚡ Quick Start (Ready to Run!)
+## ⚡ Quick Start
 
 ```bash
 # 1. Clone and setup
 git clone https://github.com/your-org/gpubroker.git
 cd gpubroker
 
-# 2. Configure Vault for provider/cloud API keys and export required secrets
+# 2. Configure environment
 cp .env.example .env
-# Load secrets into Vault: ./infrastructure/vault/scripts/store-secrets.sh
-# Set runtime secrets as environment variables before compose/start-dev:
-#   POSTGRES_PASSWORD, CLICKHOUSE_PASSWORD, REDIS_PASSWORD
-#   DATABASE_URL_AUTH / DATABASE_URL_PROVIDER / DATABASE_URL_KPI / DATABASE_URL_MATH
-#   REDIS_URL_AUTH / REDIS_URL_PROVIDER / REDIS_URL_KPI / REDIS_URL_WS
+# Edit .env with your secrets:
+#   POSTGRES_PASSWORD, REDIS_PASSWORD, CLICKHOUSE_PASSWORD
+#   DATABASE_URL, REDIS_URL
 #   JWT_PRIVATE_KEY (PEM), JWT_PUBLIC_KEY (PEM)
-#   SOMA_AGENT_BASE (AI Assistant upstream URL), LLM_PROVIDER
-# Set frontend API targets (required):
-#   NEXT_PUBLIC_PROVIDER_API_URL=http://localhost:${PORT_PROVIDER:-28021}
-#   NEXT_PUBLIC_KPI_API_URL=http://localhost:${PORT_KPI:-28022}
-#   NEXT_PUBLIC_AI_API_URL=http://localhost:${PORT_AI_ASSISTANT:-28026}
+#   DJANGO_SECRET_KEY
+#   SOMA_AGENT_BASE (AI Assistant upstream URL)
 
-# 3. Start the entire stack (parallel services)
-./start-dev.sh
+# 3. Start the stack
+docker-compose up -d
+
+# 4. Run migrations
+docker-compose exec django python manage.py migrate
 ```
 
-🎉 **That's it!** Open http://localhost:${PORT_FRONTEND:-28030} to see the dashboard.
+🎉 **That's it!** Open http://localhost to see the dashboard.
 
 ## 🏗️ Architecture Overview
 
-### **Microservices Stack**
-- **🔐 Auth Service** — FastAPI on 8000 (exposed as `PORT_AUTH`, default 28020)
-- **🔌 Provider Service** — FastAPI on 8000 (`PORT_PROVIDER` 28021)
-- **📊 KPI Service** — FastAPI on 8000 (`PORT_KPI` 28022)
-- **🧠 Math Core** — FastAPI on 8004 (`PORT_MATH` 28023)
-- **🤖 AI Assistant** — FastAPI on 8006 (`PORT_AI_ASSISTANT` 28026)
-- **🌐 Frontend** — Next.js on 3000 (`PORT_FRONTEND` 28030)
-- **🔔 WebSocket Gateway** — FastAPI on 8005 (`PORT_WS_GATEWAY` 28025)
+### **Django 5 Unified Backend**
+
+All services are unified in a single Django 5 application with Django Ninja for REST APIs:
+
+- **🔐 Auth** — JWT authentication, user management, audit logs
+- **🔌 Providers** — GPU marketplace, provider adapters, offer aggregation
+- **📊 KPI** — Cost-per-token, market insights, analytics
+- **🧠 Math Core** — TOPSIS algorithm, workload estimation, benchmarks
+- **🤖 AI Assistant** — Natural language queries, SomaAgent integration
+- **🔔 WebSocket** — Django Channels for real-time price updates
+
+### **API Endpoints**
+
+All endpoints available at `/api/v2/`:
+
+| Endpoint | Description |
+|----------|-------------|
+| `/api/v2/auth/` | Authentication (register, login, refresh, me) |
+| `/api/v2/providers/` | GPU marketplace (list, filter, config) |
+| `/api/v2/kpi/` | KPI metrics (overview, gpu, provider, insights) |
+| `/api/v2/math/` | Calculations (cost-per-token, TOPSIS, workload) |
+| `/api/v2/ai/` | AI assistant (chat, parse-workload) |
+| `/ws/` | WebSocket (price updates, notifications) |
 
 ### **Data Layer**
-- **🐘 PostgreSQL** - User data, providers, offers, audit logs
-- **🏠 ClickHouse** - Analytics, KPI calculations, time-series data
-- **🔴 Redis** - Caching, sessions, real-time price feeds
-- **📦 MinIO** - Object storage for ML models and exports
+- **🐘 PostgreSQL 15** — User data, providers, offers, audit logs
+- **🏠 ClickHouse** — Analytics, KPI calculations, time-series data
+- **🔴 Redis 7** — Caching, sessions, real-time price feeds
 
 ### **Observability**
-- **📈 Prometheus** (`PORT_PROMETHEUS` default 28031) - Metrics collection
-- **📊 Grafana** (`PORT_GRAFANA` default 28032) - Dashboards and visualization  
+- **📈 Prometheus** — Metrics collection via django-prometheus
+- **📊 Grafana** — Dashboards and visualization
 
 ## 🎯 Key Features
 
 ### **Provider Adapters**
-Adapters are implemented for RunPod, Vast.ai, Lambda Labs, Paperspace, AWS SageMaker, Azure ML, Google Vertex AI, Groq, Replicate, CoreWeave, IBM Watson, Oracle OCI, Alibaba, Tencent, DeepInfra, Cerebras, ScaleAI, Spell, Kaggle, Run:AI, NVIDIA DGX. Live pricing is returned when corresponding API keys are loaded into Vault; no keys are bundled in the repository.
+Adapters implemented for RunPod, Vast.ai, Lambda Labs, Paperspace, AWS SageMaker, Azure ML, Google Vertex AI, Groq, Replicate, CoreWeave, IBM Watson, Oracle OCI, Alibaba, Tencent, DeepInfra, Cerebras, ScaleAI, Spell, Kaggle, Run:AI, NVIDIA DGX.
 
 ### **AI-Powered Intelligence**
-- **Cost-per-Token KPIs** - Real calculations for LLM workloads
-- **Risk-Adjusted Pricing** - Provider reliability scoring
-- **GPUAgenticHelper** - Natural language queries and recommendations
-- **Project Wizard** - Description → Infrastructure → Terraform
+- **Cost-per-Token KPIs** — Real calculations for LLM workloads
+- **Risk-Adjusted Pricing** — Provider reliability scoring
+- **GPUAgenticHelper** — Natural language queries and recommendations
+- **Project Wizard** — Description → Infrastructure → Terraform
 
 ### **Real-Time Features**
-- **Live Price Updates** - WebSocket feeds from all providers
-- **Market Trend Analysis** - Historical data and predictions
-- **Compliance Tracking** - GDPR, SOC-2, data residency
-- **Performance Benchmarks** - Real GPU GFLOPS and token rates
+- **Live Price Updates** — WebSocket feeds via Django Channels
+- **Market Trend Analysis** — Historical data and predictions
+- **Compliance Tracking** — GDPR, SOC-2, data residency
+- **Performance Benchmarks** — Real GPU GFLOPS and token rates
 
 ## 📊 Service Status
 
-| Component | Status | Implementation | API Docs |
-|-----------|--------|----------------|----------|
-| 🔐 Auth Service | Implemented | FastAPI, Argon2, JWT/MFA endpoints | [/docs](http://localhost:${PORT_AUTH:-28020}/docs) |
-| 🔌 Provider Service | Implemented | FastAPI adapters + DB/Vault integration | [/docs](http://localhost:${PORT_PROVIDER:-28021}/docs) |
-| 📊 KPI Service | Implemented | FastAPI with Postgres/ClickHouse KPIs | [/docs](http://localhost:${PORT_KPI:-28022}/docs) |
-| 🔔 WebSocket Gateway | Implemented | Redis Pub/Sub bridge at `/ws` | — |
-| 🌐 Frontend | In Progress | Next.js 14 dashboard wired to APIs | http://localhost:${PORT_FRONTEND:-28030} |
+| Component | Status | Technology |
+|-----------|--------|------------|
+| 🔐 Auth | ✅ Complete | Django + JWT (RS256) |
+| 🔌 Providers | ✅ Complete | Django Ninja + Adapters |
+| 📊 KPI | ✅ Complete | Django ORM + Aggregations |
+| 🧠 Math Core | ✅ Complete | NumPy + TOPSIS |
+| 🤖 AI Assistant | ✅ Complete | httpx + SomaAgent |
+| 🔔 WebSocket | ✅ Complete | Django Channels |
+| 🌐 Frontend | ✅ Complete | Next.js 14 |
 
 ## 🛠️ Development Commands
 
 ```bash
-# View all service logs
-docker-compose logs -f
+# View logs
+docker-compose logs -f django
 
-# Check service health
-curl http://localhost:${PORT_AUTH:-28020}/health    # Auth
-curl http://localhost:${PORT_PROVIDER:-28021}/health  # Providers  
-curl http://localhost:${PORT_KPI:-28022}/health     # KPIs
+# Check health
+curl http://localhost/health
 
-# Run individual service
-cd backend/auth-service && poetry run uvicorn main:app --reload
+# Run tests
+docker-compose exec django pytest -v
 
-# Frontend development
-cd frontend && npm run dev
+# Django shell
+docker-compose exec django python manage.py shell
 
-# Database migrations
-docker-compose exec postgres psql -U gpubroker -d gpubroker -f /docker-entrypoint-initdb.d/01-init.sql
+# Create superuser
+docker-compose exec django python manage.py createsuperuser
+
+# Access admin
+open http://localhost/admin/
 ```
 
-## 📈 Real Usage Examples
+## 📈 API Examples
 
 ```bash
-# Get live GPU offers from all providers
-curl http://localhost:${PORT_PROVIDER:-28021}/offers
+# Get live GPU offers
+curl http://localhost/api/v2/providers/
 
-# Get cost-per-token KPIs for A100
-curl http://localhost:${PORT_KPI:-28022}/kpis/gpu/A100
+# Filter by GPU type
+curl "http://localhost/api/v2/providers/?gpu=RTX+4090&max_price=2.0"
 
-# Check provider health status
-curl http://localhost:${PORT_PROVIDER:-28021}/providers/runpod/health
+# Get cost-per-token KPIs
+curl http://localhost/api/v2/kpi/gpu/A100
 
-# Get market insights and trends
-curl http://localhost:${PORT_KPI:-28022}/insights/market
+# Get market insights
+curl http://localhost/api/v2/kpi/insights/market
+
+# Calculate TOPSIS ranking
+curl -X POST http://localhost/api/v2/math/topsis \
+  -H "Content-Type: application/json" \
+  -d '{"decision_matrix": [[1.5,24,82.6],[3.5,80,19.5]], "weights": [0.4,0.3,0.3], "criteria_types": ["cost","benefit","benefit"]}'
 ```
 
-## 🔑 Required API Keys (Vault-managed)
+## 🔑 Environment Variables
 
-- Do **not** place secrets in `.env`.
-- Load provider & cloud keys into Vault via `./infrastructure/vault/scripts/store-secrets.sh`.
-- Services read them at runtime using `VAULT_ADDR`, `VAULT_ROLE_ID`, and `VAULT_SECRET_ID`.
-
-## 📋 Roadmap & Sprint Progress
-
-See [ROADMAP.md](./ROADMAP.md) for the complete 8-week parallel development plan.
-
-### **Current Sprint Status (Week 1)**
-- ✅ **Backend Infrastructure** - FastAPI microservices running
-- ✅ **Database Schema** - PostgreSQL + ClickHouse ready
-- ✅ **Provider SDK** - RunPod & Vast.ai adapters working
-- ✅ **Docker Environment** - Full stack containerized
-- 🚧 **Frontend Components** - React dashboard in progress
-- 🚧 **Real API Integration** - Expanding provider coverage
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DATABASE_URL` | Yes | PostgreSQL connection URL |
+| `REDIS_URL` | Yes | Redis connection URL |
+| `DJANGO_SECRET_KEY` | Yes | Django secret key |
+| `JWT_PRIVATE_KEY` | Yes | RS256 private key (PEM) |
+| `JWT_PUBLIC_KEY` | Yes | RS256 public key (PEM) |
+| `VAULT_ADDR` | No | HashiCorp Vault address |
+| `SOMA_AGENT_BASE` | No | SomaAgent URL for AI |
 
 ## 📚 Documentation
 
-- **[Architecture Details](./docs/)** - Detailed system design
-- **[Provider Integrations](./docs/)** - 23+ provider specifications  
-- **[API Documentation](http://localhost:${PORT_AUTH:-28020}/docs)** - Interactive OpenAPI specs
-- **[Database Schema](./database/init/01-init.sql)** - Complete data model
-- **[Development Guide](./ROADMAP.md)** - Parallel sprint methodology
+- **[Backend README](./backend/README.md)** — Django project details
+- **[API Docs](http://localhost/api/v2/docs)** — Interactive OpenAPI
+- **[Database Schema](./database/init/01-init.sql)** — Data model
+- **[Roadmap](./ROADMAP.md)** — Development plan
 
 ## 🎯 Business Model
 
@@ -157,15 +170,10 @@ See [ROADMAP.md](./ROADMAP.md) for the complete 8-week parallel development plan
 
 ## 🔒 Security & Compliance
 
-- **Authentication**: Keycloak OIDC, MFA, JWT rotation
+- **Authentication**: JWT (RS256), MFA support
 - **Data Protection**: Argon2id hashing, encrypted API keys
-- **Compliance**: GDPR, SOC-2, audit trails, data residency
-- **Infrastructure**: TLS, rate limiting, OPA policies
-
-## 🚀 Deployment Notes
-- Local/dev: `./start-dev.sh` (uses `docker-compose.dev.yml` and 28xxx host ports)
-- Docker Compose: `docker-compose -f docker-compose.yml up --build` for the trimmed stack
-- Kubernetes: manifests not yet published in this repository.
+- **Compliance**: GDPR, SOC-2, audit trails
+- **Infrastructure**: TLS, rate limiting, CSRF protection
 
 ---
 
