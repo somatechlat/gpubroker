@@ -8,9 +8,9 @@ cp .env.example .env
 # Adjust ports if needed (defaults are 28000+ to avoid conflicts).
 # Do NOT add API keys here.
 # Required frontend targets:
-#   NEXT_PUBLIC_PROVIDER_API_URL=http://localhost:${PORT_PROVIDER:-28021}
-#   NEXT_PUBLIC_KPI_API_URL=http://localhost:${PORT_KPI:-28022}
-#   NEXT_PUBLIC_AI_API_URL=http://localhost:${PORT_AI_ASSISTANT:-28026}
+#   NEXT_PUBLIC_PROVIDER_API_URL=http://localhost/api/v2/providers
+#   NEXT_PUBLIC_KPI_API_URL=http://localhost/api/v2/kpi
+#   NEXT_PUBLIC_AI_API_URL=http://localhost/api/v2/ai
 ```
 
 ### **🎯 STEP 2 - Load Secrets into Vault**
@@ -18,6 +18,7 @@ cp .env.example .env
 ./infrastructure/vault/scripts/init-vault.sh        # once per environment
 ./infrastructure/vault/scripts/store-secrets.sh     # writes provider keys into Vault
 ```
+Note: Vault client exists in the repo, but provider integrations currently read API keys from user preferences or environment variables; Vault wiring is pending.
 
 ### **🎯 STEP 3 - Start Services**
 ```bash
@@ -28,25 +29,22 @@ docker-compose -f docker-compose.dev.yml up --build
 ```bash
 # Frontend
 open http://localhost:${PORT_FRONTEND:-28030}
-# Provider API docs
-open http://localhost:${PORT_PROVIDER:-28021}/docs
-# Keycloak admin
-open http://localhost:${PORT_KEYCLOAK:-28006}
+# API docs (Django Ninja)
+open http://localhost/api/v2/docs
 ```
 
 ## 🔥 **CURRENT CAPABILITIES**
 
-### **Adapters Available**
-- AWS SageMaker, Azure ML, Google Vertex AI
-- Vast.ai, RunPod, Lambda Labs, Paperspace
-- Groq, Replicate, HuggingFace, CoreWeave
-- IBM Watson, Oracle OCI, NVIDIA DGX
-- Alibaba, Tencent, DeepInfra, Cerebras, ScaleAI, Spell, Kaggle, Run:AI
-- Adapters return live pricing once provider API keys are loaded into Vault. No credentials or pricing data are bundled in the repo.
+### **Adapters Implemented in Repo**
+- RunPod
+- Vast.ai
+
+The provider registry lists additional names, but those adapter modules are not present in this repo and are skipped at runtime.
+Adapters return live pricing once provider API keys are configured via `/config/integrations` or environment variables.
 
 ### **Exposed Endpoints**
 - `/providers` — paginated offers with filters
-- `/config/integrations` — list/save provider credentials (Vault-backed)
+- `/config/integrations` — list/save provider credentials (stored in user preferences)
 - `/health` — service health checks
 - WebSocket gateway at `/ws` for price broadcasts (consumes Redis Pub/Sub `price_updates`)
 
@@ -56,7 +54,7 @@ open http://localhost:${PORT_KEYCLOAK:-28006}
 ## 📊 **MONITORING**
 - **Prometheus**: http://localhost:${PORT_PROMETHEUS:-28031}
 - **Grafana**: http://localhost:${PORT_GRAFANA:-28032}
-- **Storybook**: http://localhost:${PORT_STORYBOOK:-28033}
+Note: docker-compose.dev.yml includes a Storybook service, but `npm run storybook` is not defined in `frontend/package.json`.
 
 ## 🛠️ **TROUBLESHOOTING**
 

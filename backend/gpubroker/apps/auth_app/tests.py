@@ -28,6 +28,22 @@ from apps.auth_app.auth import (
 )
 
 
+# Test RSA keys for JWT (2048-bit, for testing only)
+# Generated fresh using cryptography library
+TEST_JWT_PRIVATE_KEY = '-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA0TrmmA9OY5ZsCjxoJ0YhFC4K7lYnhtw+RvFqqMnYJN+kGqTl\nWzrCwrtPqVE3ep8Mn30rbrA26MX92cyivbWxe7TNzJa63a9Cux88NUseSd01Mm0o\n0s/KbEG/UazyTtMMITukkxX8VFpBIbEhL9JK8kOMcVKg4SjuTGQQY/DMA8FZd6LM\nPj26lsiMsL+Vm9kxRfzEJUc7N5tyHWLADpoUue1yw1lfyo4NTOIqwWQhITlIP+YA\n+ARkyH1EBbNXOB7oRJkKxqDKE2/k+AaPzBjTGh+HH1IGvSeDnpRkwcal7XKFu0l7\nxEwPfRbPQUtFj2bzcGq5LCB/TNqPgX4qSLijSwIDAQABAoIBAARaPf3KeQ5SohYR\nwkuUMTqi5+X5Xi0iBnGiCAlRhEY6w3EtHlBS3UZWcIZ3LWOcTL5B86tZIxXzOHVV\nb8qT2F4DGYeOAyklbN/zpbmowbfg+tWntlexrDuq9SM/08fsAAPuTQgk8ZuCR88+\n82UenMyEDIyMSX3QRNTLUsP2zb0DjlQAlsgT6wx9v249JHt03kIEs27tfTxiEKhU\nab8xFB6WBlQbXaZSabRyCwun79JymWHyIFTExI/qzCBnT6N6LsgZKvQ90k07IkFq\nbMzYON15PooPreMkRMWsh+DTUT/kzVOb/YiaMLJDoAfewxVrVlVqd0r6p85SdHWZ\nt7LUdCECgYEA//mwctrElKGtuFB3hWr2t5qxMn/TvPkCLlKhOT6GNORWfVSOPeyN\nenTc5fdaVlySfgJMEyE31/RYlkDvsq164DKI1NtxhYPuQHQ5H/yXjaE9hEcVuO4k\n6cq9FMlJiwCoYZfmNCBKAEB3q+RnFQ0lGi66piZ0ZHTzcwJPNgD3duMCgYEA0UAP\nHo1nSS6qLeJ9YZKmUNFr2BGvzQJEMfEchUJ3JiAL9Wh3bimZ6w/mUZ1J29iaDZy1\nKsKwQldUnaUSwC8qTf7LaZrr8T2+E9MqiFvEzLo1QXELHdWdmBXxj08kNfzNquIr\nm+cof1DXSkO0sOm0cBYZWHpaVn9ZYdaHNwaBZnkCgYEAjNr6JImLiPpa3MSysGEG\nuEvQXCiI/EDN2W2wuA5WzX4ktby0tRCZXZw2/fiZ5lH0bpCXCiPKVfRoVu4OuHTL\n29kTAIZstnq9vQv3b0mQn+ftMP/ozSWGfHwKhgiphmrrPSDYFTD7Z54R/C2oJ6Zf\nF0RFgy4/+BN+73eC3QW1Jt8CgYBnGBma4u4tZzlfTAScKyWYEeYBWY11AxXYSUPV\nAA82EHnz2hllhEeaQYYnVchK8afM5xV3UN6IgQBmfysC1voP3WYYzMRMYjAhElwV\nPKl0eJW+fVSNyW5QvRb7lXFwy/IErFPyBuyz9X9sznja5PoKc0jfh8C0dx/xjUGn\nQaRFeQKBgEfQtuXDVnc2QJUveYzxk73rdW9XUFxn/DlHVjW9fyClGMkAcWhXChO3\neqjsQF7YcUPk7hE/bH0tMPwZ7qYTgIAK4jIvNK5Q+gbE8qt4ZXPhp7Rt9NIIQwA4\nr4O7ovsL0c4+VTlRVM86n3tHdWQjEuolmUoF8ddUBFCi+/EPANi+\n-----END RSA PRIVATE KEY-----\n'
+
+TEST_JWT_PUBLIC_KEY = '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0TrmmA9OY5ZsCjxoJ0Yh\nFC4K7lYnhtw+RvFqqMnYJN+kGqTlWzrCwrtPqVE3ep8Mn30rbrA26MX92cyivbWx\ne7TNzJa63a9Cux88NUseSd01Mm0o0s/KbEG/UazyTtMMITukkxX8VFpBIbEhL9JK\n8kOMcVKg4SjuTGQQY/DMA8FZd6LMPj26lsiMsL+Vm9kxRfzEJUc7N5tyHWLADpoU\nue1yw1lfyo4NTOIqwWQhITlIP+YA+ARkyH1EBbNXOB7oRJkKxqDKE2/k+AaPzBjT\nGh+HH1IGvSeDnpRkwcal7XKFu0l7xEwPfRbPQUtFj2bzcGq5LCB/TNqPgX4qSLij\nSwIDAQAB\n-----END PUBLIC KEY-----\n'
+
+# Settings override for JWT tests
+JWT_TEST_SETTINGS = {
+    'JWT_PRIVATE_KEY': TEST_JWT_PRIVATE_KEY,
+    'JWT_PUBLIC_KEY': TEST_JWT_PUBLIC_KEY,
+    'JWT_ALGORITHM': 'RS256',
+    'JWT_ACCESS_TOKEN_EXPIRE_MINUTES': 15,
+    'JWT_REFRESH_TOKEN_EXPIRE_DAYS': 7,
+}
+
+
 # ============================================
 # Password Hashing Tests
 # ============================================
@@ -65,6 +81,16 @@ class TestPasswordHashing:
 
 class TestJWTTokens:
     """Tests for JWT token creation and validation."""
+    
+    @pytest.fixture(autouse=True)
+    def setup_jwt_settings(self, settings):
+        """Configure JWT settings for tests."""
+        # Strip any leading/trailing whitespace from keys
+        settings.JWT_PRIVATE_KEY = TEST_JWT_PRIVATE_KEY.strip()
+        settings.JWT_PUBLIC_KEY = TEST_JWT_PUBLIC_KEY.strip()
+        settings.JWT_ALGORITHM = 'RS256'
+        settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES = 15
+        settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS = 7
     
     def test_create_access_token(self):
         """Test access token creation."""
@@ -255,7 +281,7 @@ class TestUserServices:
 # API Endpoint Tests
 # ============================================
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 class TestAuthAPI:
     """Tests for auth API endpoints."""
     

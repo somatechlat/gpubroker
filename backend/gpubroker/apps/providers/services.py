@@ -191,14 +191,12 @@ async def list_offers_from_db(
     if max_price is not None:
         queryset = queryset.filter(price_per_hour__lte=max_price)
     
-    # Get total count
-    total = await sync_to_async(queryset.count)()
+    # Get total count using Django's native async ORM
+    total = await queryset.acount()
     
-    # Paginate
+    # Paginate using Django's native async iteration
     offset = (page - 1) * per_page
-    offers = await sync_to_async(list)(
-        queryset.order_by('-updated_at')[offset:offset + per_page]
-    )
+    offers = [offer async for offer in queryset.order_by('-updated_at')[offset:offset + per_page]]
     
     # Convert to dicts
     items = []

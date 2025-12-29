@@ -8,10 +8,9 @@ NO MOCKS. NO FAKE DATA. REAL CALCULATIONS ONLY.
 """
 import logging
 from datetime import datetime, timezone
-from typing import Dict, Optional, Any, List
+from typing import Dict, Optional, Any
 
 from django.db.models import Avg, Count, StdDev, Min, Max
-from asgiref.sync import sync_to_async
 
 from apps.providers.models import Provider, GPUOffer, ProviderHealthCheck
 
@@ -148,23 +147,20 @@ async def get_kpi_overview() -> Dict[str, Any]:
     Returns:
         Dict with cost_per_token, uptime_pct, avg_latency_ms, active_providers
     """
-    # Get average price across all offers
-    avg_price_result = await sync_to_async(
-        GPUOffer.objects.aggregate
-    )(avg_price=Avg('price_per_hour'))
+    # Get average price across all offers using Django's native async
+    from django.db.models import Avg
+    avg_price_result = await GPUOffer.objects.aaggregate(avg_price=Avg('price_per_hour'))
     avg_price = avg_price_result.get('avg_price')
     
-    # Get provider count
-    provider_count = await sync_to_async(Provider.objects.count)()
+    # Get provider count using Django's native async
+    provider_count = await Provider.objects.acount()
     
     # Get health metrics if available
     avg_latency_ms = None
     uptime_pct = None
     
     try:
-        health_agg = await sync_to_async(
-            ProviderHealthCheck.objects.aggregate
-        )(
+        health_agg = await ProviderHealthCheck.objects.aaggregate(
             avg_latency=Avg('latency_ms'),
             avg_uptime=Avg('uptime_pct')
         )
@@ -210,8 +206,8 @@ async def get_gpu_metrics(
     if provider_name:
         queryset = queryset.filter(provider__name__iexact=provider_name)
     
-    # Get aggregations
-    agg = await sync_to_async(queryset.aggregate)(
+    # Get aggregations using Django's native async
+    agg = await queryset.aaggregate(
         avg_price=Avg('price_per_hour'),
         count=Count('id')
     )
@@ -264,10 +260,8 @@ async def get_provider_kpis(provider_name: str) -> Dict[str, Any]:
     Raises:
         ValueError: If provider not found
     """
-    # Check if provider exists
-    provider = await sync_to_async(
-        Provider.objects.filter(name__iexact=provider_name).first
-    )()
+    # Check if provider exists using Django's native async
+    provider = await Provider.objects.filter(name__iexact=provider_name).afirst()
     
     if not provider:
         raise ValueError(f"Provider {provider_name} not found")
@@ -275,7 +269,7 @@ async def get_provider_kpis(provider_name: str) -> Dict[str, Any]:
     # Get offer statistics
     offers_queryset = GPUOffer.objects.filter(provider=provider)
     
-    agg = await sync_to_async(offers_queryset.aggregate)(
+    agg = await offers_queryset.aaggregate(
         total_offers=Count('id'),
         avg_price=Avg('price_per_hour'),
         price_stddev=StdDev('price_per_hour')
@@ -311,17 +305,17 @@ async def get_market_insights() -> Dict[str, Any]:
     """
     Get comprehensive market insights and trends.
     
-    Uses Django ORM with real database queries.
+    Uses Django ORM with real database queries (native async).
     
     Returns:
         Dict with market insights
     """
-    # Get totals
-    total_providers = await sync_to_async(Provider.objects.count)()
-    total_offers = await sync_to_async(GPUOffer.objects.count)()
+    # Get totals using Django's native async ORM
+    total_providers = await Provider.objects.acount()
+    total_offers = await GPUOffer.objects.acount()
     
-    # Get price aggregations
-    price_agg = await sync_to_async(GPUOffer.objects.aggregate)(
+    # Get price aggregations using Django's native async ORM
+    price_agg = await GPUOffer.objects.aaggregate(
         avg_price=Avg('price_per_hour'),
         min_price=Min('price_per_hour'),
         max_price=Max('price_per_hour')
@@ -329,12 +323,8 @@ async def get_market_insights() -> Dict[str, Any]:
     
     avg_price = float(price_agg['avg_price']) if price_agg['avg_price'] else 0.0
     
-    # Get cheapest offer
-    cheapest = await sync_to_async(
-        GPUOffer.objects.select_related('provider')
-        .order_by('price_per_hour')
-        .first
-    )()
+    # Get cheapest offer using Django's native async ORM
+    cheapest = await GPUOffer.objects.select_related('provider').order_by('price_per_hour').afirst()
     
     cheapest_offer = None
     if cheapest:
@@ -345,12 +335,8 @@ async def get_market_insights() -> Dict[str, Any]:
             "provider": cheapest.provider.name if cheapest.provider else "unknown",
         }
     
-    # Get most expensive offer
-    most_expensive = await sync_to_async(
-        GPUOffer.objects.select_related('provider')
-        .order_by('-price_per_hour')
-        .first
-    )()
+    # Get most expensive offer using Django's native async ORM
+    most_expensive = await GPUOffer.objects.select_related('provider').order_by('-price_per_hour').afirst()
     
     most_expensive_offer = None
     if most_expensive:

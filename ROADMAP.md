@@ -1,9 +1,12 @@
 # GPUBROKER Roadmap (Canonical)
 
+Changelog:
+- 2025-12-29 | codex | Add repo status snapshot to reconcile docs with repo state.
+
 This file is the canonical source of truth for the GPUBROKER development roadmap. All roadmap updates should be made only here. It maps work into 8 two-week sprints (16 weeks total) and includes acceptance criteria, dependencies, and immediate next steps.
 
 Document version: 2.0
-Last updated: 2025-12-28
+Last updated: 2025-12-29
 
 ---
 
@@ -16,6 +19,14 @@ GPUBROKER uses Django 5 + Django Ninja as the unified backend framework:
 - **Cache**: Redis
 - **WebSocket**: Django Channels
 - **Observability**: Prometheus, Grafana, Loki, Tempo
+
+## Repository Status Snapshot (Code-Verified)
+
+- Backend: Django 5 monolith with apps for auth, providers, kpi, math_core, ai_assistant, websocket_gateway. Migrations exist for auth/providers/math_core; kpi/ai_assistant/websocket apps define no models.
+- Providers: adapter registry lists 20 providers, but only `runpod` and `vastai` adapter modules exist in repo; missing adapters are skipped at runtime.
+- Frontend: Next.js pages/components for dashboard/marketplace/ai/settings/login exist; analytics page is placeholder; imports reference missing `src/lib` modules for provider API, AI client, and realtime WebSocket.
+- Booking/Billing: no backend apps or endpoints in repo; frontend booking proxy expects an external booking service.
+- Vault: client exists in `backend/shared/vault_client.py`, but provider API keys are currently read from user preferences or environment variables.
 
 ---
 

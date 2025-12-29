@@ -14,15 +14,22 @@ from typing import Dict, Tuple
 
 import pytest
 
+# Set Django settings BEFORE any Django imports
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'gpubroker.settings.test')
+
+# Patch models to be managed BEFORE Django setup
+# This is critical for migrations to work
+def patch_models_managed():
+    """Patch all models to have managed=True for testing."""
+    from django.apps import apps
+    for model in apps.get_models():
+        model._meta.managed = True
 
 import django
 django.setup()
 
-# Patch models to be managed for testing
-from django.apps import apps
-for model in apps.get_models():
-    model._meta.managed = True
+# Apply the patch after Django setup
+patch_models_managed()
 
 
 # ============================================
@@ -158,9 +165,9 @@ def async_client():
     return AsyncClient()
 
 
-@pytest.fixture
+@pytest.fixture(scope='session')
 def api_client():
-    """Django Ninja test client for API v2."""
+    """Django Ninja test client for API v2 (session-scoped to avoid multiple instance errors)."""
     from ninja.testing import TestAsyncClient
     from gpubroker.api.v2 import api
     return TestAsyncClient(api)

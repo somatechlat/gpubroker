@@ -21,8 +21,13 @@ from .schemas import (
     TemplateApplyRequest,
     TemplateApplyResponse,
     WorkloadTemplate,
+    # Context Awareness schemas (Task 15.1)
+    AnalyzeSearchRequest,
+    AnalyzeSearchResponse,
+    ContextAwareChatRequest,
+    ContextAwareChatResponse,
 )
-from .services import ai_assistant_service, workload_template_service
+from .services import ai_assistant_service, workload_template_service, ai_context_service
 
 logger = logging.getLogger('gpubroker.ai_assistant.api')
 
@@ -53,7 +58,7 @@ async def chat(request, payload: ChatRequest):
 
 
 @router.post("/parse-workload", response=ParsedWorkload)
-def parse_workload(request, payload: ParseWorkloadRequest):
+async def parse_workload(request, payload: ParseWorkloadRequest):
     """
     Parse natural language workload description.
     
@@ -129,7 +134,7 @@ async def ai_health(request):
 # ============================================
 
 @router.get("/templates", response=TemplatesResponse)
-def list_templates(request, category: str = None):
+async def list_templates(request, category: str = None):
     """
     List available workload templates.
     
@@ -142,19 +147,6 @@ def list_templates(request, category: str = None):
     except Exception as e:
         logger.exception(f"List templates failed: {e}")
         raise HttpError(500, "Failed to list templates")
-
-
-@router.get("/templates/{template_id}", response=WorkloadTemplate)
-def get_template(request, template_id: str):
-    """
-    Get a specific workload template by ID.
-    
-    Returns template definition with wizard questions.
-    """
-    template = workload_template_service.get_template(template_id)
-    if not template:
-        raise HttpError(404, f"Template not found: {template_id}")
-    return template
 
 
 @router.post("/templates/apply", response=TemplateApplyResponse)
@@ -209,3 +201,83 @@ async def apply_template(request, payload: TemplateApplyRequest):
     except Exception as e:
         logger.exception(f"Apply template failed: {e}")
         raise HttpError(500, "Failed to apply template")
+
+
+@router.get("/templates/{template_id}", response=WorkloadTemplate)
+async def get_template(request, template_id: str):
+    """
+    Get a specific workload template by ID.
+    
+    Returns template definition with wizard questions.
+    """
+    template = workload_template_service.get_template(template_id)
+    if not template:
+        raise HttpError(404, f"Template not found: {template_id}")
+    return template
+
+
+# ============================================
+# AI Context Awareness Endpoints (Task 15.1)
+# Requirements: 25.1, 25.2, 25.3, 25.4
+# ============================================
+
+@router.post("/analyze-search", response=AnalyzeSearchResponse)
+async def analyze_search(request, payload: AnalyzeSearchRequest):
+    """
+    Analyze current search context and provide insights.
+    
+    Takes the current screen state (filters, visible offers) and returns:
+    - Summary of search results
+    - Insights (recommendations, warnings, tips)
+    - Best matching offer
+    - Suggestions for filter adjustments
+    
+    Requirements: 25.1, 25.2, 25.3
+    """
+    try:
+        result = ai_context_service.analyze_search(
+            screen_context=payload.screen_context.dict(),
+            user_id=payload.user_id,
+            question=payload.question
+        )
+        return result
+    except Exception as e:
+        logger.exception(f"Analyze search failed: {e}")
+        raise HttpError(500, "Failed to analyze search context")
+
+
+@router.post("/context-chat", response=ContextAwareChatResponse)
+async def context_aware_chat(request, payload: ContextAwareChatRequest):
+    """
+    Process chat message with screen context awareness.
+    
+    Enriches AI responses with awareness of:
+    - Current search filters
+    - Visible GPU offers
+    - Selected offer details
+    - Current page/view
+    
+    Returns context-aware response with:
+    - AI reply
+    - Whether context was used
+    - Referenced offer IDs
+    - Suggested filter changes
+    - GPU recommendations
+    
+    Requirements: 25.1, 25.2, 25.3, 25.4
+    """
+    try:
+        screen_context_dict = payload.screen_context.dict() if payload.screen_context else None
+        
+        result = await ai_context_service.context_aware_chat(
+            message=payload.message,
+            user_id=payload.user_id,
+            screen_context=screen_context_dict,
+            history=payload.history
+        )
+        return result
+    except ValueError as e:
+        raise HttpError(400, str(e))
+    except Exception as e:
+        logger.exception(f"Context-aware chat failed: {e}")
+        raise HttpError(502, "AI context chat failed")

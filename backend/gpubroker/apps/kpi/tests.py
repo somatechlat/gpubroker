@@ -18,7 +18,7 @@ from apps.providers.models import Provider, GPUOffer
 # KPI Engine Tests
 # ============================================
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 class TestKPIEngine:
     """Tests for KPI engine calculations."""
     
@@ -94,7 +94,7 @@ class TestKPIEngine:
 # KPI API Tests
 # ============================================
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 class TestKPIAPI:
     """Tests for KPI API endpoints."""
     

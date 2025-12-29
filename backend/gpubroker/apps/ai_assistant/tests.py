@@ -384,7 +384,7 @@ class TestRequirementEstimation:
 # API Endpoint Tests
 # ============================================
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 class TestAIAssistantAPI:
     """Tests for AI assistant API endpoints."""
     
@@ -464,3 +464,458 @@ class TestAIAssistantAPI:
         data = response.json()
         assert data["workload_type"] == "image_generation"
         assert data["quantity"] == 500
+
+
+# ============================================
+# AI Context Awareness Tests (Task 15.1)
+# Requirements: 25.1, 25.2, 25.3, 25.4
+# ============================================
+
+from apps.ai_assistant.services import ai_context_service
+
+
+class TestAnalyzeSearch:
+    """Tests for search analysis with screen context."""
+    
+    def test_analyze_empty_search(self):
+        """Test analyzing search with no offers."""
+        result = ai_context_service.analyze_search(
+            screen_context={
+                "current_filters": {},
+                "visible_offers": []
+            }
+        )
+        
+        assert "summary" in result
+        assert "insights" in result
+        assert "suggestions" in result
+        assert "elapsed_ms" in result
+        assert "No offers" in result["summary"] or "no" in result["summary"].lower()
+    
+    def test_analyze_search_with_offers(self):
+        """Test analyzing search with visible offers."""
+        offers = [
+            {"id": "1", "gpu_type": "RTX 4090", "price_per_hour": 1.50, "gpu_memory_gb": 24, "availability_status": "available"},
+            {"id": "2", "gpu_type": "A100", "price_per_hour": 3.50, "gpu_memory_gb": 80, "availability_status": "available"},
+            {"id": "3", "gpu_type": "RTX 3090", "price_per_hour": 0.80, "gpu_memory_gb": 24, "availability_status": "limited"},
+        ]
+        
+        result = ai_context_service.analyze_search(
+            screen_context={
+                "current_filters": {"gpu_type": "RTX"},
+                "visible_offers": offers
+            }
+        )
+        
+        assert "summary" in result
+        assert "3" in result["summary"] or "three" in result["summary"].lower()
+        assert result["best_match"] is not None
+        assert "elapsed_ms" in result
+    
+    def test_analyze_search_price_range_insight(self):
+        """Test price range insight is generated for wide price variance."""
+        offers = [
+            {"id": "1", "gpu_type": "RTX 3080", "price_per_hour": 0.30, "gpu_memory_gb": 10, "availability_status": "available"},
+            {"id": "2", "gpu_type": "H100", "price_per_hour": 4.50, "gpu_memory_gb": 80, "availability_status": "available"},
+        ]
+        
+        result = ai_context_service.analyze_search(
+            screen_context={
+                "current_filters": {},
+                "visible_offers": offers
+            }
+        )
+        
+        # Should have price range insight since 4.50 > 0.30 * 3
+        price_insights = [i for i in result["insights"] if "price" in i["title"].lower()]
+        assert len(price_insights) > 0
+    
+    def test_analyze_search_budget_friendly_insight(self):
+        """Test budget-friendly insight is generated."""
+        offers = [
+            {"id": "1", "gpu_type": "RTX 3080", "price_per_hour": 0.50, "gpu_memory_gb": 10, "availability_status": "available"},
+            {"id": "2", "gpu_type": "RTX 4090", "price_per_hour": 1.50, "gpu_memory_gb": 24, "availability_status": "available"},
+            {"id": "3", "gpu_type": "A100", "price_per_hour": 3.50, "gpu_memory_gb": 80, "availability_status": "available"},
+            {"id": "4", "gpu_type": "H100", "price_per_hour": 4.50, "gpu_memory_gb": 80, "availability_status": "available"},
+        ]
+        
+        result = ai_context_service.analyze_search(
+            screen_context={
+                "current_filters": {},
+                "visible_offers": offers
+            }
+        )
+        
+        # Should have budget-friendly insight
+        budget_insights = [i for i in result["insights"] if "budget" in i["title"].lower()]
+        assert len(budget_insights) > 0
+    
+    def test_analyze_search_availability_warning(self):
+        """Test availability warning when most offers unavailable."""
+        offers = [
+            {"id": "1", "gpu_type": "RTX 4090", "price_per_hour": 1.50, "gpu_memory_gb": 24, "availability_status": "unavailable"},
+            {"id": "2", "gpu_type": "A100", "price_per_hour": 3.50, "gpu_memory_gb": 80, "availability_status": "limited"},
+            {"id": "3", "gpu_type": "H100", "price_per_hour": 4.50, "gpu_memory_gb": 80, "availability_status": "unavailable"},
+        ]
+        
+        result = ai_context_service.analyze_search(
+            screen_context={
+                "current_filters": {},
+                "visible_offers": offers
+            }
+        )
+        
+        # Should have availability warning
+        avail_insights = [i for i in result["insights"] if "availability" in i["title"].lower()]
+        assert len(avail_insights) > 0
+    
+    def test_analyze_search_suggestions_no_filters(self):
+        """Test suggestions when no filters applied."""
+        result = ai_context_service.analyze_search(
+            screen_context={
+                "current_filters": {},
+                "visible_offers": [
+                    {"id": "1", "gpu_type": "RTX 4090", "price_per_hour": 1.50, "gpu_memory_gb": 24, "availability_status": "available"}
+                ]
+            }
+        )
+        
+        assert len(result["suggestions"]) > 0
+        assert any("filter" in s.lower() for s in result["suggestions"])
+    
+    def test_analyze_search_best_match_by_price(self):
+        """Test best match selection when sorted by price."""
+        offers = [
+            {"id": "1", "gpu_type": "RTX 4090", "price_per_hour": 1.50, "gpu_memory_gb": 24, "availability_status": "available"},
+            {"id": "2", "gpu_type": "RTX 3080", "price_per_hour": 0.50, "gpu_memory_gb": 10, "availability_status": "available"},
+        ]
+        
+        result = ai_context_service.analyze_search(
+            screen_context={
+                "current_filters": {},
+                "visible_offers": offers,
+                "sort_by": "price_per_hour",
+                "sort_order": "asc"
+            }
+        )
+        
+        # Best match should be cheapest
+        assert result["best_match"]["id"] == "2"
+    
+    def test_analyze_search_best_match_by_vram(self):
+        """Test best match selection when sorted by VRAM."""
+        offers = [
+            {"id": "1", "gpu_type": "RTX 4090", "price_per_hour": 1.50, "gpu_memory_gb": 24, "availability_status": "available"},
+            {"id": "2", "gpu_type": "A100", "price_per_hour": 3.50, "gpu_memory_gb": 80, "availability_status": "available"},
+        ]
+        
+        result = ai_context_service.analyze_search(
+            screen_context={
+                "current_filters": {},
+                "visible_offers": offers,
+                "sort_by": "gpu_memory_gb",
+                "sort_order": "desc"
+            }
+        )
+        
+        # Best match should be highest VRAM
+        assert result["best_match"]["id"] == "2"
+
+
+class TestContextAwareChat:
+    """Tests for context-aware chat functionality."""
+    
+    @pytest.mark.asyncio
+    async def test_chat_without_context(self):
+        """Test chat without screen context uses rule-based response."""
+        result = await ai_context_service.context_aware_chat(
+            message="What GPU should I use?",
+            user_id=None,
+            screen_context=None,
+            history=[]
+        )
+        
+        assert "reply" in result
+        assert result["context_used"] is False
+        assert "elapsed_ms" in result
+    
+    @pytest.mark.asyncio
+    async def test_chat_with_context(self):
+        """Test chat with screen context."""
+        screen_context = {
+            "current_filters": {"gpu_type": "RTX 4090"},
+            "visible_offers": [
+                {"id": "1", "gpu_type": "RTX 4090", "price_per_hour": 1.50, "gpu_memory_gb": 24, "availability_status": "available"}
+            ],
+            "current_page": "search"
+        }
+        
+        result = await ai_context_service.context_aware_chat(
+            message="Tell me about these GPUs",
+            user_id=None,
+            screen_context=screen_context,
+            history=[]
+        )
+        
+        assert "reply" in result
+        assert result["context_used"] is True
+        assert "elapsed_ms" in result
+    
+    @pytest.mark.asyncio
+    async def test_chat_with_selected_offer(self):
+        """Test chat with selected offer in context."""
+        screen_context = {
+            "current_filters": {},
+            "visible_offers": [
+                {"id": "offer-123", "gpu_type": "A100", "price_per_hour": 3.50, "gpu_memory_gb": 80, "availability_status": "available"}
+            ],
+            "selected_offer_id": "offer-123"
+        }
+        
+        result = await ai_context_service.context_aware_chat(
+            message="Tell me about this GPU",
+            user_id=None,
+            screen_context=screen_context,
+            history=[]
+        )
+        
+        assert result["context_used"] is True
+        # Selected offer should be referenced
+        if result["referenced_offers"]:
+            assert "offer-123" in result["referenced_offers"]
+    
+    @pytest.mark.asyncio
+    async def test_chat_detects_gpu_filter_suggestion(self):
+        """Test chat detects GPU type mentions and suggests filters."""
+        screen_context = {
+            "current_filters": {},
+            "visible_offers": [
+                {"id": "1", "gpu_type": "RTX 4090", "price_per_hour": 1.50, "gpu_memory_gb": 24, "availability_status": "available"}
+            ]
+        }
+        
+        result = await ai_context_service.context_aware_chat(
+            message="I want an A100 GPU",
+            user_id=None,
+            screen_context=screen_context,
+            history=[]
+        )
+        
+        # Should suggest A100 filter
+        if result["suggested_filters"]:
+            assert result["suggested_filters"].get("gpu_type") == "A100"
+    
+    @pytest.mark.asyncio
+    async def test_chat_detects_region_filter_suggestion(self):
+        """Test chat detects region mentions and suggests filters."""
+        screen_context = {
+            "current_filters": {},
+            "visible_offers": []
+        }
+        
+        result = await ai_context_service.context_aware_chat(
+            message="I need a GPU in us-east",
+            user_id=None,
+            screen_context=screen_context,
+            history=[]
+        )
+        
+        # Should suggest region filter
+        if result["suggested_filters"]:
+            assert "us-east" in result["suggested_filters"].get("region", "")
+    
+    @pytest.mark.asyncio
+    async def test_chat_detects_budget_filter_suggestion(self):
+        """Test chat detects budget mentions and suggests price filter."""
+        screen_context = {
+            "current_filters": {},
+            "visible_offers": [
+                {"id": "1", "gpu_type": "RTX 4090", "price_per_hour": 1.50, "gpu_memory_gb": 24, "availability_status": "available"},
+                {"id": "2", "gpu_type": "A100", "price_per_hour": 3.50, "gpu_memory_gb": 80, "availability_status": "available"},
+            ]
+        }
+        
+        result = await ai_context_service.context_aware_chat(
+            message="I need something cheap and affordable",
+            user_id=None,
+            screen_context=screen_context,
+            history=[]
+        )
+        
+        # Should suggest price_max filter
+        if result["suggested_filters"]:
+            assert "price_max" in result["suggested_filters"]
+    
+    @pytest.mark.asyncio
+    async def test_chat_detects_vram_filter_suggestion(self):
+        """Test chat detects VRAM mentions and suggests filter."""
+        screen_context = {
+            "current_filters": {},
+            "visible_offers": []
+        }
+        
+        result = await ai_context_service.context_aware_chat(
+            message="I need at least 48GB of VRAM",
+            user_id=None,
+            screen_context=screen_context,
+            history=[]
+        )
+        
+        # Should suggest gpu_memory_min filter
+        if result["suggested_filters"]:
+            assert result["suggested_filters"].get("gpu_memory_min") == 48
+
+
+class TestRuleBasedResponses:
+    """Tests for rule-based responses when LLM unavailable."""
+    
+    @pytest.mark.asyncio
+    async def test_recommend_intent_response(self):
+        """Test rule-based response for recommendation intent."""
+        screen_context = {
+            "current_filters": {},
+            "visible_offers": [
+                {"id": "1", "gpu_type": "RTX 4090", "price_per_hour": 1.50, "gpu_memory_gb": 24, "availability_status": "available"},
+                {"id": "2", "gpu_type": "A100", "price_per_hour": 3.50, "gpu_memory_gb": 80, "availability_status": "available"},
+            ]
+        }
+        
+        result = await ai_context_service.context_aware_chat(
+            message="What do you recommend?",
+            user_id=None,
+            screen_context=screen_context,
+            history=[]
+        )
+        
+        # Should mention price range in response
+        assert "price" in result["reply"].lower() or "$" in result["reply"]
+    
+    @pytest.mark.asyncio
+    async def test_price_intent_response(self):
+        """Test rule-based response for price intent."""
+        screen_context = {
+            "current_filters": {},
+            "visible_offers": [
+                {"id": "1", "gpu_type": "RTX 4090", "price_per_hour": 1.50, "gpu_memory_gb": 24, "availability_status": "available"},
+            ]
+        }
+        
+        result = await ai_context_service.context_aware_chat(
+            message="How much does it cost?",
+            user_id=None,
+            screen_context=screen_context,
+            history=[]
+        )
+        
+        # Should mention price in response
+        assert "price" in result["reply"].lower() or "$" in result["reply"]
+    
+    @pytest.mark.asyncio
+    async def test_availability_intent_response(self):
+        """Test rule-based response for availability intent."""
+        screen_context = {
+            "current_filters": {},
+            "visible_offers": [
+                {"id": "1", "gpu_type": "RTX 4090", "price_per_hour": 1.50, "gpu_memory_gb": 24, "availability_status": "available"},
+                {"id": "2", "gpu_type": "A100", "price_per_hour": 3.50, "gpu_memory_gb": 80, "availability_status": "limited"},
+            ]
+        }
+        
+        result = await ai_context_service.context_aware_chat(
+            message="What's available now?",
+            user_id=None,
+            screen_context=screen_context,
+            history=[]
+        )
+        
+        # Should mention availability in response
+        assert "available" in result["reply"].lower()
+
+
+class TestOfferSummarization:
+    """Tests for offer summarization helper."""
+    
+    def test_summarize_offers(self):
+        """Test offer summarization."""
+        offers = [
+            {"id": "1", "gpu_type": "RTX 4090", "price_per_hour": 1.50, "gpu_memory_gb": 24, "region": "us-east-1", "provider": "RunPod", "availability_status": "available"},
+            {"id": "2", "gpu_type": "A100", "price_per_hour": 3.50, "gpu_memory_gb": 80, "region": "us-west-2", "provider": "Vast.ai", "availability_status": "available"},
+            {"id": "3", "gpu_type": "H100", "price_per_hour": 4.50, "gpu_memory_gb": 80, "region": "eu-west-1", "provider": "CoreWeave", "availability_status": "limited"},
+        ]
+        
+        summary = ai_context_service._summarize_offers(offers)
+        
+        assert summary["count"] == 3
+        assert summary["price_range"]["min"] == 1.50
+        assert summary["price_range"]["max"] == 4.50
+        assert summary["vram_range"]["min"] == 24
+        assert summary["vram_range"]["max"] == 80
+        assert len(summary["gpu_types"]) == 3
+        assert len(summary["regions"]) == 3
+        assert len(summary["providers"]) == 3
+        assert summary["available_count"] == 2
+    
+    def test_summarize_empty_offers(self):
+        """Test summarization of empty offers list."""
+        summary = ai_context_service._summarize_offers([])
+        
+        assert summary == {}
+
+
+# ============================================
+# Context Awareness API Endpoint Tests
+# ============================================
+
+@pytest.mark.django_db(transaction=True)
+class TestContextAwarenessAPI:
+    """Tests for context awareness API endpoints."""
+    
+    @pytest.mark.asyncio
+    async def test_analyze_search_endpoint(self, api_client):
+        """Test POST /ai/analyze-search endpoint."""
+        response = await api_client.post('/ai/analyze-search', json={
+            "screen_context": {
+                "current_filters": {"gpu_type": "RTX 4090"},
+                "visible_offers": [
+                    {"id": "1", "gpu_type": "RTX 4090", "price_per_hour": 1.50, "gpu_memory_gb": 24, "availability_status": "available"}
+                ]
+            }
+        })
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "summary" in data
+        assert "insights" in data
+        assert "suggestions" in data
+        assert "elapsed_ms" in data
+    
+    @pytest.mark.asyncio
+    async def test_context_chat_endpoint(self, api_client):
+        """Test POST /ai/context-chat endpoint."""
+        response = await api_client.post('/ai/context-chat', json={
+            "message": "What GPU should I use?",
+            "screen_context": {
+                "current_filters": {},
+                "visible_offers": [
+                    {"id": "1", "gpu_type": "RTX 4090", "price_per_hour": 1.50, "gpu_memory_gb": 24, "availability_status": "available"}
+                ]
+            }
+        })
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "reply" in data
+        assert "context_used" in data
+        assert "elapsed_ms" in data
+    
+    @pytest.mark.asyncio
+    async def test_context_chat_without_context(self, api_client):
+        """Test POST /ai/context-chat without screen context."""
+        response = await api_client.post('/ai/context-chat', json={
+            "message": "Hello, what can you help me with?"
+        })
+        
+        assert response.status_code == 200
+        data = response.json()
+        assert "reply" in data
+        assert data["context_used"] is False

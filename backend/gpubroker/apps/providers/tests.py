@@ -135,6 +135,9 @@ class TestProviderModels:
             name='RTX 4090 Instance',
             gpu_type='RTX 4090',
             gpu_memory_gb=24,
+            cpu_cores=8,
+            ram_gb=32,
+            storage_gb=100,
             price_per_hour=Decimal('1.50'),
             currency='USD',
             region='us-east-1',
@@ -154,6 +157,9 @@ class TestProviderModels:
             name='A100 Instance',
             gpu_type='A100',
             gpu_memory_gb=80,
+            cpu_cores=16,
+            ram_gb=64,
+            storage_gb=200,
             price_per_hour=Decimal('3.50'),
             region='eu-west-1',
             compliance_tags=['soc2', 'gdpr', 'hipaa'],
@@ -168,7 +174,7 @@ class TestProviderModels:
 # Provider Service Tests
 # ============================================
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 class TestProviderServices:
     """Tests for provider service functions."""
     
@@ -247,7 +253,7 @@ class TestProviderServices:
 # Provider API Tests
 # ============================================
 
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 class TestProviderAPI:
     """Tests for provider API endpoints."""
     

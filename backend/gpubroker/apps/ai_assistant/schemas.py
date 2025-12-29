@@ -108,3 +108,117 @@ class TemplateApplyResponse(Schema):
     workload_profile: Dict[str, Any] = Field(..., description="Generated workload profile")
     estimated_requirements: Dict[str, Any] = Field(..., description="Estimated GPU requirements")
     recommended_offers: Optional[List[Dict[str, Any]]] = Field(None, description="Recommended GPU offers")
+
+
+# ============================================
+# AI Context Awareness Schemas (Task 15.1)
+# Requirements: 25.1, 25.2, 25.3, 25.4
+# ============================================
+
+class ScreenContext(Schema):
+    """
+    Current screen context for AI awareness.
+    
+    Captures the user's current view state including active filters,
+    visible offers, and UI state for context-aware AI responses.
+    """
+    current_filters: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Active search/filter parameters (gpu_type, region, price_range, etc.)"
+    )
+    visible_offers: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Currently visible GPU offers on screen"
+    )
+    selected_offer_id: Optional[str] = Field(
+        None,
+        description="ID of currently selected/highlighted offer"
+    )
+    current_page: Optional[str] = Field(
+        None,
+        description="Current page/view name (dashboard, search, compare, etc.)"
+    )
+    sort_by: Optional[str] = Field(
+        None,
+        description="Current sort field"
+    )
+    sort_order: Optional[str] = Field(
+        None,
+        description="Sort order: asc or desc"
+    )
+
+
+class AnalyzeSearchRequest(Schema):
+    """Request to analyze current search context."""
+    screen_context: ScreenContext = Field(..., description="Current screen state")
+    user_id: Optional[str] = Field(None, description="User/session identifier")
+    question: Optional[str] = Field(
+        None,
+        description="Specific question about the search (optional)"
+    )
+
+
+class SearchInsight(Schema):
+    """A single insight about the search results."""
+    type: str = Field(..., description="Insight type: recommendation, warning, tip, observation")
+    title: str = Field(..., description="Short insight title")
+    description: str = Field(..., description="Detailed insight description")
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence score 0-1")
+    related_offers: Optional[List[str]] = Field(
+        None,
+        description="IDs of offers related to this insight"
+    )
+
+
+class AnalyzeSearchResponse(Schema):
+    """Response from search analysis."""
+    summary: str = Field(..., description="Brief summary of the search results")
+    insights: List[SearchInsight] = Field(
+        default_factory=list,
+        description="List of insights about the search"
+    )
+    best_match: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Best matching offer based on context"
+    )
+    suggestions: List[str] = Field(
+        default_factory=list,
+        description="Suggested filter adjustments or actions"
+    )
+    elapsed_ms: float = Field(..., description="Processing time in milliseconds")
+
+
+class ContextAwareChatRequest(Schema):
+    """Chat request with full screen context awareness."""
+    message: str = Field(..., min_length=1, description="User message")
+    user_id: Optional[str] = Field(None, description="User/session identifier")
+    screen_context: Optional[ScreenContext] = Field(
+        None,
+        description="Current screen context for awareness"
+    )
+    history: List[Dict[str, str]] = Field(
+        default_factory=list,
+        description="Conversation history [{role, content}]"
+    )
+
+
+class ContextAwareChatResponse(Schema):
+    """Response from context-aware chat."""
+    reply: str = Field(..., description="AI response")
+    context_used: bool = Field(
+        default=False,
+        description="Whether screen context was used in response"
+    )
+    referenced_offers: Optional[List[str]] = Field(
+        None,
+        description="IDs of offers referenced in response"
+    )
+    suggested_filters: Optional[Dict[str, Any]] = Field(
+        None,
+        description="Suggested filter changes based on conversation"
+    )
+    recommendations: Optional[List[Dict[str, Any]]] = Field(
+        None,
+        description="GPU recommendations"
+    )
+    elapsed_ms: float = Field(..., description="Processing time in milliseconds")

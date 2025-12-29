@@ -908,3 +908,401 @@ class WorkloadTemplateService:
 
 # Global template service instance
 workload_template_service = WorkloadTemplateService()
+
+
+# ============================================
+# AI Context Awareness Service (Task 15.1)
+# Requirements: 25.1, 25.2, 25.3, 25.4
+# ============================================
+
+class AIContextAwarenessService:
+    """
+    Service for AI context awareness features.
+    
+    Provides:
+    - Screen context integration for AI responses
+    - Search analysis and insights
+    - Context-aware chat with visible offers awareness
+    """
+    
+    def __init__(self):
+        self.ai_service = ai_assistant_service
+    
+    def analyze_search(
+        self,
+        screen_context: Dict[str, Any],
+        user_id: Optional[str] = None,
+        question: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Analyze current search context and provide insights.
+        
+        Args:
+            screen_context: Current screen state (filters, visible_offers, etc.)
+            user_id: Optional user identifier
+            question: Optional specific question about the search
+        
+        Returns:
+            Dict with summary, insights, best_match, suggestions
+        
+        Requirements: 25.1, 25.2, 25.3
+        """
+        import time
+        start = time.time()
+        
+        filters = screen_context.get("current_filters", {})
+        visible_offers = screen_context.get("visible_offers", [])
+        sort_by = screen_context.get("sort_by")
+        sort_order = screen_context.get("sort_order", "asc")
+        
+        insights = []
+        suggestions = []
+        best_match = None
+        
+        # Analyze visible offers
+        if visible_offers:
+            # Calculate statistics
+            prices = [o.get("price_per_hour", 0) for o in visible_offers if o.get("price_per_hour")]
+            vrams = [o.get("gpu_memory_gb", 0) for o in visible_offers if o.get("gpu_memory_gb")]
+            
+            if prices:
+                avg_price = sum(prices) / len(prices)
+                min_price = min(prices)
+                max_price = max(prices)
+                
+                # Price range insight
+                if max_price > min_price * 3:
+                    insights.append({
+                        "type": "observation",
+                        "title": "Wide Price Range",
+                        "description": f"Prices vary significantly from ${min_price:.2f} to ${max_price:.2f}/hr. Consider narrowing your search with price filters.",
+                        "confidence": 0.9,
+                        "related_offers": None
+                    })
+                
+                # Budget-friendly options
+                budget_offers = [o for o in visible_offers if o.get("price_per_hour", 999) < avg_price * 0.7]
+                if budget_offers:
+                    insights.append({
+                        "type": "recommendation",
+                        "title": "Budget-Friendly Options Available",
+                        "description": f"Found {len(budget_offers)} offers below average price. These may offer good value.",
+                        "confidence": 0.85,
+                        "related_offers": [o.get("id") for o in budget_offers[:3] if o.get("id")]
+                    })
+            
+            if vrams:
+                # VRAM distribution insight
+                high_vram = [o for o in visible_offers if o.get("gpu_memory_gb", 0) >= 48]
+                if high_vram and len(high_vram) < len(visible_offers) * 0.2:
+                    insights.append({
+                        "type": "tip",
+                        "title": "Limited High-VRAM Options",
+                        "description": f"Only {len(high_vram)} offers have 48GB+ VRAM. Consider expanding region filters for more options.",
+                        "confidence": 0.8,
+                        "related_offers": [o.get("id") for o in high_vram if o.get("id")]
+                    })
+            
+            # Availability insight
+            available = [o for o in visible_offers if o.get("availability_status") == "available"]
+            if len(available) < len(visible_offers) * 0.5:
+                insights.append({
+                    "type": "warning",
+                    "title": "Limited Availability",
+                    "description": f"Only {len(available)} of {len(visible_offers)} offers are immediately available. Consider booking soon.",
+                    "confidence": 0.95,
+                    "related_offers": None
+                })
+            
+            # Find best match based on sort criteria or balanced score
+            if visible_offers:
+                if sort_by == "price_per_hour" and sort_order == "asc":
+                    best_match = min(visible_offers, key=lambda x: x.get("price_per_hour", 999))
+                elif sort_by == "gpu_memory_gb" and sort_order == "desc":
+                    best_match = max(visible_offers, key=lambda x: x.get("gpu_memory_gb", 0))
+                else:
+                    # Balanced score: normalize price (lower better) and VRAM (higher better)
+                    def score(o):
+                        price = o.get("price_per_hour", 999)
+                        vram = o.get("gpu_memory_gb", 0)
+                        avail = 1 if o.get("availability_status") == "available" else 0.5
+                        # Lower price better, higher VRAM better, available better
+                        return (vram / max(vrams) if vrams and max(vrams) > 0 else 0) * 0.4 + \
+                               (1 - price / max(prices) if prices and max(prices) > 0 else 0) * 0.4 + \
+                               avail * 0.2
+                    best_match = max(visible_offers, key=score)
+        
+        # Generate suggestions based on filters
+        if not filters:
+            suggestions.append("Add filters to narrow down results (e.g., GPU type, region, price range)")
+        else:
+            if not filters.get("gpu_type"):
+                suggestions.append("Specify a GPU type for more targeted results")
+            if not filters.get("region"):
+                suggestions.append("Add a region filter to find nearby providers with lower latency")
+            if filters.get("price_max") and prices and min(prices) > filters.get("price_max", 0) * 0.8:
+                suggestions.append("Consider increasing your price limit for more options")
+        
+        # Generate summary
+        if visible_offers:
+            gpu_types = list(set(o.get("gpu_type", "Unknown") for o in visible_offers))
+            regions = list(set(o.get("region", "Unknown") for o in visible_offers))
+            summary = f"Found {len(visible_offers)} GPU offers across {len(gpu_types)} GPU types in {len(regions)} regions. "
+            if prices:
+                summary += f"Prices range from ${min(prices):.2f} to ${max(prices):.2f}/hr."
+        else:
+            summary = "No offers match your current filters. Try broadening your search criteria."
+            suggestions.append("Remove some filters to see more results")
+        
+        elapsed_ms = (time.time() - start) * 1000
+        
+        return {
+            "summary": summary,
+            "insights": insights,
+            "best_match": best_match,
+            "suggestions": suggestions,
+            "elapsed_ms": elapsed_ms
+        }
+    
+    async def context_aware_chat(
+        self,
+        message: str,
+        user_id: Optional[str] = None,
+        screen_context: Optional[Dict[str, Any]] = None,
+        history: Optional[List[Dict[str, str]]] = None
+    ) -> Dict[str, Any]:
+        """
+        Process chat with screen context awareness.
+        
+        Enriches the AI context with current screen state for
+        more relevant responses.
+        
+        Args:
+            message: User message
+            user_id: Optional user identifier
+            screen_context: Current screen state
+            history: Conversation history
+        
+        Returns:
+            Dict with reply, context_used, referenced_offers, etc.
+        
+        Requirements: 25.1, 25.2, 25.3, 25.4
+        """
+        import time
+        start = time.time()
+        
+        context_used = False
+        referenced_offers = []
+        suggested_filters = None
+        
+        # Build enriched context from screen state
+        enriched_context = {}
+        
+        if screen_context:
+            context_used = True
+            filters = screen_context.get("current_filters", {})
+            visible_offers = screen_context.get("visible_offers", [])
+            selected_offer_id = screen_context.get("selected_offer_id")
+            current_page = screen_context.get("current_page")
+            
+            # Add filters to context
+            if filters:
+                enriched_context["filters"] = filters
+            
+            # Summarize visible offers for context
+            if visible_offers:
+                offer_summary = self._summarize_offers(visible_offers)
+                enriched_context["visible_offers_summary"] = offer_summary
+                enriched_context["visible_offer_count"] = len(visible_offers)
+                
+                # If user asks about specific offers, include details
+                if any(kw in message.lower() for kw in ["this", "these", "current", "showing", "visible", "displayed"]):
+                    enriched_context["visible_offers"] = visible_offers[:10]  # Limit for context size
+            
+            # Include selected offer details
+            if selected_offer_id:
+                selected = next((o for o in visible_offers if o.get("id") == selected_offer_id), None)
+                if selected:
+                    enriched_context["selected_offer"] = selected
+                    referenced_offers.append(selected_offer_id)
+            
+            # Page context
+            if current_page:
+                enriched_context["current_page"] = current_page
+            
+            # Detect intent and suggest filter changes
+            suggested_filters = self._detect_filter_suggestions(message, filters, visible_offers)
+        
+        # Call the main chat service with enriched context
+        try:
+            result = await self.ai_service.chat(
+                message=message,
+                user_id=user_id,
+                context=enriched_context,
+                history=history
+            )
+            reply = result.get("reply", "")
+            recommendations = result.get("recommendations")
+        except ValueError as e:
+            # SomaAgent not configured - provide rule-based response
+            reply = self._generate_rule_based_response(message, enriched_context)
+            recommendations = None
+        
+        # Extract referenced offers from response
+        if screen_context and screen_context.get("visible_offers"):
+            for offer in screen_context["visible_offers"]:
+                offer_id = offer.get("id")
+                gpu_type = offer.get("gpu_type", "")
+                if offer_id and (offer_id in reply or gpu_type.lower() in reply.lower()):
+                    if offer_id not in referenced_offers:
+                        referenced_offers.append(offer_id)
+        
+        elapsed_ms = (time.time() - start) * 1000
+        
+        return {
+            "reply": reply,
+            "context_used": context_used,
+            "referenced_offers": referenced_offers if referenced_offers else None,
+            "suggested_filters": suggested_filters,
+            "recommendations": recommendations,
+            "elapsed_ms": elapsed_ms
+        }
+    
+    def _summarize_offers(self, offers: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Summarize visible offers for context."""
+        if not offers:
+            return {}
+        
+        prices = [o.get("price_per_hour", 0) for o in offers if o.get("price_per_hour")]
+        vrams = [o.get("gpu_memory_gb", 0) for o in offers if o.get("gpu_memory_gb")]
+        gpu_types = list(set(o.get("gpu_type", "Unknown") for o in offers))
+        regions = list(set(o.get("region", "Unknown") for o in offers))
+        providers = list(set(o.get("provider", "Unknown") for o in offers))
+        
+        return {
+            "count": len(offers),
+            "price_range": {"min": min(prices), "max": max(prices), "avg": sum(prices)/len(prices)} if prices else None,
+            "vram_range": {"min": min(vrams), "max": max(vrams)} if vrams else None,
+            "gpu_types": gpu_types[:5],
+            "regions": regions[:5],
+            "providers": providers[:5],
+            "available_count": len([o for o in offers if o.get("availability_status") == "available"])
+        }
+    
+    def _detect_filter_suggestions(
+        self,
+        message: str,
+        current_filters: Dict[str, Any],
+        visible_offers: List[Dict[str, Any]]
+    ) -> Optional[Dict[str, Any]]:
+        """Detect if user message implies filter changes."""
+        message_lower = message.lower()
+        suggestions = {}
+        
+        # GPU type mentions
+        gpu_keywords = {
+            "a100": "A100",
+            "h100": "H100",
+            "4090": "RTX 4090",
+            "rtx 4090": "RTX 4090",
+            "3090": "RTX 3090",
+            "rtx 3090": "RTX 3090",
+            "v100": "V100",
+            "l40": "L40S",
+            "a6000": "A6000"
+        }
+        for kw, gpu_type in gpu_keywords.items():
+            if kw in message_lower and current_filters.get("gpu_type") != gpu_type:
+                suggestions["gpu_type"] = gpu_type
+                break
+        
+        # Region mentions
+        region_keywords = {
+            "us-east": "us-east-1",
+            "us-west": "us-west-2",
+            "europe": "eu-west-1",
+            "eu-": "eu-west-1",
+            "asia": "ap-northeast-1",
+            "ap-": "ap-northeast-1"
+        }
+        for kw, region in region_keywords.items():
+            if kw in message_lower and current_filters.get("region") != region:
+                suggestions["region"] = region
+                break
+        
+        # Price mentions
+        if "cheap" in message_lower or "budget" in message_lower or "affordable" in message_lower:
+            if visible_offers:
+                prices = [o.get("price_per_hour", 0) for o in visible_offers if o.get("price_per_hour")]
+                if prices:
+                    suggestions["price_max"] = round(sum(prices) / len(prices) * 0.7, 2)
+        
+        if "expensive" in message_lower or "premium" in message_lower or "high-end" in message_lower:
+            if visible_offers:
+                prices = [o.get("price_per_hour", 0) for o in visible_offers if o.get("price_per_hour")]
+                if prices:
+                    suggestions["price_min"] = round(sum(prices) / len(prices) * 1.3, 2)
+        
+        # VRAM mentions
+        import re
+        vram_match = re.search(r'(\d+)\s*gb', message_lower)
+        if vram_match:
+            vram_value = int(vram_match.group(1))
+            if vram_value in [8, 10, 12, 16, 24, 32, 40, 48, 80]:
+                suggestions["gpu_memory_min"] = vram_value
+        
+        return suggestions if suggestions else None
+    
+    def _generate_rule_based_response(
+        self,
+        message: str,
+        context: Dict[str, Any]
+    ) -> str:
+        """Generate rule-based response when LLM is unavailable."""
+        message_lower = message.lower()
+        
+        # Check for common intents
+        if any(kw in message_lower for kw in ["recommend", "suggest", "best", "which"]):
+            summary = context.get("visible_offers_summary", {})
+            if summary:
+                count = summary.get("count", 0)
+                price_range = summary.get("price_range", {})
+                gpu_types = summary.get("gpu_types", [])
+                
+                if price_range:
+                    return f"Based on your current search showing {count} offers, " \
+                           f"prices range from ${price_range.get('min', 0):.2f} to ${price_range.get('max', 0):.2f}/hr. " \
+                           f"Available GPU types include: {', '.join(gpu_types[:3])}. " \
+                           f"For the best value, look for offers near the average price of ${price_range.get('avg', 0):.2f}/hr."
+            return "I can help you find the best GPU for your needs. Please describe your workload or apply some filters to narrow down the options."
+        
+        if any(kw in message_lower for kw in ["compare", "difference", "vs", "versus"]):
+            return "To compare GPUs, select multiple offers from your search results. I can help analyze the differences in price, performance, and availability."
+        
+        if any(kw in message_lower for kw in ["price", "cost", "expensive", "cheap"]):
+            summary = context.get("visible_offers_summary", {})
+            price_range = summary.get("price_range", {})
+            if price_range:
+                return f"Current prices range from ${price_range.get('min', 0):.2f} to ${price_range.get('max', 0):.2f}/hr. " \
+                       f"The average is ${price_range.get('avg', 0):.2f}/hr. Use the price filter to narrow down to your budget."
+            return "I can help you find GPUs within your budget. What's your target price range per hour?"
+        
+        if any(kw in message_lower for kw in ["available", "availability", "now", "immediately"]):
+            summary = context.get("visible_offers_summary", {})
+            available = summary.get("available_count", 0)
+            total = summary.get("count", 0)
+            if total > 0:
+                return f"{available} out of {total} offers are immediately available. Filter by 'Available' status to see only ready-to-use GPUs."
+            return "Check the availability status filter to find GPUs that are ready to use immediately."
+        
+        # Default response
+        filters = context.get("filters", {})
+        if filters:
+            filter_desc = ", ".join(f"{k}={v}" for k, v in filters.items())
+            return f"I see you're searching with filters: {filter_desc}. How can I help you refine your search or find the best GPU for your needs?"
+        
+        return "I'm here to help you find the perfect GPU. Tell me about your workload (e.g., LLM inference, image generation, training) and I'll suggest the best options."
+
+
+# Global context awareness service instance
+ai_context_service = AIContextAwarenessService()

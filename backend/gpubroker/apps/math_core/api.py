@@ -43,7 +43,7 @@ topsis_engine = TOPSISEngine()
 # ============================================
 
 @router.post("/cost-per-token", response=CostPerTokenResponse)
-def calculate_cost_per_token(request, payload: CostPerTokenRequest):
+async def calculate_cost_per_token(request, payload: CostPerTokenRequest):
     """
     Calculate cost per token for LLM inference workloads.
     
@@ -64,7 +64,7 @@ def calculate_cost_per_token(request, payload: CostPerTokenRequest):
 
 
 @router.post("/cost-per-gflop", response=CostPerGFLOPResponse)
-def calculate_cost_per_gflop(request, payload: CostPerGFLOPRequest):
+async def calculate_cost_per_gflop(request, payload: CostPerGFLOPRequest):
     """
     Calculate cost per GFLOP for compute workloads.
     """
@@ -83,7 +83,7 @@ def calculate_cost_per_gflop(request, payload: CostPerGFLOPRequest):
 
 
 @router.post("/efficiency-score", response=EfficiencyScoreResponse)
-def calculate_efficiency_score(request, payload: EfficiencyScoreRequest):
+async def calculate_efficiency_score(request, payload: EfficiencyScoreRequest):
     """
     Calculate overall efficiency score combining price, performance, and reliability.
     """
@@ -105,7 +105,7 @@ def calculate_efficiency_score(request, payload: EfficiencyScoreRequest):
 # ============================================
 
 @router.post("/topsis", response=TOPSISResponse)
-def run_topsis(request, payload: TOPSISRequest):
+async def run_topsis(request, payload: TOPSISRequest):
     """
     Execute TOPSIS (Technique for Order of Preference by Similarity to Ideal Solution).
     
@@ -137,7 +137,7 @@ def run_topsis(request, payload: TOPSISRequest):
 # ============================================
 
 @router.post("/ensemble-recommend", response=EnsembleRecommendResponse)
-def ensemble_recommend(request, payload: EnsembleRecommendRequest):
+async def ensemble_recommend(request, payload: EnsembleRecommendRequest):
     """
     Generate recommendations using weighted ensemble of algorithms.
     
@@ -228,7 +228,7 @@ def ensemble_recommend(request, payload: EnsembleRecommendRequest):
 # ============================================
 
 @router.post("/estimate-workload", response=WorkloadEstimateResponse)
-def estimate_workload(request, payload: WorkloadEstimateRequest):
+async def estimate_workload(request, payload: WorkloadEstimateRequest):
     """
     Estimate GPU requirements for a given workload.
     
@@ -255,7 +255,7 @@ def estimate_workload(request, payload: WorkloadEstimateRequest):
 # ============================================
 
 @router.get("/benchmarks", response=BenchmarkListResponse)
-def list_benchmarks(request):
+async def list_benchmarks(request):
     """
     List all GPU benchmarks in the database.
     """
@@ -267,7 +267,7 @@ def list_benchmarks(request):
 
 
 @router.get("/benchmarks/{gpu_type}", response=GPUBenchmarkSchema)
-def get_benchmark(request, gpu_type: str):
+async def get_benchmark(request, gpu_type: str):
     """
     Get benchmark data for a specific GPU type.
     """

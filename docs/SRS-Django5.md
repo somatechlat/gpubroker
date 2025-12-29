@@ -4,7 +4,7 @@
 
 **Document Version:** 2.0.0  
 **Date:** 2025-12-28  
-**Status:** Baseline for Django 5 Migration  
+**Status:** Django 5 implementation present in repo; migration checklist partially complete  
 **Owner:** Agent Zero (agent0)  
 **Standards:** ISO/IEC/IEEE 29148:2018, ISO/IEC 25010:2011, ISO/IEC 27001:2022, ISO/IEC 12207:2017
 
@@ -1522,39 +1522,39 @@ All API errors follow consistent format:
 
 | Provider | Adapter | Status | API Type |
 |----------|---------|--------|----------|
-| AWS SageMaker | aws_sagemaker | Active | REST |
-| Azure ML | azure_ml | Active | REST |
-| Google Vertex AI | google_vertex_ai | Active | REST |
-| RunPod | runpod | Active | REST |
-| Lambda Labs | lambdalabs | Active | REST |
-| Paperspace | paperspace | Active | REST |
-| Groq | groq | Active | REST |
-| Replicate | replicate | Active | REST |
-| DeepInfra | deepinfra | Active | REST |
-| Cerebras | cerebras | Active | REST |
-| Scale AI | scaleai | Active | REST |
-| Alibaba Cloud | alibaba | Active | REST |
-| Tencent Cloud | tencent | Active | REST |
-| Oracle OCI | oracle_oci | Active | REST |
-| NVIDIA DGX | nvidia_dgx | Active | REST |
-| IBM Watson | ibm_watson | Active | REST |
-| Spell | spell | Active | REST |
-| Kaggle | kaggle | Active | REST |
-| Run:AI | runai | Active | REST |
-| Vast.ai | vastai | Active | REST |
+| RunPod | runpod | Implemented (adapter module present) | REST |
+| Vast.ai | vastai | Implemented (adapter module present) | REST |
+| AWS SageMaker | aws_sagemaker | Registry entry only (module missing) | REST |
+| Azure ML | azure_ml | Registry entry only (module missing) | REST |
+| Google Vertex AI | google_vertex_ai | Registry entry only (module missing) | REST |
+| Lambda Labs | lambdalabs | Registry entry only (module missing) | REST |
+| Paperspace | paperspace | Registry entry only (module missing) | REST |
+| Groq | groq | Registry entry only (module missing) | REST |
+| Replicate | replicate | Registry entry only (module missing) | REST |
+| DeepInfra | deepinfra | Registry entry only (module missing) | REST |
+| Cerebras | cerebras | Registry entry only (module missing) | REST |
+| Scale AI | scaleai | Registry entry only (module missing) | REST |
+| Alibaba Cloud | alibaba | Registry entry only (module missing) | REST |
+| Tencent Cloud | tencent | Registry entry only (module missing) | REST |
+| Oracle OCI | oracle_oci | Registry entry only (module missing) | REST |
+| NVIDIA DGX | nvidia_dgx | Registry entry only (module missing) | REST |
+| IBM Watson | ibm_watson | Registry entry only (module missing) | REST |
+| Spell | spell | Registry entry only (module missing) | REST |
+| Kaggle | kaggle | Registry entry only (module missing) | REST |
+| Run:AI | runai | Registry entry only (module missing) | REST |
 
 ### 9.4 Migration Checklist
 
-- [ ] Django project structure created
+- [x] Django project structure created
 - [ ] Django ORM models migrated from SQL schema
-- [ ] Django Ninja API routers implemented
-- [ ] Django Channels WebSocket consumers implemented
-- [ ] Authentication backend migrated
+- [x] Django Ninja API routers implemented
+- [x] Django Channels WebSocket consumers implemented
+- [x] Authentication backend migrated
 - [ ] Provider adapters migrated
-- [ ] Math Core algorithms migrated
-- [ ] KPI calculations migrated
-- [ ] AI Assistant client migrated
-- [ ] Redis cache integration
+- [x] Math Core algorithms migrated
+- [x] KPI calculations migrated
+- [x] AI Assistant client migrated
+- [x] Redis cache integration
 - [ ] Vault integration
 - [ ] Unit tests passing
 - [ ] Integration tests passing
@@ -1562,9 +1562,15 @@ All API errors follow consistent format:
 - [ ] Security scan clean
 - [ ] Documentation updated
 
+Notes:
+- ORM models exist for auth/providers/math_core; kpi/ai_assistant/websocket are model-less placeholders.
+- Adapter registry lists 20 providers; only RunPod and Vast.ai adapters are implemented in repo.
+- Vault client exists in `backend/shared/vault_client.py`; provider API keys currently come from user preferences or env.
+- Test/benchmark/scan items are not verified in this document.
+
 ---
 
 **Document End**
 
 *This SRS is maintained in version control and updated with each release.*
-*Last reviewed: 2025-12-28*
+*Last reviewed: 2025-12-29*

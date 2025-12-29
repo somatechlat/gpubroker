@@ -72,32 +72,41 @@ All endpoints available at `/api/v2/`:
 
 ## 🎯 Key Features
 
-### **Provider Adapters**
-Adapters implemented for RunPod, Vast.ai, Lambda Labs, Paperspace, AWS SageMaker, Azure ML, Google Vertex AI, Groq, Replicate, CoreWeave, IBM Watson, Oracle OCI, Alibaba, Tencent, DeepInfra, Cerebras, ScaleAI, Spell, Kaggle, Run:AI, NVIDIA DGX.
+### **Provider Adapters (Repo-Verified)**
+Implemented adapters in this repo:
+- RunPod
+- Vast.ai
 
-### **AI-Powered Intelligence**
-- **Cost-per-Token KPIs** — Real calculations for LLM workloads
-- **Risk-Adjusted Pricing** — Provider reliability scoring
-- **GPUAgenticHelper** — Natural language queries and recommendations
-- **Project Wizard** — Description → Infrastructure → Terraform
+The registry lists additional provider names, but their adapter modules are not present in this repo and are skipped at runtime.
 
-### **Real-Time Features**
-- **Live Price Updates** — WebSocket feeds via Django Channels
-- **Market Trend Analysis** — Historical data and predictions
-- **Compliance Tracking** — GDPR, SOC-2, data residency
-- **Performance Benchmarks** — Real GPU GFLOPS and token rates
+### **AI-Powered Intelligence (Repo-Verified)**
+- **Cost-per-Token / Cost-per-GFLOP KPIs** — Math Core calculations
+- **TOPSIS + Ensemble Ranking** — /math endpoints for ranking offers
+- **AI Assistant** — SomaAgent-backed chat + workload parsing (requires `SOMA_AGENT_BASE`)
+- **Workload Templates** — Template endpoints with optional offer enrichment
+
+### **Real-Time & Data (Repo-Verified)**
+- **Live Price Updates** — WebSocket consumers via Django Channels
+- **Benchmark Data** — GPU specs and token rates in Math Core
+
+### **Planned / Not Yet Implemented in Repo**
+- Booking/Billing/Kill Bill integration
+- Provider adapters beyond RunPod/Vast.ai
+- Compliance engine and full observability runbook items
+- Helm/Kubernetes manifests and production deployment assets
 
 ## 📊 Service Status
 
-| Component | Status | Technology |
-|-----------|--------|------------|
-| 🔐 Auth | ✅ Complete | Django + JWT (RS256) |
-| 🔌 Providers | ✅ Complete | Django Ninja + Adapters |
-| 📊 KPI | ✅ Complete | Django ORM + Aggregations |
-| 🧠 Math Core | ✅ Complete | NumPy + TOPSIS |
-| 🤖 AI Assistant | ✅ Complete | httpx + SomaAgent |
-| 🔔 WebSocket | ✅ Complete | Django Channels |
-| 🌐 Frontend | ✅ Complete | Next.js 14 |
+| Component | Status | Notes |
+|-----------|--------|-------|
+| 🔐 Auth | Implemented | Django Ninja endpoints + models/tests present |
+| 🔌 Providers | Partial | DB/API present; adapters implemented: RunPod, Vast.ai |
+| 📊 KPI | Implemented | KPI services + endpoints; models are placeholders |
+| 🧠 Math Core | Implemented | TOPSIS + KPI calculations + ensemble |
+| 🤖 AI Assistant | Implemented | SomaAgent client; requires `SOMA_AGENT_BASE` |
+| 🔔 WebSocket | Implemented | Channels consumers + Redis channel layer |
+| 🌐 Frontend | Partial | Pages/components exist; missing `src/lib` modules; analytics placeholder |
+| 💳 Booking/Billing | Not implemented | No backend app/endpoints in repo |
 
 ## 🛠️ Development Commands
 
