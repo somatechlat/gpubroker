@@ -1,0 +1,234 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout - GPUBROKER</title>
+    <link rel="stylesheet" href="{% static 'gpubrokeradmin/css/admin.css' %}">
+</head>
+<body>
+    <div class="admin-container">
+        <header class="admin-header">
+            <h1>Finaliza tu Suscripcion</h1>
+            <p>GPUBROKER POD - Tu Agente de GPU</p>
+        </header>
+
+        <main class="checkout-content">
+            <!-- Step 1: RUC Validation -->
+            <section class="ruc-validation card" id="step1">
+                <h2>1. Verifica tu Identidad</h2>
+                <p class="hint">Ingresa tu RUC o Cédula para continuar</p>
+
+                <div class="form-group">
+                    <label for="identifier">RUC (13 dígitos) o Cédula (10 dígitos)</label>
+                    <input type="text" id="identifier" name="identifier" required placeholder="1790869571001"
+                        maxlength="13" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                    <div class="validation-status" id="validationStatus"></div>
+                </div>
+
+                <button type="button" class="btn-primary" id="validateBtn" onclick="validateIdentity()">
+                    Verificar Identidad
+                </button>
+            </section>
+
+            <!-- Plan Summary -->
+            <section class="plan-summary card" id="planSection" style="display: none;">
+                <h2>Plan Seleccionado</h2>
+                <div class="plan-details">
+                    <span class="plan-name" id="planName">Profesional</span>
+                    <span class="plan-price" id="planPrice">$40 USD/mes</span>
+                </div>
+                <ul class="plan-features">
+                    <li>GPUBROKER Agent AI ilimitado</li>
+                    <li>10,000 tokens mensuales</li>
+                    <li>Acceso a 20+ proveedores GPU</li>
+                    <li>Optimización automática de costos</li>
+                    <li>Soporte email 24h</li>
+                </ul>
+            </section>
+
+            <!-- Payment Form -->
+            <section class="payment-form card" id="step2" style="display: none;">
+                <h2>2. Datos de Pago</h2>
+                <form id="checkoutForm">
+                    <div class="form-group">
+                        <label for="email">Email Corporativo</label>
+                        <input type="email" id="email" name="email" required placeholder="tu@empresa.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="name">Nombre Completo</label>
+                        <input type="text" id="name" name="name" required placeholder="Juan Pérez">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cardNumber">Número de Tarjeta</label>
+                        <input type="text" id="cardNumber" name="cardNumber" required placeholder="4242 4242 4242 4242"
+                            maxlength="19" oninput="formatCardNumber(this)">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group half">
+                            <label for="expiry">Vencimiento</label>
+                            <input type="text" id="expiry" name="expiry" required placeholder="MM/YY" maxlength="5"
+                                oninput="formatExpiry(this)">
+                        </div>
+                        <div class="form-group half">
+                            <label for="cvv">CVV</label>
+                            <input type="text" id="cvv" name="cvv" required placeholder="123" maxlength="4"
+                                oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                        </div>
+                    </div>
+
+                    <div class="terms">
+                        <input type="checkbox" id="terms" required>
+                        <label for="terms">
+                            Acepto los <a href="/terminos" target="_blank">Términos de Servicio</a>
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn-primary" id="payBtn">
+                        Pagar y Activar GPUBROKER POD
+                    </button>
+                </form>
+            </section>
+        </main>
+
+        <footer class="admin-footer">
+            <p>Pago seguro - GPUBROKER</p>
+        </footer>
+    </div>
+
+    <script>
+        let validatedIdentifier = null;
+        let identifierType = null;
+        const urlParams = new URLSearchParams(window.location.search);
+        const plan = urlParams.get('plan') || 'pro';
+
+        const planConfig = {
+            trial: { name: 'Prueba Gratuita', price: '$0 USD', priceNum: 0, tokens: 1000 },
+            basic: { name: 'Básico', price: '$20 USD/mes', priceNum: 20, tokens: 5000 },
+            pro: { name: 'Profesional', price: '$40 USD/mes', priceNum: 40, tokens: 10000 },
+            corp: { name: 'Corporativo', price: '$99 USD/mes', priceNum: 99, tokens: 50000 }
+        };
+
+        const config = planConfig[plan] || planConfig.pro;
+        document.getElementById('planName').textContent = config.name;
+        document.getElementById('planPrice').textContent = config.price;
+
+        async function validateIdentity() {
+            const identifier = document.getElementById('identifier').value.trim();
+            const statusEl = document.getElementById('validationStatus');
+            const validateBtn = document.getElementById('validateBtn');
+
+            if (!identifier) {
+                statusEl.innerHTML = '<span class="error">Ingresa tu RUC o Cedula</span>';
+                return;
+            }
+
+            validateBtn.disabled = true;
+            validateBtn.textContent = 'Verificando...';
+            statusEl.innerHTML = '<span class="loading">Validando...</span>';
+
+            try {
+                const response = await fetch('/api/v2/validate/identity', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ identifier: identifier })
+                });
+                const result = await response.json();
+
+                if (result.valid) {
+                    validatedIdentifier = identifier;
+                    identifierType = result.type;
+                    statusEl.innerHTML = `<span class="success">${result.message}</span>`;
+                    document.getElementById('step1').classList.add('done');
+                    document.getElementById('planSection').style.display = 'block';
+                    document.getElementById('step2').style.display = 'block';
+                    document.getElementById('identifier').disabled = true;
+                    validateBtn.style.display = 'none';
+                } else {
+                    statusEl.innerHTML = `<span class="error">${result.message}</span>`;
+                    validateBtn.disabled = false;
+                    validateBtn.textContent = 'Verificar Identidad';
+                }
+            } catch (err) {
+                statusEl.innerHTML = '<span class="error">Error de conexion.</span>';
+                validateBtn.disabled = false;
+                validateBtn.textContent = 'Verificar Identidad';
+            }
+        }
+
+        document.getElementById('checkoutForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!validatedIdentifier) {
+                alert('Primero debes verificar tu RUC o Cédula');
+                return;
+            }
+
+            const email = document.getElementById('email').value;
+            const name = document.getElementById('name').value;
+            const payBtn = document.getElementById('payBtn');
+            payBtn.disabled = true;
+            payBtn.textContent = 'Procesando...';
+
+            try {
+                const response = await fetch('/api/v2/subscription/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: email,
+                        name: name,
+                        plan: plan,
+                        amount: config.priceNum,
+                        ruc: validatedIdentifier,
+                        payment_provider: 'card',
+                        card_last4: document.getElementById('cardNumber').value.slice(-4)
+                    })
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    sessionStorage.setItem('api_key', result.api_key);
+                    sessionStorage.setItem('pod_id', result.pod_id);
+                    window.location.href = '/activate?key=' + result.api_key;
+                } else {
+                    alert('Error: ' + (result.error || 'No se pudo procesar el pago'));
+                    payBtn.disabled = false;
+                    payBtn.textContent = 'Pagar y Activar GPUBROKER POD';
+                }
+            } catch (err) {
+                alert('Error de conexión.');
+                payBtn.disabled = false;
+                payBtn.textContent = 'Pagar y Activar GPUBROKER POD';
+            }
+        });
+
+        function formatCardNumber(input) {
+            let value = input.value.replace(/\s/g, '').replace(/[^0-9]/g, '');
+            let formatted = value.match(/.{1,4}/g)?.join(' ') || value;
+            input.value = formatted;
+        }
+
+        function formatExpiry(input) {
+            let value = input.value.replace(/[^0-9]/g, '');
+            if (value.length >= 2) {
+                value = value.slice(0, 2) + '/' + value.slice(2);
+            }
+            input.value = value;
+        }
+    </script>
+
+    <style>
+        .validation-status { margin-top: 12px; font-size: 14px; }
+        .validation-status .error { color: #dc2626; }
+        .validation-status .success { color: #16a34a; }
+        .validation-status .loading { color: #2563eb; }
+        .hint { color: #666; margin-bottom: 16px; font-size: 14px; }
+        .done { opacity: 0.7; }
+        .form-row { display: flex; gap: 16px; }
+        .half { flex: 1; }
+    </style>
+</body>
+</html>

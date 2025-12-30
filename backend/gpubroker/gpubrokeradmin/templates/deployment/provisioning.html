@@ -1,0 +1,178 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Desplegando GPUBROKER POD</title>
+    <link rel="stylesheet" href="{% static 'gpubrokeradmin/css/admin.css' %}">
+</head>
+<body>
+    <div class="admin-container">
+        <header class="admin-header">
+            <h1>Desplegando tu GPUBROKER POD</h1>
+            <p>Esto tomará aproximadamente 2 minutos</p>
+        </header>
+
+        <main class="provisioning-content">
+            <section class="progress-card card">
+                <div class="progress-container">
+                    <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+                </div>
+                <p class="progress-text" id="progressText">0%</p>
+
+                <div class="deploy-steps">
+                    <div class="step" id="step1">
+                        <span class="step-icon">○</span>
+                        <span class="step-text">Validando API Key</span>
+                    </div>
+                    <div class="step" id="step2">
+                        <span class="step-icon">○</span>
+                        <span class="step-text">Creando GPUBROKER POD en AWS</span>
+                    </div>
+                    <div class="step" id="step3">
+                        <span class="step-icon">○</span>
+                        <span class="step-text">Configurando Agent Zero</span>
+                    </div>
+                    <div class="step" id="step4">
+                        <span class="step-icon">○</span>
+                        <span class="step-text">Asignando URL única</span>
+                    </div>
+                    <div class="step" id="step5">
+                        <span class="step-icon">○</span>
+                        <span class="step-text">¡Listo!</span>
+                    </div>
+                </div>
+
+                <p class="wait-message" id="waitMessage">
+                    Por favor no cierres esta ventana...
+                </p>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const apiKey = new URLSearchParams(window.location.search).get('key')
+            || sessionStorage.getItem('api_key');
+
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        const waitMessage = document.getElementById('waitMessage');
+
+        const steps = [
+            { id: 'step1', text: 'Validando API Key' },
+            { id: 'step2', text: 'Creando GPUBROKER POD en AWS' },
+            { id: 'step3', text: 'Configurando Agent Zero' },
+            { id: 'step4', text: 'Asignando URL única' },
+            { id: 'step5', text: '¡Listo!' }
+        ];
+
+        function updateStep(index, status) {
+            const step = document.getElementById(steps[index].id);
+            const icon = step.querySelector('.step-icon');
+            step.classList.remove('active', 'complete');
+
+            if (status === 'active') {
+                step.classList.add('active');
+                icon.textContent = '⟳';
+            } else if (status === 'complete') {
+                step.classList.add('complete');
+                icon.textContent = '✓';
+            }
+        }
+
+        async function pollStatus() {
+            try {
+                const response = await fetch('/api/v2/pod/status?key=' + apiKey);
+                const data = await response.json();
+
+                const progress = data.progress || 30;
+                progressBar.style.width = progress + '%';
+                progressText.textContent = progress + '%';
+
+                for (let i = 0; i < steps.length; i++) {
+                    const threshold = (i + 1) * 20;
+                    if (progress >= threshold) {
+                        updateStep(i, 'complete');
+                    } else if (progress >= threshold - 20) {
+                        updateStep(i, 'active');
+                    }
+                }
+
+                if (data.status === 'running' && data.pod_url) {
+                    waitMessage.textContent = '✅ ¡Tu GPUBROKER POD está listo!';
+                    setTimeout(() => {
+                        window.location.href = '/ready?pod_url=' + encodeURIComponent(data.pod_url);
+                    }, 1500);
+                } else if (data.status === 'failed') {
+                    waitMessage.textContent = '❌ Error en el deploy. Contacta soporte.';
+                } else {
+                    setTimeout(pollStatus, 3000);
+                }
+            } catch (err) {
+                console.error('Polling error:', err);
+                setTimeout(pollStatus, 5000);
+            }
+        }
+
+        // Start polling
+        updateStep(0, 'active');
+        progressBar.style.width = '10%';
+        progressText.textContent = '10%';
+        pollStatus();
+    </script>
+
+    <style>
+        .progress-container {
+            background: #e5e7eb;
+            border-radius: 9999px;
+            height: 8px;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+        .progress-bar {
+            background: #22c55e;
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+        .progress-text {
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 24px;
+        }
+        .deploy-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border-radius: 8px;
+            background: #f9fafb;
+        }
+        .step.active {
+            background: #dbeafe;
+        }
+        .step.complete {
+            background: #dcfce7;
+        }
+        .step-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        .wait-message {
+            text-align: center;
+            margin-top: 24px;
+            color: #6b7280;
+        }
+    </style>
+</body>
+</html>

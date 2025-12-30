@@ -15,18 +15,19 @@ from typing import Dict, Tuple
 import pytest
 
 # Set Django settings BEFORE any Django imports
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'gpubroker.settings.test')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings.test')
 
-# Patch models to be managed BEFORE Django setup
+import django
+django.setup()
+
+# Patch models to be managed AFTER Django setup
 # This is critical for migrations to work
 def patch_models_managed():
     """Patch all models to have managed=True for testing."""
     from django.apps import apps
     for model in apps.get_models():
-        model._meta.managed = True
-
-import django
-django.setup()
+        if hasattr(model._meta, 'managed'):
+            model._meta.managed = True
 
 # Apply the patch after Django setup
 patch_models_managed()
@@ -39,7 +40,7 @@ patch_models_managed()
 @pytest.fixture
 def test_user(db):
     """Create a test user."""
-    from apps.auth_app.models import User
+    from gpubrokerpod.gpubrokerapp.apps.auth_app.models import User
     
     user = User.objects.create(
         id=uuid.uuid4(),
@@ -56,7 +57,7 @@ def test_user(db):
 @pytest.fixture
 def test_user_tokens(test_user) -> Tuple[str, str]:
     """Create JWT tokens for test user."""
-    from apps.auth_app.auth import create_access_token, create_refresh_token
+    from gpubrokerpod.gpubrokerapp.apps.auth_app.auth import create_access_token, create_refresh_token
     
     token_data = {
         'sub': test_user.email,
@@ -77,7 +78,7 @@ def auth_headers(test_user_tokens) -> Dict[str, str]:
 @pytest.fixture
 def test_provider(db):
     """Create a test provider."""
-    from apps.providers.models import Provider
+    from gpubrokerpod.gpubrokerapp.apps.providers.models import Provider
     
     provider = Provider.objects.create(
         id=uuid.uuid4(),
@@ -93,7 +94,7 @@ def test_provider(db):
 @pytest.fixture
 def test_gpu_offers(db, test_provider):
     """Create test GPU offers."""
-    from apps.providers.models import GPUOffer
+    from gpubrokerpod.gpubrokerapp.apps.providers.models import GPUOffer
     
     offers = []
     gpu_types = [
@@ -128,7 +129,7 @@ def test_gpu_offers(db, test_provider):
 @pytest.fixture
 def test_benchmark(db):
     """Create a test GPU benchmark."""
-    from apps.math_core.models import GPUBenchmark
+    from gpubrokerpod.gpubrokerapp.apps.math_core.models import GPUBenchmark
     
     benchmark = GPUBenchmark.objects.create(
         id=uuid.uuid4(),
@@ -169,7 +170,7 @@ def async_client():
 def api_client():
     """Django Ninja test client for API v2 (session-scoped to avoid multiple instance errors)."""
     from ninja.testing import TestAsyncClient
-    from gpubroker.api.v2 import api
+    from config.api import api
     return TestAsyncClient(api)
 
 
@@ -180,21 +181,21 @@ def api_client():
 @pytest.fixture
 def kpi_calculator():
     """KPI Calculator instance."""
-    from apps.math_core.services import KPICalculator
+    from gpubrokerpod.gpubrokerapp.apps.math_core.services import KPICalculator
     return KPICalculator()
 
 
 @pytest.fixture
 def workload_mapper():
     """Workload Mapper instance."""
-    from apps.math_core.services import WorkloadMapper
+    from gpubrokerpod.gpubrokerapp.apps.math_core.services import WorkloadMapper
     return WorkloadMapper()
 
 
 @pytest.fixture
 def topsis_engine():
     """TOPSIS Engine instance."""
-    from apps.math_core.algorithms.topsis import TOPSISEngine
+    from gpubrokerpod.gpubrokerapp.apps.math_core.algorithms.topsis import TOPSISEngine
     return TOPSISEngine()
 
 

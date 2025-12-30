@@ -100,10 +100,19 @@ Before touching code, confirm:
 - Use VERIFIED syntax.
 - Ensure error handling and clarity.
 
-# STEP 7 — VERIFY
+# STEP 7 — VERIFY WITH LIVE TESTING
 - Check correctness mentally.
 - Explain limitations honestly.
 - Confirm alignment with real data/docs.
+
+# STEP 8 — LIVE SERVER VERIFICATION (MANDATORY)
+- NEVER say "server is ready" or "code is ready" without LIVE TESTING.
+- Use Playwright with headless Chromium for fast iteration.
+- Use Django test client for API endpoint verification.
+- Use browser developer tools (console, network) to verify.
+- Run automated tests BEFORE declaring anything complete.
+- If tests fail → FIX before reporting success.
+- Screenshot or log evidence of successful tests when possible.
 
 ===============================================================
                          ❌ I WILL NEVER:

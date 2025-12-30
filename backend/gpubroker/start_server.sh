@@ -1,7 +1,7 @@
 #!/bin/bash
 # GPUBROKER Django Development Server Startup Script
 
-export DJANGO_SETTINGS_MODULE=gpubroker.settings.development
+export DJANGO_SETTINGS_MODULE=config.settings.development
 export DATABASE_URL=postgresql://gpubroker:gpubroker_dev_password@localhost:28001/gpubroker_dev
 export REDIS_URL=redis://localhost:28004/0
 
