@@ -434,7 +434,10 @@
                         </svg>
                         <span class="footer__logo-text">GPU<span>BROKER</span></span>
                     </a>
-                    <p class="footer__description">Plataforma de GPU Brokerage con Agentes IA. Desarrollado por SOMATECH DEV.</p>
+                    <p class="footer__description">Plataforma de GPU Brokerage con Agentes IA.</p>
+                    <p class="footer__developer">
+                        Desarrollado por <a href="https://www.somatech.dev" target="_blank" rel="noopener">SOMATECH</a>
+                    </p>
                 </div>
                 
                 <div class="footer__col">
@@ -449,8 +452,9 @@
                 <div class="footer__col">
                     <h4 class="footer__heading">Legal</h4>
                     <nav class="footer__nav">
-                        <a href="/terms" class="footer__link">Términos de Servicio</a>
-                        <a href="/privacy" class="footer__link">Política de Privacidad</a>
+                        <a href="legal/terms-of-service.html" class="footer__link">Términos de Servicio</a>
+                        <a href="legal/privacy-policy.html" class="footer__link">Política de Privacidad</a>
+                        <a href="legal/cookie-policy.html" class="footer__link">Política de Cookies</a>
                     </nav>
                 </div>
                 
@@ -458,15 +462,32 @@
                     <h4 class="footer__heading">Contacto</h4>
                     <nav class="footer__nav">
                         <a href="mailto:soporte@gpubroker.live" class="footer__link">soporte@gpubroker.live</a>
+                        <a href="https://www.somatech.dev" target="_blank" rel="noopener" class="footer__link">www.somatech.dev</a>
                     </nav>
                 </div>
             </div>
             
             <div class="footer__bottom">
                 <p class="footer__copyright">© <span id="currentYear">2025</span> GPUBROKER. Todos los derechos reservados.</p>
+                <p class="footer__jurisdiction">Jurisdicción: República del Ecuador · Tribunales de Quito</p>
             </div>
         </div>
     </footer>
+
+    <!-- Cookie Consent Banner -->
+    <div class="cookie-banner" id="cookieBanner">
+        <div class="cookie-banner__content">
+            <p class="cookie-banner__text">
+                Utilizamos cookies para mejorar tu experiencia. Al continuar navegando, aceptas nuestra 
+                <a href="legal/cookie-policy.html">Política de Cookies</a> y 
+                <a href="legal/privacy-policy.html">Política de Privacidad</a>.
+            </p>
+            <div class="cookie-banner__actions">
+                <button class="cookie-banner__btn cookie-banner__btn--accept" id="acceptCookies">Aceptar</button>
+                <button class="cookie-banner__btn cookie-banner__btn--settings" id="cookieSettings">Configurar</button>
+            </div>
+        </div>
+    </div>
 
     <script src="js/main.js"></script>
 </body>

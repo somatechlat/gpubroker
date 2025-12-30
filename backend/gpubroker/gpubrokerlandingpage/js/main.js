@@ -15,6 +15,9 @@
     const navLinks = document.querySelectorAll('.nav__link, .mobile-menu__link');
     const planButtons = document.querySelectorAll('[data-plan]');
     const currentYearEl = document.getElementById('currentYear');
+    const cookieBanner = document.getElementById('cookieBanner');
+    const acceptCookiesBtn = document.getElementById('acceptCookies');
+    const cookieSettingsBtn = document.getElementById('cookieSettings');
 
     // ============================================
     // Navigation - Scroll Effect
@@ -240,5 +243,85 @@
     // Initialize
     // ============================================
     console.log('GPUBROKER Landing Page initialized');
+
+    // ============================================
+    // Cookie Consent Management
+    // ============================================
+    const COOKIE_CONSENT_KEY = 'gpubroker_cookie_consent';
+    const COOKIE_CONSENT_EXPIRY = 365; // days
+
+    function getCookieConsent() {
+        try {
+            return localStorage.getItem(COOKIE_CONSENT_KEY);
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function setCookieConsent(value) {
+        try {
+            localStorage.setItem(COOKIE_CONSENT_KEY, value);
+        } catch (e) {
+            console.warn('Could not save cookie consent to localStorage');
+        }
+    }
+
+    function showCookieBanner() {
+        if (cookieBanner) {
+            setTimeout(function() {
+                cookieBanner.classList.add('cookie-banner--visible');
+            }, 1000); // Show after 1 second
+        }
+    }
+
+    function hideCookieBanner() {
+        if (cookieBanner) {
+            cookieBanner.classList.remove('cookie-banner--visible');
+        }
+    }
+
+    function acceptAllCookies() {
+        setCookieConsent('accepted');
+        hideCookieBanner();
+        trackEvent('consent', 'cookie_consent', 'accepted');
+        enableAnalytics();
+    }
+
+    function openCookieSettings() {
+        // Redirect to cookie policy page
+        window.location.href = 'legal/cookie-policy.html';
+    }
+
+    function enableAnalytics() {
+        // Enable Google Analytics if consent given
+        if (typeof gtag === 'function') {
+            gtag('consent', 'update', {
+                'analytics_storage': 'granted'
+            });
+        }
+    }
+
+    // Initialize cookie consent
+    function initCookieConsent() {
+        const consent = getCookieConsent();
+        
+        if (!consent) {
+            showCookieBanner();
+        } else if (consent === 'accepted') {
+            enableAnalytics();
+        }
+    }
+
+    // Event listeners for cookie banner
+    if (acceptCookiesBtn) {
+        acceptCookiesBtn.addEventListener('click', acceptAllCookies);
+    }
+
+    if (cookieSettingsBtn) {
+        cookieSettingsBtn.addEventListener('click', openCookieSettings);
+    }
+
+    // Initialize cookie consent on page load
+    initCookieConsent();
 
 })();
