@@ -1,0 +1,309 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customers - GPUBROKER Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'gpubrokeradmin/css/admin.css' %}">
+</head>
+
+<body>
+    <div class="admin-layout">
+        <header class="admin-header">
+            <a href="{% url 'gpubrokeradmin:admin_dashboard' %}" class="admin-logo" style="font-weight: 700; letter-spacing: -0.03em;">GPUBROKER</a>
+
+            <!-- Environment Toggle (Sandbox/Live) -->
+            <div class="env-toggle" id="envToggle">
+                <button class="env-btn sandbox" onclick="setEnv('sandbox')">Sandbox</button>
+                <button class="env-btn live active" onclick="setEnv('live')">Live</button>
+            </div>
+
+            <nav class="nav-tabs">
+                <a href="{% url 'gpubrokeradmin:admin_dashboard' %}" class="nav-tab" style="text-decoration: none;">
+                    <span class="material-symbols-rounded">dashboard</span>
+                    <span class="nav-tab-label">Dashboard</span>
+                </a>
+                <a href="{% url 'gpubrokeradmin:admin_dashboard' %}?section=pods" class="nav-tab" style="text-decoration: none;">
+                    <span class="material-symbols-rounded">dns</span>
+                    <span class="nav-tab-label">Pods</span>
+                </a>
+                <a href="{% url 'gpubrokeradmin:admin_customers' %}" class="nav-tab active" style="text-decoration: none;">
+                    <span class="material-symbols-rounded">group</span>
+                    <span class="nav-tab-label">Customers</span>
+                </a>
+                <a href="{% url 'gpubrokeradmin:admin_billing' %}" class="nav-tab" style="text-decoration: none;">
+                    <span class="material-symbols-rounded">payments</span>
+                    <span class="nav-tab-label">Billing</span>
+                </a>
+                <a href="{% url 'gpubrokeradmin:admin_costs' %}" class="nav-tab" style="text-decoration: none;">
+                    <span class="material-symbols-rounded">analytics</span>
+                    <span class="nav-tab-label">Costs</span>
+                </a>
+            </nav>
+            <div class="user-menu">
+                <a href="{% url 'gpubrokeradmin:admin_dashboard' %}" class="btn btn-ghost" style="text-decoration: none;">
+                    <span class="material-symbols-rounded">arrow_back</span>
+                    Back
+                </a>
+            </div>
+        </header>
+
+        <main class="admin-main">
+            <div id="customerContainer" style="max-width: 1000px; margin: 0 auto;">
+                <div style="text-align: center; padding: 4rem;">
+                    <span class="material-symbols-rounded"
+                        style="font-size: 3rem; color: var(--color-muted); animation: spin 1s linear infinite;">sync</span>
+                    <p style="color: var(--color-muted); margin-top: 1rem;">Loading...</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // SECURITY: Immediate auth check - redirect to login if not authenticated
+        (function () {
+            const token = localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
+            if (!token) {
+                window.location.href = '{% url "gpubrokeradmin:admin_login" %}';
+                return;
+            }
+        })();
+
+        const API_BASE = '';
+
+        // Environment state management
+        let currentEnv = localStorage.getItem('admin_env') || 'live';
+
+        function setEnv(env) {
+            currentEnv = env;
+            localStorage.setItem('admin_env', env);
+            updateEnvUI();
+            location.reload();
+        }
+
+        function updateEnvUI() {
+            document.querySelectorAll('.env-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.classList.contains(currentEnv)) btn.classList.add('active');
+            });
+            document.body.classList.remove('env-sandbox', 'env-live');
+            document.body.classList.add(`env-${currentEnv}`);
+        }
+        document.addEventListener('DOMContentLoaded', updateEnvUI);
+
+        function getHeaders() {
+            const token = localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
+            if (!token) { window.location.href = '{% url "gpubrokeradmin:admin_login" %}'; return {}; }
+            return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'X-Environment': currentEnv };
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const email = urlParams.get('email');
+
+        async function loadCustomer() {
+            if (!email) {
+                try {
+                    const resp = await fetch(`${API_BASE}/api/v2/admin/customers`, { headers: getHeaders() });
+                    if (!resp.ok) throw new Error('Failed');
+                    const data = await resp.json();
+                    renderAllCustomers(data);
+                } catch (e) {
+                    document.getElementById('customerContainer').innerHTML = `
+                        <div class="card" style="text-align: center; padding: 3rem;">
+                            <span class="material-symbols-rounded" style="font-size: 3rem; color: var(--color-error);">error</span>
+                            <h2 style="margin: 1rem 0 0.5rem;">Error Loading</h2>
+                            <a href="{% url 'gpubrokeradmin:admin_login' %}" class="btn btn-primary">Login</a>
+                        </div>
+                    `;
+                }
+                return;
+            }
+
+            try {
+                const resp = await fetch(`${API_BASE}/api/v2/admin/customer/${encodeURIComponent(email)}`, { headers: getHeaders() });
+                if (!resp.ok) throw new Error('Customer not found');
+                const data = await resp.json();
+                renderCustomer(data);
+            } catch (e) {
+                document.getElementById('customerContainer').innerHTML = `
+                    <div class="card" style="text-align: center; padding: 3rem;">
+                        <span class="material-symbols-rounded" style="font-size: 3rem; color: var(--color-error);">person_off</span>
+                        <h2 style="margin: 1rem 0 0.5rem;">Customer Not Found</h2>
+                        <p style="color: var(--color-muted);">${email}</p>
+                        <a href="{% url 'gpubrokeradmin:admin_dashboard' %}" class="btn btn-primary" style="margin-top: 1rem;">Back</a>
+                    </div>
+                `;
+            }
+        }
+
+        function renderAllCustomers(data) {
+            const customers = data.customers || [];
+
+            document.getElementById('customerContainer').innerHTML = `
+                <div class="card" style="background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%); border-color: #93c5fd; padding: 12px 16px; margin-bottom: 12px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 40px; height: 40px; border-radius: 50%; background: #3b82f6; color: white; display: flex; align-items: center; justify-content: center;">
+                            <span class="material-symbols-rounded" style="font-size: 20px;">group</span>
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="font-size: 1.25rem; font-weight: 700; color: #1d4ed8;">${customers.length} Customers</div>
+                            <div style="font-size: 0.8rem; color: #1d4ed8;">Total registered</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card" style="padding: 12px;">
+                    <div style="font-size: 0.7rem; font-weight: 600; color: var(--color-muted); text-transform: uppercase; margin-bottom: 8px;">All Customers</div>
+                    ${customers.length > 0 ? customers.map(c => `
+                        <div class="master-item" onclick="window.location='{% url 'gpubrokeradmin:admin_customers' %}?email=${encodeURIComponent(c.email)}'">
+                            <div class="master-item-avatar">${(c.name || c.email || 'C')[0].toUpperCase()}</div>
+                            <div class="master-item-info">
+                                <div class="master-item-title">${c.name || c.email}</div>
+                                <div class="master-item-subtitle">${c.email} • ${(c.plan || 'trial').toUpperCase()}</div>
+                            </div>
+                            <span class="status-badge ${c.status === 'active' ? 'running' : 'warning'}">${(c.status || 'pending').toUpperCase()}</span>
+                        </div>
+                    `).join('') : '<p style="padding: 1rem; text-align: center; color: var(--color-muted);">No customers</p>'}
+                </div>
+            `;
+        }
+
+        function renderCustomer(data) {
+            const initial = (data.name || data.email || 'C')[0].toUpperCase();
+            const isActive = data.status === 'active' || data.status === 'running';
+
+            document.getElementById('customerContainer').innerHTML = `
+                <!-- Header Card - Compact -->
+                <div class="card" style="background: linear-gradient(135deg, ${isActive ? '#dcfce7' : '#fef9c3'} 0%, ${isActive ? '#f0fdf4' : '#fefce8'} 100%); border-color: ${isActive ? '#bbf7d0' : '#fde047'}; padding: 12px 16px; margin-bottom: 12px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 40px; height: 40px; border-radius: 50%; background: ${isActive ? '#22c55e' : '#eab308'}; color: white; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; font-weight: 600;">${initial}</div>
+                        <div style="flex: 1;">
+                            <div style="font-size: 1.1rem; font-weight: 700;">${data.name || 'Customer'}</div>
+                            <div style="font-size: 0.8rem; color: var(--color-muted);">${data.email}</div>
+                        </div>
+                        <span class="status-badge ${isActive ? 'running' : 'warning'}">${(data.status || 'PENDING').toUpperCase()}</span>
+                    </div>
+                </div>
+                
+                <!-- 3-Column Grid -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                    <!-- Col 1: Customer Info -->
+                    <div class="card" style="padding: 12px;">
+                        <div style="font-size: 0.7rem; font-weight: 600; color: var(--color-muted); text-transform: uppercase; margin-bottom: 8px;">Information</div>
+                        <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--color-border); font-size: 0.85rem;">
+                            <span style="color: var(--color-muted);">Plan</span>
+                            <span style="font-weight: 500;">${(data.plan || 'trial').toUpperCase()}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--color-border); font-size: 0.85rem;">
+                            <span style="color: var(--color-muted);">Total Paid</span>
+                            <span style="font-weight: 600; color: var(--color-success);">$${data.total_paid || 0}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: 6px 0; font-size: 0.85rem;">
+                            <span style="color: var(--color-muted);">Registered</span>
+                            <span style="font-weight: 500;">${data.created_at?.slice(0, 10) || 'N/A'}</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Col 2: Pod Info -->
+                    <div class="card" style="padding: 12px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span style="font-size: 0.7rem; font-weight: 600; color: var(--color-muted); text-transform: uppercase;">Associated Pod</span>
+                            ${data.pod_id ? `<span class="cross-ref" style="font-size: 0.75rem;" onclick="window.location='{% url 'gpubrokeradmin:admin_dashboard' %}'">View →</span>` : ''}
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--color-border); font-size: 0.85rem;">
+                            <span style="color: var(--color-muted);">Pod ID</span>
+                            <span style="font-weight: 500; font-family: var(--font-mono);">${data.pod_id || 'No pod'}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--color-border); font-size: 0.85rem;">
+                            <span style="color: var(--color-muted);">Status</span>
+                            <span style="font-weight: 500;">${data.pod_status || 'N/A'}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: 6px 0; font-size: 0.85rem;">
+                            <span style="color: var(--color-muted);">Region</span>
+                            <span style="font-weight: 500;">us-east-1</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Col 3: Company Info -->
+                    <div class="card" style="padding: 12px;">
+                        <div style="font-size: 0.7rem; font-weight: 600; color: var(--color-muted); text-transform: uppercase; margin-bottom: 8px;">Company</div>
+                        <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--color-border); font-size: 0.85rem;">
+                            <span style="color: var(--color-muted);">RUC/Tax ID</span>
+                            <span style="font-weight: 500; font-family: var(--font-mono);">${data.ruc || 'N/A'}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--color-border); font-size: 0.85rem;">
+                            <span style="color: var(--color-muted);">Country</span>
+                            <span style="font-weight: 500;">${data.country || 'N/A'}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: 6px 0; font-size: 0.85rem;">
+                            <span style="color: var(--color-muted);">System</span>
+                            <span style="font-weight: 500;">GPUBROKER</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Payments - Compact -->
+                <div class="card" style="padding: 12px; margin-bottom: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 0.7rem; font-weight: 600; color: var(--color-muted); text-transform: uppercase;">Payment History</span>
+                        <span class="cross-ref" style="font-size: 0.75rem;" onclick="window.location='{% url 'gpubrokeradmin:admin_billing' %}'">View All →</span>
+                    </div>
+                    ${data.payments && data.payments.length > 0 ? `
+                        <div style="display: grid; gap: 6px;">
+                            ${data.payments.map(p => `
+                                <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--color-border); font-size: 0.85rem;">
+                                    <span style="color: var(--color-muted);">${p.date} • ${p.method}</span>
+                                    <span style="font-weight: 600; color: var(--color-success);">+$${p.amount}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : '<p style="text-align: center; color: var(--color-muted); padding: 0.5rem; font-size: 0.85rem;">No payments</p>'}
+                </div>
+                
+                <!-- Actions - Compact -->
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn btn-secondary" onclick="window.open('mailto:${data.email}')">
+                        <span class="material-symbols-rounded">mail</span> Email
+                    </button>
+                    <button class="btn btn-secondary" onclick="editCustomer('${data.email}')">
+                        <span class="material-symbols-rounded">edit</span> Edit
+                    </button>
+                    ${data.pod_id ? `<a href="{% url 'gpubrokeradmin:admin_dashboard' %}?pod=${encodeURIComponent(data.pod_id)}" class="btn btn-primary"><span class="material-symbols-rounded">dns</span> View Pod</a>` : ''}
+                </div>
+            `;
+        }
+
+        function editCustomer(email) {
+            // For now, show edit options - full implementation would open edit modal
+            const action = confirm('What would you like to do?\n\nOK = Send email\nCancel = Cancel');
+            if (action) {
+                window.open('mailto:' + email + '?subject=GPUBROKER - Account Update');
+            }
+        }
+
+        loadCustomer();
+    </script>
+
+    <style>
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</body>
+
+</html>

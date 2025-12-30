@@ -1,8 +1,7 @@
 """
 GPUBROKER Admin Authentication Services
 
-JWT-based authentication service.
-Converted from SercopPODAdmin Flask implementation.
+JWT-based authentication service for GPUBROKER POD Admin.
 """
 import os
 import hashlib
@@ -10,13 +9,15 @@ import hmac
 import json
 import time
 import base64
+import logging
 from typing import Optional, Dict, Any
-from datetime import datetime, timedelta
+from datetime import timedelta
 from django.conf import settings
 from django.utils import timezone
 
 from .models import AdminUser, AdminSession, AdminAuditLog
 
+logger = logging.getLogger('gpubroker.auth')
 
 # Configuration
 JWT_SECRET = os.getenv("JWT_SECRET", settings.SECRET_KEY)
@@ -98,7 +99,7 @@ def verify_jwt(token: str) -> Optional[dict]:
         
         return payload
     except Exception as e:
-        print(f"JWT verification error: {e}")
+        logger.warning(f"JWT verification error: {e}")
         return None
 
 

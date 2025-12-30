@@ -5,6 +5,14 @@ export DJANGO_SETTINGS_MODULE=config.settings.development
 export DATABASE_URL=postgresql://gpubroker:gpubroker_dev_password@localhost:28001/gpubroker_dev
 export REDIS_URL=redis://localhost:28004/0
 
+# PayPal Sandbox Credentials
+export PAYPAL_CLIENT_ID=AdN8KE5YsUHHCpwKs8cdmzCBOH0BTymz-YhJ2h6Yz9QNZVm8VH-n5JHKJd5bbA11tdwmkoW52IWThOGb
+export PAYPAL_CLIENT_SECRET=EPAQoVh0vmdbGyxuzd3GMS0f0fyzLmMX4nwfsEowE1UHsqcttWPQIVkMC0kDPsoqr2YMgIn433rqh8h3
+export PAYPAL_MODE=sandbox
+
+# Admin URL for callbacks
+export GPUBROKER_ADMIN_URL=http://localhost:28080
+
 # JWT RSA Keys
 export JWT_PRIVATE_KEY='-----BEGIN RSA PRIVATE KEY-----
 MIIEowIBAAKCAQEAtaXHF18epU/v5jZh53S/2CP5vvY9u2xINfSiiPL6SFdivahD

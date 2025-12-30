@@ -2,7 +2,6 @@
 GPUBROKER Admin Authentication Models
 
 JWT-based authentication for the admin dashboard.
-Converted from SercopPODAdmin Flask implementation.
 """
 import hashlib
 import uuid

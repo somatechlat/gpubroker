@@ -2,16 +2,14 @@
 GPUBROKER Admin API Router
 
 Django Ninja API for GPUBROKER POD administration.
-Converted from SercopPODAdmin Flask implementation.
 """
 from ninja import Router, Schema
 from ninja.security import HttpBearer
 from typing import List, Optional, Dict, Any
 from datetime import datetime
-from decimal import Decimal
 from django.http import HttpRequest
 
-from ..apps.auth.services import AdminAuthService, verify_jwt
+from ..apps.auth.services import AdminAuthService
 from ..apps.auth.models import AdminUser
 from ..apps.subscriptions.services import SubscriptionService
 from ..apps.subscriptions.models import Subscription
@@ -443,8 +441,6 @@ def resend_receipt(request, data: Dict[str, Any]):
     from ..services.email import EmailService
     
     email = data.get("email")
-    amount = data.get("amount", 0)
-    transaction_id = data.get("transaction_id", "")
     
     if not email:
         return {"error": "Email required"}, 400
@@ -453,7 +449,7 @@ def resend_receipt(request, data: Dict[str, Any]):
     try:
         subscription = Subscription.objects.filter(email=email).order_by('-created_at').first()
         if subscription:
-            result = EmailService.send_payment_receipt(
+            EmailService.send_payment_receipt(
                 to_email=email,
                 api_key=subscription.api_key,
                 plan=subscription.plan,
@@ -467,7 +463,109 @@ def resend_receipt(request, data: Dict[str, Any]):
                 ruc=subscription.ruc,
             )
             return {"success": True, "message": f"Receipt sent to {email}"}
-    except Exception as e:
+    except Exception:
         pass
     
     return {"success": True, "message": f"Receipt logged for {email}"}
+
+
+@admin_router.get("/customers")
+def list_customers(request):
+    """Get all customers for admin."""
+    subscriptions = Subscription.objects.all().order_by('-created_at')
+    
+    # Group by email to get unique customers
+    customers_dict = {}
+    for s in subscriptions:
+        if s.email not in customers_dict:
+            customers_dict[s.email] = {
+                "email": s.email,
+                "name": s.name or s.email.split('@')[0],
+                "plan": s.plan,
+                "status": s.status,
+                "pod_id": s.pod_id,
+                "ruc": s.ruc,
+                "created_at": s.created_at.isoformat(),
+                "total_paid": float(s.amount_usd),
+            }
+        else:
+            customers_dict[s.email]["total_paid"] += float(s.amount_usd)
+    
+    customers = list(customers_dict.values())
+    
+    return {"success": True, "customers": customers}
+
+
+@admin_router.get("/billing")
+def list_transactions(request):
+    """Get all transactions for admin."""
+    subscriptions = Subscription.objects.filter(
+        amount_usd__gt=0
+    ).order_by('-created_at')
+    
+    transactions = [
+        {
+            "id": s.transaction_id or f"TXN-{s.subscription_id[:8]}",
+            "email": s.email,
+            "name": s.name or s.email.split('@')[0],
+            "plan": s.plan,
+            "amount": float(s.amount_usd),
+            "method": s.payment_provider or "PayPal",
+            "status": "completed",
+            "pod_id": s.pod_id,
+            "order_id": s.order_id,
+            "created_at": s.created_at.isoformat(),
+            "date": s.payment_date.strftime("%Y-%m-%d") if s.payment_date else s.created_at.strftime("%Y-%m-%d"),
+        }
+        for s in subscriptions
+    ]
+    
+    return {"success": True, "transactions": transactions}
+
+
+# ============================================
+# PAYPAL PAYMENT ENDPOINTS
+# ============================================
+
+class PayPalOrderSchema(Schema):
+    email: str
+    plan: str
+    amount: float
+    ruc: str = ""
+    name: str = ""
+
+
+class PayPalCaptureSchema(Schema):
+    order_id: str
+
+
+@public_router.post("/payment/paypal")
+def create_paypal_order(request, data: PayPalOrderSchema):
+    """Create PayPal order for subscription payment."""
+    from ..services.payments.paypal import paypal_service
+    
+    result = paypal_service.create_payment_for_subscription(
+        email=data.email,
+        plan=data.plan,
+        amount_usd=data.amount,
+        ruc=data.ruc,
+        name=data.name,
+    )
+    return result
+
+
+@public_router.post("/payment/paypal/capture/{order_id}")
+def capture_paypal_order(request, order_id: str):
+    """Capture approved PayPal order."""
+    from ..services.payments.paypal import paypal_service
+    
+    result = paypal_service.capture_order(order_id)
+    return result
+
+
+@public_router.get("/payment/paypal/status")
+def get_paypal_status(request):
+    """Get PayPal configuration status."""
+    from ..services.payments.paypal import paypal_service
+    
+    return paypal_service.get_config_status()

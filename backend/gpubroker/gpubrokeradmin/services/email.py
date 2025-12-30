@@ -2,7 +2,6 @@
 GPUBROKER Email Service
 
 AWS SES email sending for GPUBROKER POD.
-Converted from SercopPODAdmin Flask implementation.
 """
 import os
 import logging

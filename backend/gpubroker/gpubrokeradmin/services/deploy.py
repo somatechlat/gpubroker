@@ -2,7 +2,6 @@
 GPUBROKER POD Deployment Service
 
 AWS ECS Fargate deployment for GPUBROKER PODs.
-Converted from SercopPODAdmin Flask implementation.
 """
 import os
 import hashlib

@@ -2,7 +2,6 @@
 GPUBROKER Subscription Services
 
 Business logic for subscription management.
-Converted from SercopPODAdmin Flask implementation.
 """
 import logging
 from typing import Dict, Any, Optional

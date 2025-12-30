@@ -217,6 +217,14 @@ AWS_ACCOUNT_ID = env('AWS_ACCOUNT_ID', default='')
 STRIPE_SECRET_KEY = env('STRIPE_SECRET_KEY', default='')
 STRIPE_WEBHOOK_SECRET = env('STRIPE_WEBHOOK_SECRET', default='')
 
+# PayPal Configuration
+PAYPAL_CLIENT_ID = env('PAYPAL_CLIENT_ID', default='')
+PAYPAL_CLIENT_SECRET = env('PAYPAL_CLIENT_SECRET', default='')
+PAYPAL_MODE = env('PAYPAL_MODE', default='sandbox')
+
+# GPUBROKER Admin URL (for payment callbacks)
+GPUBROKER_ADMIN_URL = env('GPUBROKER_ADMIN_URL', default='http://localhost:28080')
+
 # =============================================================================
 # LOGGING
 # =============================================================================

@@ -165,9 +165,11 @@ api.add_router("/math/", math_router, tags=["math"])
 api.add_router("/ai/", ai_router, tags=["ai"])
 
 # GPUBROKERADMIN routers (control plane)
-# TODO: Add admin routers when apps are implemented
-# from gpubrokeradmin.apps.pod_management.api import router as pod_mgmt_router
-# api.add_router("/admin/pods/", pod_mgmt_router, tags=["admin-pods"])
+from gpubrokeradmin.api.router import public_router as admin_public_router
+from gpubrokeradmin.api.router import admin_router
+
+api.add_router("/admin/public/", admin_public_router, tags=["admin-public"])
+api.add_router("/admin/", admin_router, tags=["admin"])
 
 # GPUBROKERAGENT routers (agentic layer - ADMIN ONLY)
 # TODO: Add agent routers when apps are implemented

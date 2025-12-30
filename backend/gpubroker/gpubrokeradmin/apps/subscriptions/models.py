@@ -2,7 +2,6 @@
 GPUBROKER Subscription Models
 
 Subscription and payment management for GPUBROKER POD.
-Converted from SercopPODAdmin Flask/DynamoDB implementation to Django ORM.
 """
 import uuid
 import hashlib
@@ -14,8 +13,6 @@ from django.utils import timezone
 class Subscription(models.Model):
     """
     GPUBROKER POD Subscription.
-    
-    Replaces DynamoDB table 'sercop-subscriptions' with Django ORM.
     """
     
     class Status(models.TextChoices):
