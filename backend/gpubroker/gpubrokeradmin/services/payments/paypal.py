@@ -2,12 +2,7 @@
 PayPal Payment Service for GPUBROKER Admin
 
 Uses PayPal REST API v2 (Orders) for secure payments.
-Supports sandbox and live modes via PAYPAL_MODE environment variable.
-
-Environment Variables:
-    PAYPAL_CLIENT_ID: PayPal app client ID
-    PAYPAL_CLIENT_SECRET: PayPal app client secret
-    PAYPAL_MODE: 'sandbox' or 'live' (default: sandbox)
+Uses centralized config for mode switching.
 
 Flow:
     1. Frontend calls create_order() to initiate payment
@@ -21,7 +16,6 @@ from datetime import datetime, timezone
 from typing import Optional
 
 import requests
-from django.conf import settings
 
 logger = logging.getLogger('gpubrokeradmin.payments.paypal')
 
@@ -30,7 +24,7 @@ class PayPalService:
     """
     PayPal REST API v2 integration service.
     
-    Handles order creation, capture, and payment verification.
+    Uses centralized config for credentials and mode.
     """
     
     # PayPal API base URLs
@@ -49,25 +43,40 @@ class PayPalService:
     }
     
     def __init__(self):
-        """Initialize PayPal service with credentials from settings."""
-        self.client_id = getattr(settings, 'PAYPAL_CLIENT_ID', '')
-        self.client_secret = getattr(settings, 'PAYPAL_CLIENT_SECRET', '')
-        self.mode = getattr(settings, 'PAYPAL_MODE', 'sandbox')
+        """Initialize PayPal service using centralized config."""
+        from gpubrokeradmin.services.config import config
+        self._config = config
         self._access_token: Optional[str] = None
         self._token_expires: Optional[datetime] = None
         
         # In-memory pending transactions (use Redis in production)
         self._pending_transactions: dict = {}
+        logger.info("PayPal service initialized (using centralized config)")
+    
+    @property
+    def client_id(self) -> str:
+        """Get client ID for current mode."""
+        return self._config.paypal.client_id
+    
+    @property
+    def client_secret(self) -> str:
+        """Get client secret for current mode."""
+        return self._config.paypal.client_secret
+    
+    @property
+    def mode(self) -> str:
+        """Get current mode."""
+        return self._config.mode.current
     
     @property
     def api_base(self) -> str:
         """Get the appropriate PayPal API base URL."""
-        return self.API_URLS.get(self.mode, self.API_URLS['sandbox'])
+        return self._config.paypal.api_base
     
     @property
     def is_configured(self) -> bool:
         """Check if PayPal credentials are configured."""
-        return bool(self.client_id and self.client_secret)
+        return self._config.paypal.is_configured
     
     def get_config_status(self) -> dict:
         """Get PayPal configuration status."""
@@ -76,6 +85,7 @@ class PayPalService:
             'mode': self.mode,
             'client_id_set': bool(self.client_id),
             'client_secret_set': bool(self.client_secret),
+            'api_base': self.api_base,
         }
 
     def _get_access_token(self) -> Optional[str]:
@@ -339,7 +349,7 @@ class PayPalService:
             dict with success, payment_url (approval_url), order_id or error
         """
         if not base_url:
-            base_url = getattr(settings, 'GPUBROKER_ADMIN_URL', 'http://localhost:28080')
+            base_url = self._config.domain.admin_url
         
         return_url = f'{base_url}/payment/paypal/callback'
         cancel_url = f'{base_url}/checkout?plan={plan}&error=cancelled'

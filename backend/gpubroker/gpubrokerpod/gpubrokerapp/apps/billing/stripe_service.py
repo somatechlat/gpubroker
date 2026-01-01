@@ -8,8 +8,7 @@ Handles:
 - Webhook processing
 - Invoice management
 
-SANDBOX MODE: Uses Stripe test keys (sk_test_*, pk_test_*)
-LIVE MODE: Uses Stripe live keys (sk_live_*, pk_live_*)
+Uses centralized config for all settings and secrets.
 """
 import logging
 from datetime import datetime, timezone
@@ -17,7 +16,6 @@ from decimal import Decimal
 from typing import Dict, List, Optional, Any, Tuple
 
 import stripe
-from django.conf import settings
 from django.core.cache import cache
 from asgiref.sync import sync_to_async
 
@@ -30,34 +28,46 @@ class StripeService:
     """
     Stripe integration service.
     
-    Automatically uses test or live keys based on GPUBROKER_MODE setting.
+    Uses centralized config for all configuration.
+    Mode switches are handled automatically.
     """
     
     def __init__(self):
-        """Initialize Stripe with appropriate keys."""
-        self.mode = getattr(settings, 'GPUBROKER_MODE', 'sandbox')
+        """Initialize Stripe service."""
+        from gpubrokeradmin.services.config import config
+        self._config = config
         
-        # Get Stripe keys from settings
-        if self.mode == 'live':
-            self.secret_key = getattr(settings, 'STRIPE_SECRET_KEY_LIVE', '')
-            self.publishable_key = getattr(settings, 'STRIPE_PUBLISHABLE_KEY_LIVE', '')
-        else:
-            # Sandbox mode - use test keys
-            self.secret_key = getattr(settings, 'STRIPE_SECRET_KEY_TEST', '')
-            self.publishable_key = getattr(settings, 'STRIPE_PUBLISHABLE_KEY_TEST', '')
-        
-        # Configure Stripe
-        stripe.api_key = self.secret_key
         stripe.api_version = '2023-10-16'
-        
-        self.webhook_secret = getattr(settings, 'STRIPE_WEBHOOK_SECRET', '')
-        
-        logger.info(f"Stripe initialized in {self.mode} mode")
+        logger.info("Stripe service initialized (using centralized config)")
+    
+    @property
+    def mode(self) -> str:
+        """Get current mode."""
+        return self._config.mode.current
+    
+    @property
+    def secret_key(self) -> str:
+        """Get secret key for current mode."""
+        return self._config.stripe.secret_key
+    
+    @property
+    def publishable_key(self) -> str:
+        """Get publishable key for current mode."""
+        return self._config.stripe.publishable_key
+    
+    @property
+    def webhook_secret(self) -> str:
+        """Get webhook secret."""
+        return self._config.stripe.webhook_secret
+    
+    def _configure_stripe(self):
+        """Configure Stripe API with current mode's key."""
+        stripe.api_key = self.secret_key
     
     @property
     def is_configured(self) -> bool:
         """Check if Stripe is properly configured."""
-        return bool(self.secret_key and self.publishable_key)
+        return self._config.stripe.is_configured
     
     # ==========================================
     # Customer Management
@@ -85,6 +95,7 @@ class StripeService:
             return None
         
         try:
+            self._configure_stripe()  # Use current mode's key
             customer = await sync_to_async(stripe.Customer.create)(
                 email=email,
                 name=name,
