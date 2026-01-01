@@ -656,26 +656,26 @@ class ModeSwitchSchema(Schema):
 @public_router.get("/mode")
 def get_current_mode(request):
     """Get current global mode status (public for UI display)."""
-    from ..services.mode import mode_service
+    from ..services.config import config
     
-    return mode_service.get_status()
+    return config.get_status()
 
 
 @public_router.get("/mode/config")
 def get_mode_config(request):
     """Get all mode-aware configurations (for debugging/admin)."""
-    from ..services.mode import mode_service
+    from ..services.config import config
     
-    return mode_service.get_all_configs()
+    return config.get_all()
 
 
 @admin_router.get("/mode")
 def admin_get_mode(request):
     """Get current mode status (authenticated)."""
-    from ..services.mode import mode_service
+    from ..services.config import config
     
-    status = mode_service.get_status()
-    status['can_switch'] = True  # Admin can always switch
+    status = config.get_status()
+    status['can_switch'] = True
     return status
 
 
@@ -687,39 +687,35 @@ def admin_switch_mode(request, data: ModeSwitchSchema):
     Requires admin authentication.
     When switching to 'live', confirm=True is required.
     """
-    from ..services.mode import mode_service
+    from ..services.config import config
     import logging
     
     logger = logging.getLogger(__name__)
     
-    # Validate mode
     if data.mode not in ('sandbox', 'live'):
         return {
             "success": False,
             "error": f"Invalid mode: {data.mode}. Must be 'sandbox' or 'live'"
         }
     
-    # Require confirmation for switching to live
     if data.mode == 'live' and not data.confirm:
         return {
             "success": False,
             "error": "Switching to LIVE mode requires confirm=true",
             "warning": "Live mode will process REAL payments and provision REAL resources!",
-            "current_mode": mode_service.current_mode,
+            "current_mode": config.mode.current,
         }
     
-    # Get admin user for logging
     admin_email = getattr(request, 'admin_user', {})
     if hasattr(admin_email, 'email'):
         admin_email = admin_email.email
     else:
         admin_email = 'unknown'
     
-    old_mode = mode_service.current_mode
+    old_mode = config.mode.current
     
-    # Switch mode
     try:
-        mode_service.set_mode(data.mode)
+        config.mode.set(data.mode)
         
         logger.warning(
             f"Mode switched by admin: {old_mode} -> {data.mode}",
@@ -736,12 +732,11 @@ def admin_switch_mode(request, data: ModeSwitchSchema):
             "old_mode": old_mode,
             "new_mode": data.mode,
             "admin": admin_email,
-            "status": mode_service.get_status(),
+            "status": config.get_status(),
         }
     except Exception as e:
         return {
             "success": False,
             "error": str(e),
-            "current_mode": mode_service.current_mode,
+            "current_mode": config.mode.current,
         }
-

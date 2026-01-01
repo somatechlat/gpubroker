@@ -157,21 +157,17 @@ class PayPalConfig:
     def client_id(self) -> str:
         if config.mode.is_live:
             return vault.get_secret('gpubroker/paypal', 'client_id_live') or \
-                   os.getenv('PAYPAL_CLIENT_ID_LIVE', '') or \
-                   os.getenv('PAYPAL_CLIENT_ID', '')  # Legacy fallback
+                   os.getenv('PAYPAL_CLIENT_ID_LIVE', '')
         return vault.get_secret('gpubroker/paypal', 'client_id_sandbox') or \
-               os.getenv('PAYPAL_CLIENT_ID_SANDBOX', '') or \
-               os.getenv('PAYPAL_CLIENT_ID', '')  # Legacy fallback
+               os.getenv('PAYPAL_CLIENT_ID_SANDBOX', '')
     
     @property
     def client_secret(self) -> str:
         if config.mode.is_live:
             return vault.get_secret('gpubroker/paypal', 'client_secret_live') or \
-                   os.getenv('PAYPAL_CLIENT_SECRET_LIVE', '') or \
-                   os.getenv('PAYPAL_CLIENT_SECRET', '')  # Legacy fallback
+                   os.getenv('PAYPAL_CLIENT_SECRET_LIVE', '')
         return vault.get_secret('gpubroker/paypal', 'client_secret_sandbox') or \
-               os.getenv('PAYPAL_CLIENT_SECRET_SANDBOX', '') or \
-               os.getenv('PAYPAL_CLIENT_SECRET', '')  # Legacy fallback
+               os.getenv('PAYPAL_CLIENT_SECRET_SANDBOX', '')
     
     @property
     def api_base(self) -> str:
