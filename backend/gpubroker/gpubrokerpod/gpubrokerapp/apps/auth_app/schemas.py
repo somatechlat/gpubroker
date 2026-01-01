@@ -65,3 +65,40 @@ class ErrorResponse(BaseModel):
     """Schema for error responses."""
     detail: str
     code: Optional[str] = None
+
+
+class EmailVerificationRequest(BaseModel):
+    """Schema for email verification request."""
+    token: str
+
+
+class ResendVerificationRequest(BaseModel):
+    """Schema for resending verification email."""
+    email: EmailStr
+
+
+class ForgotPasswordRequest(BaseModel):
+    """Schema for forgot password request."""
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    """Schema for password reset request."""
+    token: str
+    new_password: str = Field(..., min_length=8)
+
+
+class OAuthCallbackRequest(BaseModel):
+    """Schema for OAuth callback."""
+    provider: str  # google, github
+    code: str
+    state: Optional[str] = None
+
+
+class OAuthTokenResponse(BaseModel):
+    """Schema for OAuth token response."""
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    expires_in: int
+    is_new_user: bool = False

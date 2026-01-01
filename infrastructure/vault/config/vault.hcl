@@ -1,6 +1,7 @@
 # ============================================
 # HashiCorp Vault Configuration
-# GPUBROKER - Enterprise Secret Management
+# GPUBROKER - Production-Grade Secret Management
+# Memory-Optimized for 256MB Container
 # ============================================
 
 # Storage backend - file for dev, use Consul/Raft for production
@@ -10,12 +11,18 @@ storage "file" {
 
 # Listener configuration
 listener "tcp" {
-  address     = "0.0.0.0:8200"
-  tls_disable = true  # Enable TLS in production!
+  address         = "0.0.0.0:8200"
+  tls_disable     = true  # Enable TLS in production!
+  
+  # Telemetry
+  telemetry {
+    unauthenticated_metrics_access = true
+  }
 }
 
 # API address
-api_addr = "http://0.0.0.0:8200"
+api_addr     = "http://0.0.0.0:8200"
+cluster_addr = "http://0.0.0.0:8201"
 
 # Disable mlock for Docker (enable in production with proper capabilities)
 disable_mlock = true
@@ -25,7 +32,23 @@ ui = true
 
 # Logging
 log_level = "info"
+log_format = "json"
 
-# Max lease TTL
-max_lease_ttl = "768h"
+# Lease TTL
+max_lease_ttl     = "768h"
 default_lease_ttl = "768h"
+
+# Telemetry for Prometheus
+telemetry {
+  prometheus_retention_time = "30s"
+  disable_hostname          = true
+}
+
+# Performance tuning (memory-optimized)
+cache_size = 32000
+
+# Seal configuration (auto-unseal in production)
+# seal "awskms" {
+#   region     = "us-east-1"
+#   kms_key_id = "alias/vault-unseal-key"
+# }

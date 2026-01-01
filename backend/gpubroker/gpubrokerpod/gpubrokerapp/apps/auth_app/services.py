@@ -4,7 +4,6 @@ Auth App Business Logic Services.
 Handles user creation, authentication, and token management.
 """
 import logging
-from datetime import timedelta
 from typing import Optional, Tuple
 from django.conf import settings
 from passlib.context import CryptContext
@@ -251,3 +250,198 @@ async def log_audit_event(
     except Exception as e:
         # Don't fail the main operation if audit logging fails
         logger.error(f"Failed to log audit event: {e}")
+
+
+# =============================================================================
+# EMAIL VERIFICATION
+# =============================================================================
+
+import secrets
+import hashlib
+
+
+def generate_verification_token() -> str:
+    """Generate a secure verification token."""
+    return secrets.token_urlsafe(32)
+
+
+def hash_token(token: str) -> str:
+    """Hash a token for storage."""
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+async def create_verification_token(user: User) -> str:
+    """
+    Create an email verification token for a user.
+    
+    Args:
+        user: User to create token for
+        
+    Returns:
+        Plain text token (to be sent via email)
+    """
+    from django.core.cache import cache
+    
+    token = generate_verification_token()
+    token_hash = hash_token(token)
+    
+    # Store token hash in cache with 24h expiry
+    cache_key = f"email_verification:{token_hash}"
+    cache.set(cache_key, str(user.id), timeout=86400)  # 24 hours
+    
+    logger.info(f"Created verification token for user: {user.email}")
+    return token
+
+
+async def verify_email_token(token: str) -> Optional[User]:
+    """
+    Verify an email verification token.
+    
+    Args:
+        token: Plain text token from email link
+        
+    Returns:
+        User if token valid, None otherwise
+    """
+    from django.core.cache import cache
+    
+    token_hash = hash_token(token)
+    cache_key = f"email_verification:{token_hash}"
+    
+    user_id = cache.get(cache_key)
+    if not user_id:
+        logger.warning("Invalid or expired verification token")
+        return None
+    
+    # Get user and mark as verified
+    user = await User.objects.filter(id=user_id).afirst()
+    if not user:
+        logger.warning(f"User not found for verification token: {user_id}")
+        return None
+    
+    user.is_verified = True
+    await user.asave()
+    
+    # Delete the token
+    cache.delete(cache_key)
+    
+    logger.info(f"Email verified for user: {user.email}")
+    return user
+
+
+async def create_password_reset_token(email: str) -> Optional[str]:
+    """
+    Create a password reset token.
+    
+    Args:
+        email: User email
+        
+    Returns:
+        Plain text token or None if user not found
+    """
+    from django.core.cache import cache
+    
+    user = await User.objects.filter(email=email, is_active=True).afirst()
+    if not user:
+        logger.warning(f"Password reset requested for non-existent user: {email}")
+        return None
+    
+    token = generate_verification_token()
+    token_hash = hash_token(token)
+    
+    # Store token hash in cache with 1h expiry
+    cache_key = f"password_reset:{token_hash}"
+    cache.set(cache_key, str(user.id), timeout=3600)  # 1 hour
+    
+    logger.info(f"Created password reset token for user: {email}")
+    return token
+
+
+async def reset_password_with_token(token: str, new_password: str) -> bool:
+    """
+    Reset password using a reset token.
+    
+    Args:
+        token: Plain text token from email link
+        new_password: New password to set
+        
+    Returns:
+        True if successful, False otherwise
+    """
+    from django.core.cache import cache
+    
+    token_hash = hash_token(token)
+    cache_key = f"password_reset:{token_hash}"
+    
+    user_id = cache.get(cache_key)
+    if not user_id:
+        logger.warning("Invalid or expired password reset token")
+        return False
+    
+    user = await User.objects.filter(id=user_id).afirst()
+    if not user:
+        logger.warning(f"User not found for password reset: {user_id}")
+        return False
+    
+    user.password_hash = get_password_hash(new_password)
+    await user.asave()
+    
+    # Delete the token
+    cache.delete(cache_key)
+    
+    logger.info(f"Password reset for user: {user.email}")
+    return True
+
+
+async def send_verification_email(user: User, token: str) -> bool:
+    """
+    Send verification email to user.
+    
+    Args:
+        user: User to send email to
+        token: Verification token
+        
+    Returns:
+        True if sent successfully
+    """
+    # TODO: Implement AWS SES email sending
+    # For now, log the token (SANDBOX mode behavior)
+    from django.conf import settings
+    
+    mode = getattr(settings, 'GPUBROKER_MODE', 'sandbox')
+    
+    if mode == 'sandbox':
+        # In sandbox mode, auto-verify
+        logger.info(f"[SANDBOX] Verification token for {user.email}: {token}")
+        user.is_verified = True
+        await user.asave()
+        return True
+    
+    # In live mode, send actual email via SES
+    # TODO: Implement SES integration
+    logger.info(f"Would send verification email to {user.email}")
+    return True
+
+
+async def send_password_reset_email(email: str, token: str) -> bool:
+    """
+    Send password reset email.
+    
+    Args:
+        email: User email
+        token: Reset token
+        
+    Returns:
+        True if sent successfully
+    """
+    from django.conf import settings
+    
+    mode = getattr(settings, 'GPUBROKER_MODE', 'sandbox')
+    
+    if mode == 'sandbox':
+        logger.info(f"[SANDBOX] Password reset token for {email}: {token}")
+        return True
+    
+    # TODO: Implement SES integration
+    logger.info(f"Would send password reset email to {email}")
+    return True

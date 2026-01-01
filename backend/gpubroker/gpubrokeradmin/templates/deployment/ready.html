@@ -75,7 +75,7 @@
     <script>
         // Get pod_url from URL params
         const urlParams = new URLSearchParams(window.location.search);
-        const podUrl = urlParams.get('pod_url') || sessionStorage.getItem('pod_url') || 'https://pod.gpubroker.live';
+        const podUrl = urlParams.get('pod_url') || sessionStorage.getItem('pod_url') || 'https://pod.gpubroker.site';
         
         document.getElementById('podUrl').textContent = podUrl;
         document.getElementById('goToPod').href = podUrl;

@@ -6,12 +6,58 @@ This document provides essential context for AI agents and developers working on
 
 ## Project Overview
 
-GPUBROKER is an AI-Powered GPU Marketplace & Control Tower SaaS platform. The project consists of:
+GPUBROKER is an AI-Powered GPU Marketplace & Control Tower SaaS platform deployed on AWS. The project consists of:
 
-1. **GPUBROKER Landing Page** - Public marketing site
+1. **GPUBROKER Landing Page** - Public marketing site at gpubroker.site
 2. **GPUBROKER Admin** - Admin dashboard for managing subscriptions, customers, billing
-3. **GPUBROKER POD** - GPU Agent deployment and management system
+3. **GPUBROKER POD** - GPU Agent deployment and management system (deployed to AWS ECS Fargate)
 4. **Provider API Gateway** - Aggregates GPU offers from multiple providers
+
+---
+
+## Critical Contact Information
+
+### Notification Channels
+- **Email**: ai@somatech.dev (AWS SES activated)
+- **SMS/WhatsApp**: +593997202547 (Ecuador)
+- **Support Email**: soporte@gpubroker.site
+
+### Organization
+- **Company**: SOMATECH DEV
+- **Website**: https://www.somatech.dev
+- **Jurisdiction**: República del Ecuador, Tribunales de Quito
+
+---
+
+## AWS Production Architecture
+
+### Services Used
+- **ECS Fargate**: POD deployment (pay-per-use containers)
+- **RDS PostgreSQL**: Production database
+- **ElastiCache Redis**: Production cache
+- **ALB**: Application Load Balancer
+- **CloudWatch**: Monitoring and logging
+- **Secrets Manager**: Credential storage
+- **S3**: Static assets and backups
+- **CloudFront**: CDN for static content
+- **SES**: Email notifications (ai@somatech.dev)
+- **SNS**: SMS notifications (+593997202547)
+
+### Docker Compose (DEV ONLY)
+The docker-compose.dev.yml is for local development testing only. Production uses AWS managed services.
+
+Memory limits configured (8GB total):
+- Postgres: 512MB
+- Redis: 192MB
+- Kafka: 768MB
+- Zookeeper: 384MB
+- Django: 1GB
+- ClickHouse: 1GB
+- Nginx: 128MB
+- Frontend: 1GB
+- Prometheus: 512MB
+- Grafana: 256MB
+- Vault: 256MB
 
 ---
 
@@ -22,13 +68,14 @@ GPUBROKER is an AI-Powered GPU Marketplace & Control Tower SaaS platform. The pr
 - **Database**: PostgreSQL 15
 - **Cache**: Redis 7
 - **WebSocket**: Django Channels
-- **Server**: Uvicorn (ASGI)
+- **Server**: Uvicorn/Daphne (ASGI)
+- **Payments**: PayPal (sandbox and production)
 
 ### Key Django Apps
 ```
 backend/gpubroker/
 ├── config/                  # Settings, URLs, ASGI config
-├── gpubrokeradmin/          # Admin dashboard
+├── gpubrokeradmin/          # Admin dashboard & enrollment
 │   ├── apps/
 │   │   ├── auth/            # Admin authentication
 │   │   ├── subscriptions/   # Subscription management
@@ -37,61 +84,15 @@ backend/gpubroker/
 │   │   ├── monitoring/      # System monitoring
 │   │   └── notifications/   # Alert system
 │   ├── api/                 # Django Ninja routers
-│   ├── services/            # Business logic (PayPal, email, deploy)
+│   ├── services/            # Business logic
+│   │   ├── geo.py           # Geo-detection for country-specific validation
+│   │   ├── payments/        # PayPal integration
+│   │   ├── email.py         # Email notifications
+│   │   └── deploy.py        # AWS ECS deployment
 │   └── templates/           # HTML templates
 ├── gpubrokerlandingpage/    # Static landing page
 └── gpubrokerpod/            # GPU Agent POD
     └── gpubrokeragent/      # Agent core, decisions, budgets
-```
-
----
-
-## Completed Work
-
-### GPUBROKER POD Admin Migration (Flask to Django 5)
-**Status**: COMPLETE
-
-All 13 tasks completed:
-1. Project structure and Django Ninja API setup
-2. Auth models and services (AdminUser, AdminSession)
-3. Subscription models (Plan, Subscription, Payment)
-4. PayPal integration service
-5. Email service for notifications
-6. Deployment service for AWS provisioning
-7. Admin dashboard views and templates
-8. Enrollment flow (checkout, activate, provisioning, ready)
-9. Admin pages (index, billing, customers, costs)
-10. API routers registered in config
-11. E2E tests with Playwright (64 tests passing)
-12. Property tests for API responses
-13. Unit tests for PayPal service
-
-### Landing Page
-**Status**: COMPLETE
-
-- Responsive design with pricing section
-- Legal pages (terms, privacy, cookies)
-- Integration with enrollment flow
-
----
-
-## API Endpoints
-
-### Public Endpoints (No Auth)
-```
-POST /api/v2/admin/public/admin/login     # Admin login
-GET  /api/v2/subscription/plans           # List subscription plans
-POST /api/v2/subscription/checkout        # Create PayPal order
-POST /api/v2/subscription/capture         # Capture PayPal payment
-POST /api/v2/subscription/activate        # Activate POD deployment
-GET  /api/v2/subscription/status/{key}    # Check deployment status
-```
-
-### Protected Endpoints (Require Auth)
-```
-GET  /api/v2/admin/dashboard/stats        # Dashboard statistics
-GET  /api/v2/admin/customers              # List customers
-GET  /api/v2/admin/billing                # Billing information
 ```
 
 ---
@@ -105,69 +106,73 @@ GET  /api/v2/admin/billing                # Billing information
 
 ### PayPal Sandbox
 - **Client ID**: AdN8KE5YsUHHCpwKs8cdmzCBOH0BTymz-YhJ2h6Yz9QNZVm8VH-n5JHKJd5bbA11tdwmkoW52IWThOGb
+- **Client Secret**: EPAQoVh0vmdbGyxuzd3GMS0f0fyzLmMX4nwfsEowE1UHsqcttWPQIVkMC0kDPsoqr2YMgIn433rqh8h3
 - **Mode**: sandbox
 - **Test Buyer**: sb-zp64z48418674@personal.example.com / mdEcL1$w
 
----
-
-## Database Models
-
-### Auth Models
-```python
-class AdminUser:
-    id: UUID
-    email: str (unique)
-    password_hash: str
-    full_name: str
-    role: str (admin/operator/viewer)
-    is_active: bool
-    created_at: datetime
-    last_login: datetime
-
-class AdminSession:
-    id: UUID
-    user: ForeignKey(AdminUser)
-    token: str (unique)
-    expires_at: datetime
-    created_at: datetime
-```
-
-### Subscription Models
-```python
-class Plan:
-    id: UUID
-    name: str
-    slug: str (unique)
-    price_monthly: Decimal
-    features: JSONField
-    is_active: bool
-
-class Subscription:
-    id: UUID
-    email: str
-    plan: ForeignKey(Plan)
-    api_key: str (unique)
-    status: str (pending/active/cancelled/expired)
-    pod_id: str (nullable)
-    created_at: datetime
-    activated_at: datetime (nullable)
-
-class Payment:
-    id: UUID
-    subscription: ForeignKey(Subscription)
-    paypal_order_id: str
-    amount: Decimal
-    currency: str
-    status: str (pending/completed/failed/refunded)
-    created_at: datetime
-    completed_at: datetime (nullable)
-```
+### Database (Development)
+- **URL**: postgresql://gpubroker:gpubroker_dev_password@localhost:28001/gpubroker_dev
+- **Redis**: redis://localhost:28004/0
 
 ---
 
-## File Locations
+## Enrollment Flow (Landing → POD Deployed)
 
-### Templates
+### User Journey
+1. **Landing Page** (gpubroker.site) → User clicks plan
+2. **Checkout** (/checkout/?plan=pro) → Geo-detection determines country
+3. **Ecuador Users**: Must validate RUC (13 digits) or Cédula (10 digits)
+4. **Other Countries**: Standard email/name registration
+5. **Payment** → PayPal integration
+6. **Activation** (/activate) → Enter API key
+7. **Provisioning** (/provisioning) → POD deploying to AWS ECS
+8. **Ready** (/ready) → POD URL provided, user can start using
+
+### Country-Specific Validation
+- **Ecuador (EC)**: Requires RUC/Cédula validation
+- **Other countries**: Standard registration (no tax ID required)
+- Geo-detection via IP using free APIs (ipapi.co, ip-api.com, ipwho.is)
+- Can force country via `GPUBROKER_FORCE_COUNTRY` setting
+
+---
+
+## API Endpoints
+
+### Public Endpoints (No Auth)
+```
+GET  /api/v2/admin/public/health              # Health check
+GET  /api/v2/admin/public/geo/detect          # Geo-detection for checkout
+POST /api/v2/admin/public/admin/login         # Admin login
+POST /api/v2/admin/public/subscription/create # Create subscription
+POST /api/v2/admin/public/subscription/activate # Activate POD
+GET  /api/v2/admin/public/pod/status          # Check deployment status
+POST /api/v2/admin/public/validate/ruc        # Validate Ecuador RUC
+POST /api/v2/admin/public/validate/cedula     # Validate Ecuador Cédula
+POST /api/v2/admin/public/validate/identity   # Validate RUC or Cédula
+POST /api/v2/admin/public/payment/paypal      # Create PayPal order
+POST /api/v2/admin/public/payment/paypal/capture/{order_id} # Capture payment
+GET  /api/v2/admin/public/payment/paypal/status # PayPal config status
+```
+
+### Protected Endpoints (Require Auth)
+```
+GET  /api/v2/admin/dashboard                  # Dashboard statistics
+GET  /api/v2/admin/pods                       # List all pods
+POST /api/v2/admin/pod/destroy                # Destroy pod
+POST /api/v2/admin/pod/start                  # Start pod
+GET  /api/v2/admin/pod/{pod_id}/metrics       # Pod metrics
+GET  /api/v2/admin/costs                      # AWS costs
+GET  /api/v2/admin/customers                  # List customers
+GET  /api/v2/admin/customer/{email}           # Customer details
+GET  /api/v2/admin/billing                    # List transactions
+GET  /api/v2/admin/transaction/{tx_id}        # Transaction details
+POST /api/v2/admin/resend-receipt             # Resend receipt email
+```
+
+---
+
+## Template Locations
+
 ```
 backend/gpubroker/gpubrokeradmin/templates/
 ├── admin/
@@ -177,44 +182,32 @@ backend/gpubroker/gpubrokeradmin/templates/
 │   ├── customers.html   # Customer list
 │   └── costs.html       # Cost analytics
 ├── enrollment/
-│   ├── checkout.html    # Payment checkout
+│   ├── checkout.html    # Payment checkout (with geo-detection)
 │   └── activate.html    # POD activation
 └── deployment/
     ├── provisioning.html # Deployment progress
     └── ready.html        # Deployment complete
 ```
 
-### Static Files
-```
-backend/gpubroker/gpubrokeradmin/static/gpubrokeradmin/
-├── css/admin.css        # Admin styles
-└── js/admin.js          # Admin JavaScript
-```
-
-### API Routers
-```
-backend/gpubroker/gpubrokeradmin/api/router.py  # All API endpoints
-backend/gpubroker/config/api/__init__.py        # Router registration
-```
-
 ---
 
 ## Development Commands
 
-### Start Server
+### Start Docker (Dev Infrastructure)
+```bash
+docker-compose -f docker-compose.dev.yml up -d postgres redis
+```
+
+### Start Django Server
 ```bash
 cd backend/gpubroker
-./start_server.sh
-# Or directly:
-uvicorn config.asgi:application --host 0.0.0.0 --port 28080 --reload
+python manage.py runserver 0.0.0.0:28080
 ```
 
 ### Run Tests
 ```bash
-cd backend/gpubroker
-pytest tests/e2e/ -v --headed  # E2E with browser
-pytest tests/unit/ -v          # Unit tests
-pytest -v                      # All tests
+cd frontend
+npx playwright test  # E2E tests (64 tests)
 ```
 
 ### Database
@@ -244,22 +237,105 @@ python manage.py createsuperuser
 
 ---
 
-## Next Steps / Pending Work
+## Completed Work
 
-### Journey 1: Landing to Deployment
-- Complete ISO SRS documentation
-- Implement remaining user journey screens
-- Add email verification flow
+### GPUBROKER POD Admin Migration (Flask to Django 5)
+**Status**: COMPLETE - All 13 tasks completed
 
-### Provider API Gateway
-- Implement additional provider adapters
-- Real-time price aggregation
-- WebSocket price broadcasts
+### Geo-Detection for Country-Specific Validation
+**Status**: COMPLETE
+- Ecuador users must provide RUC/Cédula
+- Other countries skip tax ID validation
+- Geo-detection via IP with fallback
 
-### Admin Dashboard Enhancements
-- Customer detail views
-- Invoice generation
-- Usage analytics charts
+### Landing Page
+**Status**: COMPLETE
+- Responsive design with pricing section
+- Legal pages (terms, privacy, cookies)
+- Integration with enrollment flow
+
+### POD SaaS Implementation (In Progress)
+**Status**: IN PROGRESS - Tasks 1-15 completed
+
+**Completed Tasks:**
+1. ✅ POD Configuration System - SANDBOX/LIVE modes with CRUD
+2. ✅ Agent Zero Integration (ADMIN ONLY) - Start/stop/pause/resume
+3. ✅ AWS Serverless Infrastructure - CloudFormation template with:
+   - VPC and Networking
+   - API Gateway (REST + WebSocket)
+   - Cognito User Pool
+   - ECS Fargate with auto-scaling
+   - Aurora Serverless v2
+   - ElastiCache Redis
+   - MSK Serverless (Kafka)
+   - Secrets Manager
+   - CloudWatch dashboards and alarms
+4. ✅ Landing Page - Featured GPU pricing API with 60s cache
+5. ✅ Plans & Pricing - Billing app with subscription plans
+6. ✅ Registration Flow - Email verification, password reset, OAuth schemas
+7. ✅ Payment Setup - Full Stripe integration:
+   - SetupIntent for secure card storage
+   - Subscription creation with Stripe
+   - Invoice email via AWS SES
+   - Sandbox mode with test keys
+   - Payment failure handling with retry
+8. ✅ Dashboard - User-facing dashboard:
+   - Quick stats (active pods, spend, API calls)
+   - Pod list with status
+   - Billing summary
+   - Activity log
+   - Provider health status
+   - Real-time WebSocket updates
+9. ✅ Browse GPU/Services - GPU browsing with filtering, sorting, TOPSIS ranking
+10. ✅ Configure Pod - Pod configuration with:
+    - GPU selection (type, model, count)
+    - Provider selection (manual or auto-select)
+    - Resource configuration (vCPUs, RAM, storage)
+    - Cost estimation (per hour/day/month)
+    - Validation against provider limits
+    - Draft saving before deployment
+
+**New Apps Created:**
+- `gpubrokerpod.gpubrokerapp.apps.pod_config` - POD configuration management
+- `gpubrokerpod.gpubrokerapp.apps.billing` - Subscription and billing
+- `gpubrokerpod.gpubrokerapp.apps.dashboard` - User dashboard
+- `gpubrokerpod.gpubrokerapp.apps.deployment` - Pod deployment and lifecycle
+
+**New API Endpoints:**
+- `/api/v2/config/pods/` - POD configuration CRUD
+- `/api/v2/agent/` - Agent Zero control (ADMIN ONLY)
+- `/api/v2/billing/plans` - Subscription plans
+- `/api/v2/billing/subscription` - User subscription
+- `/api/v2/billing/setup-intent` - Stripe SetupIntent
+- `/api/v2/billing/webhook` - Stripe webhook handler
+- `/api/v2/providers/featured` - Featured GPU offers
+- `/api/v2/providers/browse` - Browse GPU offers with filtering
+- `/api/v2/dashboard/` - Dashboard data
+- `/api/v2/dashboard/pods` - User pods
+- `/api/v2/dashboard/providers/health` - Provider health
+- `/api/v2/deployment/configs` - Pod deployment configuration CRUD
+- `/api/v2/deployment/estimate` - Cost estimation
+- `/api/v2/deployment/validate` - Configuration validation
+- `/api/v2/deployment/deploy` - Deploy a configuration
+- `/api/v2/deployment/activate/{id}` - Activate a pod
+- `/api/v2/deployment/pods/{id}/action` - Pod lifecycle actions
+- `/api/v2/deployment/limits` - Provider limits
+
+**WebSocket Endpoints:**
+- `/ws/` - Price updates
+- `/ws/notifications/` - User notifications
+- `/ws/dashboard/` - Dashboard real-time updates
+- `/ws/gpu-availability/` - GPU availability updates
+
+**Remaining Tasks (16-28):**
+- Deployment flow
+- Activation flow
+- Admin Dashboards
+- Metrics & Monitoring
+- Provider Integration
+- Billing & Invoicing
+- Security & Authentication
+- Real-Time Updates
 
 ---
 
@@ -267,31 +343,40 @@ python manage.py createsuperuser
 
 ### Common Issues
 
-1. **Login fails with JSON.parse error**
+1. **Geo endpoint 404**
+   - Correct URL: `/api/v2/admin/public/geo/detect`
+   - NOT `/api/v2/geo/detect`
+
+2. **Login fails with JSON.parse error**
    - Check login endpoint URL: `/api/v2/admin/public/admin/login`
    - Ensure response is JSON, not HTML
 
-2. **PayPal sandbox not working**
+3. **PayPal sandbox not working**
    - Verify PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET in .env
    - Ensure PAYPAL_MODE=sandbox
 
-3. **Database connection errors**
+4. **Database connection errors**
    - Check DATABASE_URL in .env
    - Ensure PostgreSQL is running on port 28001
 
-4. **Static files not loading**
+5. **Static files not loading**
    - Run `python manage.py collectstatic`
    - Check STATIC_URL and STATICFILES_DIRS settings
 
 ---
 
-## Contact
+## Infrastructure Files
 
-- **Project**: GPUBROKER
-- **Organization**: SOMATECH
-- **Repository**: https://github.com/somatechlat/gpubroker
+### Production-Grade Configs Created
+- `infrastructure/prometheus/prometheus.yml` - Monitoring
+- `infrastructure/grafana/datasources/datasources.yml` - Data sources
+- `infrastructure/grafana/dashboards/dashboards.yml` - Dashboard provisioning
+- `infrastructure/redis/redis.conf` - Redis optimization (128MB)
+- `infrastructure/postgres/postgresql.conf` - PostgreSQL tuning (512MB)
+- `infrastructure/vault/config/vault.hcl` - Secret management
+- `infrastructure/nginx/nginx.conf` - Reverse proxy with rate limiting
 
 ---
 
-*Last Updated: December 30, 2025*
-*Document Version: 1.0*
+*Last Updated: January 1, 2026*
+*Document Version: 2.3*

@@ -171,7 +171,27 @@ from gpubrokeradmin.api.router import admin_router
 api.add_router("/admin/public/", admin_public_router, tags=["admin-public"])
 api.add_router("/admin/", admin_router, tags=["admin"])
 
+# POD Configuration routers
+from gpubrokerpod.gpubrokerapp.apps.pod_config.api import router as config_router
+
+api.add_router("/config/", config_router, tags=["config"])
+
+# Billing routers
+from gpubrokerpod.gpubrokerapp.apps.billing.api import router as billing_router
+
+api.add_router("/billing/", billing_router, tags=["billing"])
+
 # GPUBROKERAGENT routers (agentic layer - ADMIN ONLY)
-# TODO: Add agent routers when apps are implemented
-# from gpubrokerpod.gpubrokeragent.apps.agent_core.api import router as agent_router
-# api.add_router("/agent/", agent_router, tags=["agent"])
+from gpubrokerpod.gpubrokeragent.apps.agent_core.api import router as agent_router
+
+api.add_router("/agent/", agent_router, tags=["agent"])
+
+# Dashboard router
+from gpubrokerpod.gpubrokerapp.apps.dashboard.api import router as dashboard_router
+
+api.add_router("/dashboard/", dashboard_router, tags=["dashboard"])
+
+# Deployment router (Task 15-17: Configure Pod, Deployment, Activation)
+from gpubrokerpod.gpubrokerapp.apps.deployment.api import router as deployment_router
+
+api.add_router("/deployment/", deployment_router, tags=["deployment"])

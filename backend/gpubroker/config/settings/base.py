@@ -80,6 +80,18 @@ INSTALLED_APPS = [
     'gpubrokerpod.gpubrokeragent.apps.agent_core',
     'gpubrokerpod.gpubrokeragent.apps.decisions',
     'gpubrokerpod.gpubrokeragent.apps.budgets',
+    
+    # POD Configuration (SANDBOX/LIVE modes)
+    'gpubrokerpod.gpubrokerapp.apps.pod_config',
+    
+    # Billing & Subscriptions
+    'gpubrokerpod.gpubrokerapp.apps.billing',
+    
+    # Dashboard
+    'gpubrokerpod.gpubrokerapp.apps.dashboard',
+    
+    # Deployment (Configure Pod, Deploy, Activate)
+    'gpubrokerpod.gpubrokerapp.apps.deployment',
 ]
 
 MIDDLEWARE = [
@@ -214,16 +226,92 @@ AWS_REGION = env('AWS_REGION', default='us-east-1')
 AWS_ACCOUNT_ID = env('AWS_ACCOUNT_ID', default='')
 
 # Stripe Configuration (mode-dependent)
-STRIPE_SECRET_KEY = env('STRIPE_SECRET_KEY', default='')
+# Test keys for sandbox mode
+STRIPE_SECRET_KEY_TEST = env('STRIPE_SECRET_KEY_TEST', default='')
+STRIPE_PUBLISHABLE_KEY_TEST = env('STRIPE_PUBLISHABLE_KEY_TEST', default='')
+# Live keys for production mode
+STRIPE_SECRET_KEY_LIVE = env('STRIPE_SECRET_KEY_LIVE', default='')
+STRIPE_PUBLISHABLE_KEY_LIVE = env('STRIPE_PUBLISHABLE_KEY_LIVE', default='')
+# Webhook secret (same for both modes typically)
 STRIPE_WEBHOOK_SECRET = env('STRIPE_WEBHOOK_SECRET', default='')
+# Legacy single key (deprecated, use mode-specific keys)
+STRIPE_SECRET_KEY = env('STRIPE_SECRET_KEY', default='')
 
-# PayPal Configuration
+# PayPal Configuration (mode-dependent)
+# Sandbox credentials
+PAYPAL_CLIENT_ID_SANDBOX = env('PAYPAL_CLIENT_ID_SANDBOX', default='')
+PAYPAL_CLIENT_SECRET_SANDBOX = env('PAYPAL_CLIENT_SECRET_SANDBOX', default='')
+# Live credentials
+PAYPAL_CLIENT_ID_LIVE = env('PAYPAL_CLIENT_ID_LIVE', default='')
+PAYPAL_CLIENT_SECRET_LIVE = env('PAYPAL_CLIENT_SECRET_LIVE', default='')
+# Legacy single key (deprecated)
 PAYPAL_CLIENT_ID = env('PAYPAL_CLIENT_ID', default='')
 PAYPAL_CLIENT_SECRET = env('PAYPAL_CLIENT_SECRET', default='')
-PAYPAL_MODE = env('PAYPAL_MODE', default='sandbox')
 
-# GPUBROKER Admin URL (for payment callbacks)
-GPUBROKER_ADMIN_URL = env('GPUBROKER_ADMIN_URL', default='http://localhost:28080')
+
+# =============================================================================
+# MODE-AWARE CREDENTIAL HELPERS
+# =============================================================================
+def get_stripe_keys():
+    """Return appropriate Stripe keys based on GPUBROKER_MODE"""
+    if GPUBROKER_MODE == 'live':
+        return {
+            'secret_key': STRIPE_SECRET_KEY_LIVE or STRIPE_SECRET_KEY,
+            'publishable_key': STRIPE_PUBLISHABLE_KEY_LIVE,
+        }
+    return {
+        'secret_key': STRIPE_SECRET_KEY_TEST or STRIPE_SECRET_KEY,
+        'publishable_key': STRIPE_PUBLISHABLE_KEY_TEST,
+    }
+
+
+def get_paypal_config():
+    """Return appropriate PayPal config based on GPUBROKER_MODE"""
+    if GPUBROKER_MODE == 'live':
+        return {
+            'client_id': PAYPAL_CLIENT_ID_LIVE or PAYPAL_CLIENT_ID,
+            'client_secret': PAYPAL_CLIENT_SECRET_LIVE or PAYPAL_CLIENT_SECRET,
+            'mode': 'live',
+            'api_base': 'https://api-m.paypal.com',
+        }
+    return {
+        'client_id': PAYPAL_CLIENT_ID_SANDBOX or PAYPAL_CLIENT_ID,
+        'client_secret': PAYPAL_CLIENT_SECRET_SANDBOX or PAYPAL_CLIENT_SECRET,
+        'mode': 'sandbox',
+        'api_base': 'https://api-m.sandbox.paypal.com',
+    }
+
+# =============================================================================
+# GPUBROKER DOMAIN CONFIGURATION (CENTRALIZED - CHANGE HERE ONLY)
+# =============================================================================
+# Base domain for the entire GPUBROKER platform
+GPUBROKER_DOMAIN = env('GPUBROKER_DOMAIN', default='gpubroker.site')
+
+# Derived URLs (use these in code, not hardcoded domains)
+GPUBROKER_BASE_URL = env('GPUBROKER_BASE_URL', default=f'https://{GPUBROKER_DOMAIN}')
+GPUBROKER_ADMIN_URL = env('GPUBROKER_ADMIN_URL', default=f'https://admin.{GPUBROKER_DOMAIN}')
+GPUBROKER_API_URL = env('GPUBROKER_API_URL', default=f'https://api.{GPUBROKER_DOMAIN}')
+GPUBROKER_APP_URL = env('GPUBROKER_APP_URL', default=f'https://app.{GPUBROKER_DOMAIN}')
+
+# Email addresses (derived from domain)
+GPUBROKER_SUPPORT_EMAIL = f'support@{GPUBROKER_DOMAIN}'
+GPUBROKER_BILLING_EMAIL = f'billing@{GPUBROKER_DOMAIN}'
+GPUBROKER_NOREPLY_EMAIL = f'noreply@{GPUBROKER_DOMAIN}'
+
+# =============================================================================
+# GPUBROKER REGIONAL CONFIGURATION
+# =============================================================================
+# Default region for geo-detection fallback (ISO 3166-1 alpha-2)
+GPUBROKER_DEFAULT_REGION = env('GPUBROKER_DEFAULT_REGION', default='US')
+
+# Deployment region - determines which country-specific validations apply
+# Options: 'GLOBAL', 'LATAM', 'EC', 'US', 'EU', etc.
+GPUBROKER_DEPLOYMENT_REGION = env('GPUBROKER_DEPLOYMENT_REGION', default='GLOBAL')
+
+# Force specific country validation (for testing or single-country deployments)
+# Set to country code (e.g., 'EC') to always require that country's validation
+# Set to empty string for geo-detection
+GPUBROKER_FORCE_COUNTRY = env('GPUBROKER_FORCE_COUNTRY', default='')
 
 # =============================================================================
 # LOGGING

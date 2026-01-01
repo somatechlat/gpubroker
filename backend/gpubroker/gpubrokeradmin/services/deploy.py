@@ -73,7 +73,7 @@ class DeployService:
                 "success": True,
                 "pod_id": pod_id,
                 "task_arn": f"arn:aws:ecs:{AWS_REGION}:mock:task/{pod_id}",
-                "pod_url": f"https://{pod_id}.gpubroker.live",
+                "pod_url": f"https://{pod_id}.gpubroker.site",
                 "status": "provisioning",
             }
         
@@ -116,7 +116,7 @@ class DeployService:
                     "success": True,
                     "pod_id": pod_id,
                     "task_arn": task["taskArn"],
-                    "pod_url": f"https://{pod_id}.gpubroker.live",
+                    "pod_url": f"https://{pod_id}.gpubroker.site",
                     "status": "provisioning",
                 }
             else:
@@ -154,7 +154,7 @@ class DeployService:
                 "pod_id": pod_id,
                 "status": "running",
                 "public_ip": "10.0.0.1",
-                "pod_url": f"https://{pod_id}.gpubroker.live",
+                "pod_url": f"https://{pod_id}.gpubroker.site",
             }
         
         try:
@@ -194,14 +194,14 @@ class DeployService:
                                 "pod_id": pod_id,
                                 "status": "running" if task["lastStatus"] == "RUNNING" else "provisioning",
                                 "public_ip": public_ip,
-                                "pod_url": f"https://{pod_id}.gpubroker.live",
+                                "pod_url": f"https://{pod_id}.gpubroker.site",
                             }
             
             return {
                 "pod_id": pod_id,
                 "status": "pending",
                 "public_ip": None,
-                "pod_url": f"https://{pod_id}.gpubroker.live",
+                "pod_url": f"https://{pod_id}.gpubroker.site",
             }
             
         except Exception as e:

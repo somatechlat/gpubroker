@@ -74,4 +74,4 @@ def admin_costs(request):
 
 def index(request):
     """Root redirect to landing page."""
-    return redirect('https://gpubroker.live')
+    return redirect('https://gpubroker.site')

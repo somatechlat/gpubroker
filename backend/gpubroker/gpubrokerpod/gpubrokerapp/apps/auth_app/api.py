@@ -22,6 +22,10 @@ from .schemas import (
     UserResponse,
     UserProfileUpdate,
     PasswordChange,
+    EmailVerificationRequest,
+    ResendVerificationRequest,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
 )
 from .services import (
     create_user,
@@ -31,6 +35,13 @@ from .services import (
     update_user_profile,
     change_password,
     log_audit_event,
+    create_verification_token,
+    verify_email_token,
+    create_password_reset_token,
+    reset_password_with_token,
+    send_verification_email,
+    send_password_reset_email,
+    get_user_by_email,
 )
 from .auth import JWTAuth
 from .models import User
@@ -235,3 +246,81 @@ async def change_user_password(request: HttpRequest, data: PasswordChange):
     )
     
     return {"message": "Password changed successfully"}
+
+
+@router.post("/verify-email", auth=None)
+async def verify_email(request: HttpRequest, data: EmailVerificationRequest):
+    """
+    Verify user email with token.
+    
+    Token is sent via email after registration.
+    """
+    user = await verify_email_token(data.token)
+    
+    if not user:
+        raise HttpError(400, "Invalid or expired verification token")
+    
+    # Log audit event
+    await log_audit_event(
+        event_type="email_verified",
+        user=user,
+        resource_type="user",
+        resource_id=str(user.id),
+        ip_address=get_client_ip(request),
+    )
+    
+    return {"message": "Email verified successfully"}
+
+
+@router.post("/resend-verification", auth=None)
+async def resend_verification(request: HttpRequest, data: ResendVerificationRequest):
+    """
+    Resend verification email.
+    
+    Rate limited to prevent abuse.
+    """
+    user = await get_user_by_email(data.email)
+    
+    if not user:
+        # Don't reveal if email exists
+        return {"message": "If the email exists, a verification link has been sent"}
+    
+    if user.is_verified:
+        return {"message": "Email is already verified"}
+    
+    # Create and send verification token
+    token = await create_verification_token(user)
+    await send_verification_email(user, token)
+    
+    return {"message": "If the email exists, a verification link has been sent"}
+
+
+@router.post("/forgot-password", auth=None)
+async def forgot_password(request: HttpRequest, data: ForgotPasswordRequest):
+    """
+    Request password reset email.
+    
+    Sends reset link if email exists.
+    """
+    token = await create_password_reset_token(data.email)
+    
+    if token:
+        await send_password_reset_email(data.email, token)
+    
+    # Always return success to prevent email enumeration
+    return {"message": "If the email exists, a password reset link has been sent"}
+
+
+@router.post("/reset-password", auth=None)
+async def reset_password(request: HttpRequest, data: ResetPasswordRequest):
+    """
+    Reset password with token.
+    
+    Token is sent via email from forgot-password endpoint.
+    """
+    success = await reset_password_with_token(data.token, data.new_password)
+    
+    if not success:
+        raise HttpError(400, "Invalid or expired reset token")
+    
+    return {"message": "Password reset successfully"}

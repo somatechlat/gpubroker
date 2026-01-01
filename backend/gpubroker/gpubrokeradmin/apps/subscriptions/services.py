@@ -42,6 +42,7 @@ class SubscriptionService:
         amount: float = 0.0,
         payment_provider: str = "unknown",
         name: str = "",
+        country_code: str = "",
     ) -> Dict[str, Any]:
         """
         Create a new subscription after payment.
@@ -49,13 +50,14 @@ class SubscriptionService:
         Args:
             email: Customer email
             plan: Subscription plan
-            ruc: Ecuador tax ID
+            ruc: Ecuador tax ID (only required for EC)
             card_last4: Last 4 digits of card
             transaction_id: Payment transaction ID
             order_id: Payment order ID
             amount: Payment amount in USD
             payment_provider: Payment provider name
             name: Customer name
+            country_code: ISO country code from geo-detection
             
         Returns:
             Dict with subscription details
@@ -82,7 +84,7 @@ class SubscriptionService:
                 token_limit=plan_config['tokens'],
                 tokens_used=0,
                 pod_id=pod_id,
-                pod_url=f"https://{pod_id}.gpubroker.live",
+                pod_url=f"https://{pod_id}.gpubroker.site",
                 payment_provider=payment_provider,
                 transaction_id=transaction_id,
                 order_id=order_id,
@@ -113,7 +115,7 @@ class SubscriptionService:
                 "subscription_id": subscription_id,
                 "api_key": api_key,
                 "pod_id": pod_id,
-                "pod_url": f"https://{pod_id}.gpubroker.live",
+                "pod_url": f"https://{pod_id}.gpubroker.site",
                 "status": "pending_activation",
                 "message": "Revisa tu email para activar tu GPUBROKER POD",
             }

@@ -1,40 +1,49 @@
 /* ==================================================
    GPUBROKER Landing Page - Design System
-   Light Grey Matte Theme - Matches Admin Templates
-   NO BLUE, NO PURPLE - Grey + Green Accent
+   Matching Admin Dashboard Design System
    ================================================== */
 
 :root {
-    /* Grey Matte Colors - Standardized across all GPUBROKER */
-    --color-bg: #F3F4F6;
+    /* Colors - Monochrome + Accent (from admin.css) */
+    --color-bg: #F5F5F5;
     --color-card: #FFFFFF;
-    --color-accent: #1F1F1F;
-    --color-accent-green: #22C55E;
-    --color-accent-green-light: #DCFCE7;
-    --color-text: #111827;
-    --color-muted: #6B7280;
-    --color-light: #9CA3AF;
-    --color-border: #E5E7EB;
+    --color-surface: #FFFFFF;
+    --color-primary: #0A0A0A;
+    --color-accent: #22C55E;
+    --color-accent-light: #DCFCE7;
+    --color-text: #171717;
+    --color-muted: #737373;
+    --color-light: #A3A3A3;
+    --color-border: #E5E5E5;
     --color-hover: #F9FAFB;
-    --color-success: #10B981;
+    
+    /* Status Colors */
+    --color-success: #22C55E;
     --color-error: #EF4444;
     --color-warning: #F59E0B;
+    --color-info: #3B82F6;
+
+    /* Glassmorphism */
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-blur: blur(20px);
+    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+    --glass-border: 1px solid rgba(255, 255, 255, 0.5);
 
     /* Spacing - Standardized */
-    --space-xs: 0.25rem;
-    --space-sm: 0.5rem;
-    --space-md: 1rem;
-    --space-lg: 1.5rem;
-    --space-xl: 2rem;
-    --space-2xl: 3rem;
-    --space-3xl: 4rem;
-    --space-4xl: 6rem;
+    --space-xs: 4px;
+    --space-sm: 8px;
+    --space-md: 16px;
+    --space-lg: 24px;
+    --space-xl: 32px;
+    --space-2xl: 48px;
+    --space-3xl: 64px;
+    --space-4xl: 96px;
 
     /* Border Radius */
-    --radius-sm: 4px;
-    --radius-md: 8px;
-    --radius-lg: 12px;
-    --radius-xl: 16px;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
     --radius-full: 9999px;
 
     /* Typography */
@@ -42,8 +51,8 @@
     --font-mono: 'Geist Mono', 'SF Mono', monospace;
 
     /* Transitions */
-    --transition-fast: 150ms ease;
-    --transition-normal: 250ms ease;
+    --transition-fast: 50ms ease-out;
+    --transition-normal: 100ms ease-out;
 
     /* Layout */
     --nav-height: 64px;
@@ -141,23 +150,23 @@ ul, ol {
 }
 
 .btn--primary {
-    background: var(--color-accent);
+    background: var(--color-primary);
     color: white;
     border: none;
 }
 
 .btn--primary:hover {
-    opacity: 0.9;
+    background: #262626;
 }
 
 .btn--green {
-    background: var(--color-accent-green);
+    background: var(--color-primary);
     color: white;
     border: none;
 }
 
 .btn--green:hover {
-    background: #16A34A;
+    background: #262626;
 }
 
 .btn--outline {
@@ -228,7 +237,7 @@ ul, ol {
 }
 
 .nav__logo-text span {
-    color: var(--color-accent-green);
+    color: var(--color-accent);
 }
 
 .nav__menu {
@@ -351,7 +360,7 @@ ul, ol {
 }
 
 .hero__highlight {
-    color: var(--color-accent-green);
+    color: var(--color-accent);
 }
 
 .hero__subtitle {
@@ -384,7 +393,7 @@ ul, ol {
     display: block;
     font-size: 1.75rem;
     font-weight: 700;
-    color: var(--color-accent-green);
+    color: var(--color-accent);
 }
 
 .hero__stat-label {
@@ -422,7 +431,7 @@ ul, ol {
 .feature-card__icon {
     width: 48px;
     height: 48px;
-    color: var(--color-accent-green);
+    color: var(--color-accent);
     margin-bottom: var(--space-lg);
 }
 
@@ -467,7 +476,7 @@ ul, ol {
 }
 
 .pricing-card--popular {
-    border-color: var(--color-accent-green);
+    border-color: var(--color-accent);
     box-shadow: 0 4px 20px rgba(34, 197, 94, 0.15);
 }
 
@@ -476,7 +485,7 @@ ul, ol {
     top: -12px;
     left: 50%;
     transform: translateX(-50%);
-    background: var(--color-accent-green);
+    background: var(--color-accent);
     color: white;
     font-size: 0.75rem;
     font-weight: 600;
@@ -525,7 +534,7 @@ ul, ol {
 
 .pricing-card__tokens {
     font-size: 0.875rem;
-    color: var(--color-accent-green);
+    color: var(--color-accent);
     font-weight: 500;
 }
 
@@ -551,7 +560,7 @@ ul, ol {
     width: 18px;
     height: 18px;
     flex-shrink: 0;
-    color: var(--color-accent-green);
+    color: var(--color-accent);
 }
 
 .pricing-card__feature--disabled .pricing-card__check {
@@ -597,7 +606,7 @@ ul, ol {
 .step__icon {
     width: 48px;
     height: 48px;
-    color: var(--color-accent-green);
+    color: var(--color-accent);
     margin: 0 auto var(--space-lg);
 }
 
@@ -683,7 +692,7 @@ ul, ol {
 }
 
 .footer__logo-text span {
-    color: var(--color-accent-green);
+    color: var(--color-accent);
 }
 
 .footer__description {
@@ -751,7 +760,7 @@ ul, ol {
 }
 
 .footer__developer a {
-    color: var(--color-accent-green);
+    color: var(--color-accent);
     font-weight: 500;
     transition: color var(--transition-fast);
 }
@@ -798,7 +807,7 @@ ul, ol {
 }
 
 .cookie-banner__text a {
-    color: var(--color-accent-green);
+    color: var(--color-accent);
     text-decoration: underline;
 }
 
@@ -823,7 +832,7 @@ ul, ol {
 }
 
 .cookie-banner__btn--accept {
-    background: var(--color-accent-green);
+    background: var(--color-accent);
     color: white;
     border: none;
 }
@@ -1011,4 +1020,699 @@ ul, ol {
 .reveal--visible {
     opacity: 1;
     transform: translateY(0);
+}
+
+
+/* ==================================================
+   Enrollment Modal - Admin Design System
+   Full-screen modal matching admin.css glassmorphism
+   Monochrome + accent (green for status only)
+   ================================================== */
+.enrollment-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2000;
+    display: none;
+    align-items: stretch;
+    justify-content: stretch;
+    padding: 0;
+    margin: 0;
+}
+
+.enrollment-modal--open {
+    display: flex;
+}
+
+.enrollment-modal__backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(245, 245, 245, 0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+/* Full-screen modal container */
+.enrollment-modal__container {
+    position: relative;
+    background: var(--color-bg);
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    animation: modalFadeIn 0.2s ease-out;
+    overflow: hidden;
+}
+
+@keyframes modalFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Modal Header - Fixed at top */
+.enrollment-modal__header {
+    background: var(--color-card);
+    border-bottom: 1px solid var(--color-border);
+    padding: var(--space-md) var(--space-xl);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 64px;
+    flex-shrink: 0;
+    z-index: 10;
+}
+
+.enrollment-modal__logo {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.enrollment-modal__logo svg {
+    width: 32px;
+    height: 32px;
+}
+
+.enrollment-modal__close {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    color: var(--color-muted);
+}
+
+.enrollment-modal__close:hover {
+    background: var(--color-border);
+    color: var(--color-text);
+}
+
+.enrollment-modal__close svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Modal Body - Fills remaining space, centers content */
+.enrollment-modal__body {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-2xl);
+    overflow-y: auto;
+    background: linear-gradient(180deg, var(--color-bg) 0%, #EBEBEB 100%);
+}
+
+.enrollment-modal__content {
+    width: 100%;
+    max-width: 520px;
+}
+
+/* Modal Step Card - Glassmorphism */
+.modal-step {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: var(--glass-border);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--glass-shadow);
+    padding: var(--space-2xl);
+}
+
+/* Modal Steps Header */
+.modal-step__header {
+    text-align: center;
+    margin-bottom: var(--space-xl);
+}
+
+.modal-step__header h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--color-text);
+    margin-bottom: var(--space-sm);
+}
+
+.modal-step__subtitle {
+    font-size: 0.95rem;
+    color: var(--color-muted);
+    line-height: 1.5;
+}
+
+.modal-step__logo {
+    display: none;
+}
+
+/* Loading Spinner - Primary color (black) */
+.loading-spinner {
+    text-align: center;
+    padding: var(--space-2xl) 0;
+}
+
+.spinner {
+    width: 48px;
+    height: 48px;
+    border: 3px solid var(--color-border);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    margin: 0 auto var(--space-lg);
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loading-spinner p {
+    color: var(--color-muted);
+    font-size: 0.95rem;
+}
+
+/* Form Styles in Modal - Admin Design System */
+.modal-step .form-group {
+    margin-bottom: var(--space-lg);
+}
+
+.modal-step .form-group label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text);
+    margin-bottom: var(--space-sm);
+}
+
+.modal-step .form-group input {
+    width: 100%;
+    padding: var(--space-md);
+    font-size: 1rem;
+    font-family: var(--font-sans);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-card);
+    color: var(--color-text);
+    transition: all var(--transition-fast);
+}
+
+.modal-step .form-group input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(10, 10, 10, 0.1);
+}
+
+.modal-step .form-group input::placeholder {
+    color: var(--color-light);
+}
+
+.modal-step .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-md);
+}
+
+.validation-status {
+    margin-top: var(--space-sm);
+    font-size: 0.875rem;
+    min-height: 20px;
+}
+
+.validation-status .error {
+    color: var(--color-error);
+}
+
+.validation-status .success {
+    color: var(--color-success);
+}
+
+.validation-status .loading {
+    color: var(--color-primary);
+}
+
+/* Plan Summary Card - Admin Design System */
+.plan-summary-card {
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    margin-bottom: var(--space-xl);
+}
+
+.plan-summary-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-md);
+    padding-bottom: var(--space-md);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.plan-summary-card__name {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.plan-summary-card__price {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--color-primary);
+}
+
+.plan-summary-card__features {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.plan-summary-card__features li {
+    font-size: 0.875rem;
+    color: var(--color-muted);
+    padding: var(--space-xs) 0;
+    padding-left: var(--space-lg);
+    position: relative;
+}
+
+.plan-summary-card__features li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: var(--color-primary);
+    font-weight: 600;
+}
+
+.plan-summary-card__country {
+    margin-top: var(--space-md);
+    font-size: 0.8rem;
+    color: var(--color-light);
+    font-style: italic;
+}
+
+/* Terms Checkbox */
+.terms-checkbox {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-sm);
+    margin-bottom: var(--space-xl);
+}
+
+.terms-checkbox input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin-top: 2px;
+    accent-color: var(--color-primary);
+    cursor: pointer;
+}
+
+.terms-checkbox label {
+    font-size: 0.875rem;
+    color: var(--color-muted);
+    line-height: 1.4;
+    cursor: pointer;
+}
+
+.terms-checkbox a {
+    color: var(--color-primary);
+    text-decoration: underline;
+}
+
+.terms-checkbox a:hover {
+    color: var(--color-text);
+}
+
+/* Provisioning Progress - Admin Design (monochrome) */
+.provisioning-progress {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md);
+    margin-bottom: var(--space-xl);
+}
+
+.provisioning-step {
+    display: flex;
+    align-items: center;
+    gap: var(--space-md);
+    padding: var(--space-md);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    opacity: 0.5;
+    transition: all var(--transition-fast);
+}
+
+.provisioning-step.active {
+    opacity: 1;
+    background: var(--color-card);
+    border-color: var(--color-primary);
+}
+
+.provisioning-step.completed {
+    opacity: 1;
+    background: var(--color-card);
+}
+
+.provisioning-step__icon {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.provisioning-step__icon svg {
+    width: 20px;
+    height: 20px;
+    color: var(--color-muted);
+}
+
+.provisioning-step.completed .provisioning-step__icon svg {
+    color: var(--color-success);
+}
+
+.provisioning-step span {
+    font-size: 0.9rem;
+    color: var(--color-text);
+}
+
+.mini-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--color-border);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.provisioning-note {
+    text-align: center;
+    font-size: 0.875rem;
+    color: var(--color-light);
+}
+
+/* Success/Error Icons - Admin Design */
+.success-icon,
+.error-icon {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto var(--space-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-full);
+}
+
+.success-icon {
+    background: var(--color-accent-light);
+}
+
+.success-icon svg {
+    width: 36px;
+    height: 36px;
+    color: var(--color-success);
+}
+
+.error-icon {
+    background: rgba(239, 68, 68, 0.15);
+}
+
+.error-icon svg {
+    width: 36px;
+    height: 36px;
+    color: var(--color-error);
+}
+
+/* POD Info Card - Admin Design */
+.pod-info-card {
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: var(--space-lg);
+    margin-bottom: var(--space-xl);
+}
+
+.pod-info-card__row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--space-sm) 0;
+}
+
+.pod-info-card__row:not(:last-child) {
+    border-bottom: 1px solid var(--color-border);
+}
+
+.pod-info-card__label {
+    font-size: 0.875rem;
+    color: var(--color-muted);
+}
+
+.pod-info-card__value {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-text);
+}
+
+code.pod-info-card__value {
+    font-family: var(--font-mono);
+    background: var(--color-bg);
+    padding: var(--space-xs) var(--space-sm);
+    border-radius: var(--radius-sm);
+    color: var(--color-text);
+    font-size: 0.8rem;
+    border: 1px solid var(--color-border);
+}
+
+/* Email Notice */
+.email-notice {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+    font-size: 0.875rem;
+    color: var(--color-muted);
+    margin-bottom: var(--space-xl);
+}
+
+.email-notice svg {
+    width: 18px;
+    height: 18px;
+    color: var(--color-muted);
+}
+
+/* Modal Button - Primary Black (Admin Design) */
+.modal-step .btn {
+    background: var(--color-primary);
+    color: white;
+    border: none;
+    padding: var(--space-md) var(--space-xl);
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+}
+
+.modal-step .btn:hover {
+    background: #262626;
+}
+
+.modal-step .btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.modal-step .btn--outline {
+    background: transparent;
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+}
+
+.modal-step .btn--outline:hover {
+    background: var(--color-bg);
+    border-color: var(--color-primary);
+}
+
+/* Scrollbar Styling for Modal */
+.enrollment-modal__body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.enrollment-modal__body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.enrollment-modal__body::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: var(--radius-full);
+}
+
+.enrollment-modal__body::-webkit-scrollbar-thumb:hover {
+    background: var(--color-muted);
+}
+
+/* ==================================================
+   PayPal Payment Section
+   ================================================== */
+.paypal-section {
+    margin-top: var(--space-lg);
+}
+
+.paypal-divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin-bottom: var(--space-lg);
+}
+
+.paypal-divider::before,
+.paypal-divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.paypal-divider span {
+    padding: 0 var(--space-md);
+    color: var(--color-muted);
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+#paypal-button-container {
+    min-height: 55px;
+}
+
+.paypal-error {
+    margin-top: var(--space-md);
+    padding: var(--space-sm) var(--space-md);
+    background: rgba(220, 38, 38, 0.1);
+    border: 1px solid rgba(220, 38, 38, 0.3);
+    border-radius: var(--radius-md);
+    color: #dc2626;
+    font-size: 0.875rem;
+    text-align: center;
+}
+
+/* ==================================================
+   Responsive Modal - Mobile First
+   ================================================== */
+@media (max-width: 768px) {
+    .enrollment-modal__container {
+        border-radius: 0;
+    }
+    
+    .enrollment-modal__header {
+        padding: var(--space-sm) var(--space-md);
+        height: 56px;
+    }
+    
+    .enrollment-modal__body {
+        padding: var(--space-md);
+        align-items: flex-start;
+        padding-top: var(--space-lg);
+        /* Prevent body scroll issues on mobile */
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .enrollment-modal__content {
+        max-width: 100%;
+        width: 100%;
+    }
+    
+    .modal-step {
+        padding: var(--space-lg);
+        border-radius: var(--radius-lg);
+        /* Ensure card doesn't overflow */
+        max-height: none;
+    }
+    
+    .modal-step__header {
+        margin-bottom: var(--space-lg);
+    }
+    
+    .modal-step__header h2 {
+        font-size: 1.25rem;
+    }
+    
+    .modal-step__subtitle {
+        font-size: 0.875rem;
+    }
+    
+    .modal-step .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .modal-step .form-group {
+        margin-bottom: var(--space-md);
+    }
+    
+    .modal-step .form-group input {
+        padding: var(--space-sm) var(--space-md);
+        font-size: 16px; /* Prevent iOS zoom on focus */
+    }
+    
+    .plan-summary-card {
+        padding: var(--space-md);
+        margin-bottom: var(--space-lg);
+    }
+    
+    .pod-info-card {
+        padding: var(--space-md);
+    }
+    
+    .pod-info-card__row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--space-xs);
+    }
+    
+    code.pod-info-card__value {
+        word-break: break-all;
+        font-size: 0.75rem;
+    }
+    
+    .success-icon,
+    .error-icon {
+        width: 56px;
+        height: 56px;
+    }
+    
+    .success-icon svg,
+    .error-icon svg {
+        width: 28px;
+        height: 28px;
+    }
+    
+    .loading-spinner {
+        padding: var(--space-xl) 0;
+    }
+    
+    .spinner {
+        width: 40px;
+        height: 40px;
+    }
+}
+
+/* Prevent body scroll when modal is open */
+body.modal-open {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+    height: 100%;
 }

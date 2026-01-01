@@ -221,3 +221,7 @@ Proprietary - SOMATECH
 
 *Built with Django 5 + Django Ninja*
 *No mocks. No fake data. Only real APIs and real results.*
+
+
+
+

@@ -14,6 +14,7 @@ from ..apps.auth.models import AdminUser
 from ..apps.subscriptions.services import SubscriptionService
 from ..apps.subscriptions.models import Subscription
 from ..services.deploy import DeployService
+from ..services.geo import geo_service
 
 
 # ============================================
@@ -50,13 +51,14 @@ class LoginResponseSchema(Schema):
 class SubscriptionCreateSchema(Schema):
     email: str
     plan: str = "pro"
-    ruc: str = ""
+    ruc: str = ""  # Optional - only required for Ecuador
     card_last4: str = "****"
     transaction_id: str = ""
     order_id: str = ""
     amount: float = 0.0
     payment_provider: str = "unknown"
     name: str = ""
+    country_code: str = ""  # ISO country code from geo-detection
 
 
 class SubscriptionActivateSchema(Schema):
@@ -97,6 +99,50 @@ def health_check(request):
     return {"status": "healthy", "service": "GPUBROKER Admin"}
 
 
+@public_router.get("/geo/detect")
+def detect_geo(request):
+    """
+    Detect user's country from IP for country-specific validation.
+    
+    Returns checkout configuration including:
+    - geo: detected location info
+    - show_tax_id: whether to show RUC/Cedula field
+    - tax_id_label: label for the tax ID field
+    - language: preferred language code
+    """
+    # Get client IP (handle proxies)
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip_address = x_forwarded_for.split(',')[0].strip()
+    else:
+        ip_address = request.META.get('REMOTE_ADDR', '127.0.0.1')
+    
+    # Check for forced country setting (for testing or single-country deployments)
+    from django.conf import settings
+    force_country = getattr(settings, 'GPUBROKER_FORCE_COUNTRY', '')
+    
+    if force_country:
+        # Use forced country instead of geo-detection
+        requirements = geo_service.get_validation_requirements(force_country)
+        return {
+            'geo': {
+                'country_code': force_country,
+                'country_name': force_country,
+                'detected': False,
+                'source': 'forced',
+                'is_private': False,
+            },
+            'validation': requirements,
+            'show_tax_id': requirements['requires_tax_id'],
+            'tax_id_label': requirements.get('tax_id_name', ''),
+            'language': requirements.get('language', 'en'),
+        }
+    
+    # Normal geo-detection
+    config = geo_service.get_checkout_config(ip_address)
+    return config
+
+
 @public_router.post("/admin/login", response=LoginResponseSchema)
 def admin_login(request, data: LoginSchema):
     """Admin login endpoint."""
@@ -114,7 +160,33 @@ def admin_login(request, data: LoginSchema):
 
 @public_router.post("/subscription/create")
 def create_subscription(request, data: SubscriptionCreateSchema):
-    """Create subscription after payment."""
+    """Create subscription after payment.
+    
+    RUC/Cedula is only required for Ecuador (EC) registrations.
+    For other countries, the ruc field can be empty.
+    """
+    # Determine country from request or provided country_code
+    country_code = data.country_code
+    if not country_code:
+        # Fallback to geo-detection from IP
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip_address = x_forwarded_for.split(',')[0].strip()
+        else:
+            ip_address = request.META.get('REMOTE_ADDR', '127.0.0.1')
+        
+        geo = geo_service.get_country_from_ip(ip_address)
+        country_code = geo.get('country_code', 'US')
+    
+    # Check if RUC is required for this country
+    requirements = geo_service.get_validation_requirements(country_code)
+    
+    if requirements['requires_tax_id'] and not data.ruc:
+        return {
+            "success": False,
+            "error": f"{requirements['tax_id_name']} es requerido para registros desde {country_code}",
+        }
+    
     result = SubscriptionService.create_subscription(
         email=data.email,
         plan=data.plan,
@@ -125,6 +197,7 @@ def create_subscription(request, data: SubscriptionCreateSchema):
         amount=data.amount,
         payment_provider=data.payment_provider,
         name=data.name,
+        country_code=country_code,
     )
     return result
 
@@ -569,3 +642,106 @@ def get_paypal_status(request):
     from ..services.payments.paypal import paypal_service
     
     return paypal_service.get_config_status()
+
+
+# ============================================
+# MODE MANAGEMENT ENDPOINTS
+# ============================================
+
+class ModeSwitchSchema(Schema):
+    mode: str  # 'sandbox' or 'live'
+    confirm: bool = False  # Must be True to switch to live
+
+
+@public_router.get("/mode")
+def get_current_mode(request):
+    """Get current global mode status (public for UI display)."""
+    from ..services.mode import mode_service
+    
+    return mode_service.get_status()
+
+
+@public_router.get("/mode/config")
+def get_mode_config(request):
+    """Get all mode-aware configurations (for debugging/admin)."""
+    from ..services.mode import mode_service
+    
+    return mode_service.get_all_configs()
+
+
+@admin_router.get("/mode")
+def admin_get_mode(request):
+    """Get current mode status (authenticated)."""
+    from ..services.mode import mode_service
+    
+    status = mode_service.get_status()
+    status['can_switch'] = True  # Admin can always switch
+    return status
+
+
+@admin_router.post("/mode")
+def admin_switch_mode(request, data: ModeSwitchSchema):
+    """
+    Switch global mode between sandbox and live.
+    
+    Requires admin authentication.
+    When switching to 'live', confirm=True is required.
+    """
+    from ..services.mode import mode_service
+    import logging
+    
+    logger = logging.getLogger(__name__)
+    
+    # Validate mode
+    if data.mode not in ('sandbox', 'live'):
+        return {
+            "success": False,
+            "error": f"Invalid mode: {data.mode}. Must be 'sandbox' or 'live'"
+        }
+    
+    # Require confirmation for switching to live
+    if data.mode == 'live' and not data.confirm:
+        return {
+            "success": False,
+            "error": "Switching to LIVE mode requires confirm=true",
+            "warning": "Live mode will process REAL payments and provision REAL resources!",
+            "current_mode": mode_service.current_mode,
+        }
+    
+    # Get admin user for logging
+    admin_email = getattr(request, 'admin_user', {})
+    if hasattr(admin_email, 'email'):
+        admin_email = admin_email.email
+    else:
+        admin_email = 'unknown'
+    
+    old_mode = mode_service.current_mode
+    
+    # Switch mode
+    try:
+        mode_service.set_mode(data.mode)
+        
+        logger.warning(
+            f"Mode switched by admin: {old_mode} -> {data.mode}",
+            extra={
+                'admin': admin_email,
+                'old_mode': old_mode,
+                'new_mode': data.mode,
+            }
+        )
+        
+        return {
+            "success": True,
+            "message": f"Mode switched from {old_mode} to {data.mode}",
+            "old_mode": old_mode,
+            "new_mode": data.mode,
+            "admin": admin_email,
+            "status": mode_service.get_status(),
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "current_mode": mode_service.current_mode,
+        }
+

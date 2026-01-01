@@ -15,24 +15,26 @@
         </header>
 
         <main class="checkout-content">
-            <!-- Step 1: RUC Validation -->
-            <section class="ruc-validation card" id="step1">
-                <h2>1. Verifica tu Identidad</h2>
-                <p class="hint">Ingresa tu RUC o Cédula para continuar</p>
+            <section class="card" id="geoLoading">
+                <div class="loading-spinner">
+                    <p>Detectando ubicacion...</p>
+                </div>
+            </section>
 
+            <section class="ruc-validation card" id="step1" style="display: none;">
+                <h2>1. Verifica tu Identidad</h2>
+                <p class="hint" id="taxIdHint">Ingresa tu RUC o Cedula para continuar</p>
                 <div class="form-group">
-                    <label for="identifier">RUC (13 dígitos) o Cédula (10 dígitos)</label>
-                    <input type="text" id="identifier" name="identifier" required placeholder="1790869571001"
+                    <label for="identifier" id="taxIdLabel">RUC (13 digitos) o Cedula (10 digitos)</label>
+                    <input type="text" id="identifier" name="identifier" placeholder="1790869571001"
                         maxlength="13" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
                     <div class="validation-status" id="validationStatus"></div>
                 </div>
-
                 <button type="button" class="btn-primary" id="validateBtn" onclick="validateIdentity()">
                     Verificar Identidad
                 </button>
             </section>
 
-            <!-- Plan Summary -->
             <section class="plan-summary card" id="planSection" style="display: none;">
                 <h2>Plan Seleccionado</h2>
                 <div class="plan-details">
@@ -43,31 +45,28 @@
                     <li>GPUBROKER Agent AI ilimitado</li>
                     <li>10,000 tokens mensuales</li>
                     <li>Acceso a 20+ proveedores GPU</li>
-                    <li>Optimización automática de costos</li>
+                    <li>Optimizacion automatica de costos</li>
                     <li>Soporte email 24h</li>
                 </ul>
+                <div class="country-info" id="countryInfo" style="margin-top: 12px; font-size: 13px; color: #666;"></div>
             </section>
 
-            <!-- Payment Form -->
             <section class="payment-form card" id="step2" style="display: none;">
-                <h2>2. Datos de Pago</h2>
+                <h2 id="paymentStepTitle">2. Datos de Pago</h2>
                 <form id="checkoutForm">
                     <div class="form-group">
                         <label for="email">Email Corporativo</label>
                         <input type="email" id="email" name="email" required placeholder="tu@empresa.com">
                     </div>
-
                     <div class="form-group">
                         <label for="name">Nombre Completo</label>
-                        <input type="text" id="name" name="name" required placeholder="Juan Pérez">
+                        <input type="text" id="name" name="name" required placeholder="Juan Perez">
                     </div>
-
                     <div class="form-group">
-                        <label for="cardNumber">Número de Tarjeta</label>
+                        <label for="cardNumber">Numero de Tarjeta</label>
                         <input type="text" id="cardNumber" name="cardNumber" required placeholder="4242 4242 4242 4242"
                             maxlength="19" oninput="formatCardNumber(this)">
                     </div>
-
                     <div class="form-row">
                         <div class="form-group half">
                             <label for="expiry">Vencimiento</label>
@@ -80,14 +79,12 @@
                                 oninput="this.value = this.value.replace(/[^0-9]/g, '')">
                         </div>
                     </div>
-
                     <div class="terms">
                         <input type="checkbox" id="terms" required>
                         <label for="terms">
-                            Acepto los <a href="/terminos" target="_blank">Términos de Servicio</a>
+                            Acepto los <a href="/terminos" target="_blank">Terminos de Servicio</a>
                         </label>
                     </div>
-
                     <button type="submit" class="btn-primary" id="payBtn">
                         Pagar y Activar GPUBROKER POD
                     </button>
@@ -104,12 +101,16 @@
     <script>
         let validatedIdentifier = null;
         let identifierType = null;
+        let geoConfig = null;
+        let requiresTaxId = false;
+        let detectedCountry = 'US';
+        
         const urlParams = new URLSearchParams(window.location.search);
         const plan = urlParams.get('plan') || 'pro';
 
         const planConfig = {
             trial: { name: 'Prueba Gratuita', price: '$0 USD', priceNum: 0, tokens: 1000 },
-            basic: { name: 'Básico', price: '$20 USD/mes', priceNum: 20, tokens: 5000 },
+            basic: { name: 'Basico', price: '$20 USD/mes', priceNum: 20, tokens: 5000 },
             pro: { name: 'Profesional', price: '$40 USD/mes', priceNum: 40, tokens: 10000 },
             corp: { name: 'Corporativo', price: '$99 USD/mes', priceNum: 99, tokens: 50000 }
         };
@@ -118,13 +119,48 @@
         document.getElementById('planName').textContent = config.name;
         document.getElementById('planPrice').textContent = config.price;
 
+        async function detectCountry() {
+            try {
+                const response = await fetch('/api/v2/admin/public/geo/detect');
+                geoConfig = await response.json();
+                
+                detectedCountry = geoConfig.geo?.country_code || 'US';
+                requiresTaxId = geoConfig.show_tax_id || false;
+                
+                document.getElementById('geoLoading').style.display = 'none';
+                
+                const countryName = geoConfig.geo?.country_name || 'Unknown';
+                document.getElementById('countryInfo').textContent = 
+                    'Registrando desde: ' + countryName + ' (' + detectedCountry + ')';
+                
+                if (requiresTaxId) {
+                    const taxIdLabel = geoConfig.tax_id_label || 'RUC/Cedula';
+                    document.getElementById('taxIdLabel').textContent = taxIdLabel;
+                    document.getElementById('taxIdHint').textContent = 
+                        'Ingresa tu ' + taxIdLabel + ' para continuar';
+                    document.getElementById('step1').style.display = 'block';
+                    document.getElementById('paymentStepTitle').textContent = '2. Datos de Pago';
+                } else {
+                    document.getElementById('planSection').style.display = 'block';
+                    document.getElementById('step2').style.display = 'block';
+                    document.getElementById('paymentStepTitle').textContent = '1. Datos de Pago';
+                }
+            } catch (err) {
+                console.error('Geo detection failed:', err);
+                document.getElementById('geoLoading').style.display = 'none';
+                document.getElementById('planSection').style.display = 'block';
+                document.getElementById('step2').style.display = 'block';
+                document.getElementById('paymentStepTitle').textContent = '1. Datos de Pago';
+            }
+        }
+
         async function validateIdentity() {
             const identifier = document.getElementById('identifier').value.trim();
             const statusEl = document.getElementById('validationStatus');
             const validateBtn = document.getElementById('validateBtn');
 
             if (!identifier) {
-                statusEl.innerHTML = '<span class="error">Ingresa tu RUC o Cedula</span>';
+                statusEl.innerHTML = '<span class="error">Ingresa tu identificacion</span>';
                 return;
             }
 
@@ -133,7 +169,7 @@
             statusEl.innerHTML = '<span class="loading">Validando...</span>';
 
             try {
-                const response = await fetch('/api/v2/validate/identity', {
+                const response = await fetch('/api/v2/admin/public/validate/identity', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ identifier: identifier })
@@ -143,14 +179,14 @@
                 if (result.valid) {
                     validatedIdentifier = identifier;
                     identifierType = result.type;
-                    statusEl.innerHTML = `<span class="success">${result.message}</span>`;
+                    statusEl.innerHTML = '<span class="success">' + result.message + '</span>';
                     document.getElementById('step1').classList.add('done');
                     document.getElementById('planSection').style.display = 'block';
                     document.getElementById('step2').style.display = 'block';
                     document.getElementById('identifier').disabled = true;
                     validateBtn.style.display = 'none';
                 } else {
-                    statusEl.innerHTML = `<span class="error">${result.message}</span>`;
+                    statusEl.innerHTML = '<span class="error">' + result.message + '</span>';
                     validateBtn.disabled = false;
                     validateBtn.textContent = 'Verificar Identidad';
                 }
@@ -161,10 +197,11 @@
             }
         }
 
-        document.getElementById('checkoutForm').addEventListener('submit', async (e) => {
+        document.getElementById('checkoutForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            if (!validatedIdentifier) {
-                alert('Primero debes verificar tu RUC o Cédula');
+            
+            if (requiresTaxId && !validatedIdentifier) {
+                alert('Primero debes verificar tu identificacion fiscal');
                 return;
             }
 
@@ -175,7 +212,7 @@
             payBtn.textContent = 'Procesando...';
 
             try {
-                const response = await fetch('/api/v2/subscription/create', {
+                const response = await fetch('/api/v2/admin/public/subscription/create', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -183,9 +220,10 @@
                         name: name,
                         plan: plan,
                         amount: config.priceNum,
-                        ruc: validatedIdentifier,
+                        ruc: validatedIdentifier || '',
                         payment_provider: 'card',
-                        card_last4: document.getElementById('cardNumber').value.slice(-4)
+                        card_last4: document.getElementById('cardNumber').value.slice(-4),
+                        country_code: detectedCountry
                     })
                 });
                 const result = await response.json();
@@ -200,25 +238,27 @@
                     payBtn.textContent = 'Pagar y Activar GPUBROKER POD';
                 }
             } catch (err) {
-                alert('Error de conexión.');
+                alert('Error de conexion.');
                 payBtn.disabled = false;
                 payBtn.textContent = 'Pagar y Activar GPUBROKER POD';
             }
         });
 
         function formatCardNumber(input) {
-            let value = input.value.replace(/\s/g, '').replace(/[^0-9]/g, '');
-            let formatted = value.match(/.{1,4}/g)?.join(' ') || value;
-            input.value = formatted;
+            var value = input.value.replace(/\s/g, '').replace(/[^0-9]/g, '');
+            var formatted = value.match(/.{1,4}/g);
+            input.value = formatted ? formatted.join(' ') : value;
         }
 
         function formatExpiry(input) {
-            let value = input.value.replace(/[^0-9]/g, '');
+            var value = input.value.replace(/[^0-9]/g, '');
             if (value.length >= 2) {
                 value = value.slice(0, 2) + '/' + value.slice(2);
             }
             input.value = value;
         }
+
+        detectCountry();
     </script>
 
     <style>
@@ -230,6 +270,8 @@
         .done { opacity: 0.7; }
         .form-row { display: flex; gap: 16px; }
         .half { flex: 1; }
+        .loading-spinner { text-align: center; padding: 20px; color: #666; }
+        .country-info { font-style: italic; }
     </style>
 </body>
 </html>

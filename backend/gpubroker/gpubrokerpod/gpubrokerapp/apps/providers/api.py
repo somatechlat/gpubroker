@@ -21,6 +21,15 @@ from .schemas import (
     IntegrationConfig,
     IntegrationStatus,
     ProviderHealthResponse,
+    FeaturedGPUItem,
+    FeaturedGPUResponse,
+    BrowseGPUItem,
+    BrowseGPUResponse,
+    BrowsePagination,
+    BrowseSortOption,
+    GPUAggregations,
+    TOPSISRankingRequest,
+    TOPSISRankingResponse,
 )
 from .services import (
     list_offers_from_db,
@@ -30,6 +39,13 @@ from .services import (
     save_integration_config,
     list_integrations,
     get_rate_limiter,
+    get_featured_offers,
+    cache_featured_offers,
+    get_cached_featured_offers,
+    browse_gpu_offers,
+    get_cached_browse_results,
+    cache_browse_results,
+    get_topsis_ranking,
 )
 from .adapters.registry import ProviderRegistry
 from gpubrokerpod.gpubrokerapp.apps.auth_app.auth import JWTAuth
@@ -278,3 +294,337 @@ async def health_check(request: HttpRequest):
         providers=ProviderRegistry.list_adapters(),
         timestamp=datetime.now(timezone.utc),
     )
+
+
+@router.get("/featured", response=FeaturedGPUResponse, auth=None)
+async def get_featured_gpus(
+    request: HttpRequest,
+    limit: int = Query(6, ge=1, le=20, description="Number of featured GPUs to return"),
+):
+    """
+    Get featured GPU offers for landing page display.
+    
+    Returns top GPU offers sorted by value (price/performance ratio).
+    Results are cached for 60 seconds to reduce load.
+    
+    This endpoint is public (no auth required) for landing page use.
+    """
+    # Check cache first (60s TTL)
+    cached = await get_cached_featured_offers(limit)
+    if cached:
+        return FeaturedGPUResponse(**cached)
+    
+    # Fetch featured offers
+    try:
+        featured_data = await get_featured_offers(limit=limit)
+        
+        # Build response
+        featured_items = []
+        for item in featured_data.get("items", []):
+            # Calculate daily and monthly prices
+            price_per_hour = item.get("price_per_hour", 0)
+            
+            featured_items.append(FeaturedGPUItem(
+                id=item.get("id", ""),
+                provider=item.get("provider", ""),
+                provider_logo=item.get("provider_logo"),
+                gpu_name=item.get("name", item.get("gpu", "")),
+                gpu_model=item.get("gpu", ""),
+                memory_gb=item.get("memory_gb", 0),
+                price_per_hour=price_per_hour,
+                price_per_day=round(price_per_hour * 24, 2),
+                price_per_month=round(price_per_hour * 24 * 30, 2),
+                currency=item.get("currency", "USD"),
+                availability=item.get("availability", "unknown"),
+                availability_score=item.get("availability_score", 50),
+                region=item.get("region", "global"),
+                performance_score=item.get("performance_score"),
+                best_for=item.get("best_for", []),
+            ))
+        
+        response = FeaturedGPUResponse(
+            featured=featured_items,
+            total_providers=featured_data.get("total_providers", 0),
+            total_gpus=featured_data.get("total_gpus", 0),
+            last_updated=datetime.now(timezone.utc),
+            cache_ttl=60,
+        )
+        
+        # Cache the response
+        await cache_featured_offers(limit, response.dict())
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Failed to fetch featured GPUs: {e}")
+        # Return empty response on error
+        return FeaturedGPUResponse(
+            featured=[],
+            total_providers=0,
+            total_gpus=0,
+            last_updated=datetime.now(timezone.utc),
+            cache_ttl=60,
+        )
+
+
+
+# ============================================
+# Browse GPU/Services Endpoints (Task 13)
+# ============================================
+
+@router.get("/browse", response=BrowseGPUResponse, auth=None)
+async def browse_gpus(
+    request: HttpRequest,
+    # GPU filters
+    gpu_type: Optional[str] = Query(None, description="GPU type filter (partial match)"),
+    gpu_model: Optional[str] = Query(None, description="GPU model (exact match)"),
+    memory_min: Optional[int] = Query(None, ge=0, description="Min GPU memory (GB)"),
+    memory_max: Optional[int] = Query(None, ge=0, description="Max GPU memory (GB)"),
+    # Price filters
+    price_min: Optional[float] = Query(None, ge=0, description="Min price per hour"),
+    price_max: Optional[float] = Query(None, description="Max price per hour"),
+    spot_only: bool = Query(False, description="Only show spot/preemptible instances"),
+    # Provider filters
+    provider: Optional[str] = Query(None, description="Provider name filter"),
+    providers: Optional[str] = Query(None, description="Comma-separated provider names"),
+    # Region filters
+    region: Optional[str] = Query(None, description="Region filter"),
+    regions: Optional[str] = Query(None, description="Comma-separated regions"),
+    # Availability filters
+    availability: Optional[str] = Query(None, description="available|limited|unavailable"),
+    available_only: bool = Query(False, description="Only show available GPUs"),
+    # Compliance filters
+    compliance_tags: Optional[str] = Query(None, description="Comma-separated compliance tags"),
+    # Performance filters
+    min_cpu_cores: Optional[int] = Query(None, ge=0, description="Min CPU cores"),
+    min_ram_gb: Optional[int] = Query(None, ge=0, description="Min RAM (GB)"),
+    min_storage_gb: Optional[int] = Query(None, ge=0, description="Min storage (GB)"),
+    # Sorting
+    sort: str = Query("price", description="Sort field: price|memory|availability|topsis_score|performance"),
+    order: str = Query("asc", description="Sort order: asc|desc"),
+    # Pagination
+    cursor: Optional[str] = Query(None, description="Pagination cursor"),
+    limit: int = Query(20, ge=1, le=100, description="Items per page"),
+    # TOPSIS
+    include_topsis: bool = Query(True, description="Include TOPSIS ranking scores"),
+):
+    """
+    Browse GPU offers with advanced filtering, sorting, and TOPSIS ranking.
+    
+    Supports:
+    - Multiple filter criteria (GPU type, price, region, provider, etc.)
+    - Sorting by price, memory, availability, or TOPSIS score
+    - Cursor-based pagination for efficient large result sets
+    - TOPSIS multi-criteria ranking for best value calculation
+    - Aggregations for filter facets (provider counts, price ranges, etc.)
+    
+    Results are cached for 30 seconds to balance freshness with performance.
+    """
+    # Rate limiting
+    plan = request.META.get('HTTP_X_PLAN', 'free')
+    limiter = get_rate_limiter(plan)
+    client_key = f"browse:{get_client_ip(request)}:{plan}"
+    
+    if not limiter.allow(client_key):
+        raise HttpError(429, "Rate limit exceeded")
+    
+    # Build filters dict
+    filters = {
+        "gpu_type": gpu_type,
+        "gpu_model": gpu_model,
+        "memory_min": memory_min,
+        "memory_max": memory_max,
+        "price_min": price_min,
+        "price_max": price_max,
+        "spot_only": spot_only,
+        "provider": provider,
+        "providers": providers.split(",") if providers else None,
+        "region": region,
+        "regions": regions.split(",") if regions else None,
+        "availability": availability,
+        "available_only": available_only,
+        "compliance_tags": compliance_tags.split(",") if compliance_tags else None,
+        "min_cpu_cores": min_cpu_cores,
+        "min_ram_gb": min_ram_gb,
+        "min_storage_gb": min_storage_gb,
+    }
+    
+    # Remove None values and False booleans
+    filters = {k: v for k, v in filters.items() if v is not None and v is not False}
+    
+    # Check cache
+    cached = await get_cached_browse_results(filters, sort, order, cursor, limit)
+    if cached:
+        return BrowseGPUResponse(**cached)
+    
+    try:
+        result = await browse_gpu_offers(
+            filters=filters,
+            sort_field=sort,
+            sort_direction=order,
+            cursor=cursor,
+            limit=limit,
+            include_topsis=include_topsis,
+        )
+        
+        # Convert items to schema
+        items = [BrowseGPUItem(**item) for item in result["items"]]
+        
+        response = BrowseGPUResponse(
+            items=items,
+            pagination=BrowsePagination(**result["pagination"]),
+            filters_applied=result["filters_applied"],
+            sort_applied=BrowseSortOption(**result["sort_applied"]) if result.get("sort_applied") else None,
+            aggregations=result["aggregations"],
+            last_updated=result["last_updated"],
+            cache_ttl=result["cache_ttl"],
+        )
+        
+        # Cache the response
+        await cache_browse_results(filters, sort, order, cursor, limit, response.dict())
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Browse failed: {e}")
+        raise HttpError(503, "Browse service unavailable")
+
+
+@router.get("/browse/aggregations", response=GPUAggregations, auth=None)
+async def get_browse_aggregations(
+    request: HttpRequest,
+    # Same filters as browse endpoint
+    gpu_type: Optional[str] = Query(None),
+    provider: Optional[str] = Query(None),
+    region: Optional[str] = Query(None),
+    availability: Optional[str] = Query(None),
+    available_only: bool = Query(False),
+):
+    """
+    Get aggregation data for browse filter facets.
+    
+    Returns counts and ranges for:
+    - Providers (with logos)
+    - Regions
+    - GPU types (with memory ranges)
+    - Price range (min, max, avg)
+    - Memory range
+    - Availability counts
+    - Compliance tags
+    
+    Use this to populate filter dropdowns and sliders in the UI.
+    """
+    filters = {
+        "gpu_type": gpu_type,
+        "provider": provider,
+        "region": region,
+        "availability": availability,
+        "available_only": available_only,
+    }
+    filters = {k: v for k, v in filters.items() if v is not None and v is not False}
+    
+    try:
+        result = await browse_gpu_offers(
+            filters=filters,
+            sort_field="price",
+            sort_direction="asc",
+            limit=1,  # We only need aggregations
+            include_topsis=False,
+        )
+        
+        return GPUAggregations(**result["aggregations"])
+        
+    except Exception as e:
+        logger.error(f"Aggregations failed: {e}")
+        return GPUAggregations()
+
+
+@router.post("/browse/topsis", response=TOPSISRankingResponse, auth=None)
+async def calculate_topsis(
+    request: HttpRequest,
+    data: TOPSISRankingRequest,
+):
+    """
+    Calculate TOPSIS ranking for specific GPU offers.
+    
+    TOPSIS (Technique for Order of Preference by Similarity to Ideal Solution)
+    is a multi-criteria decision analysis method that ranks alternatives based on
+    their distance from ideal and anti-ideal solutions.
+    
+    Default criteria:
+    - price_per_hour (cost - lower is better, weight: 0.40)
+    - memory_gb (benefit - higher is better, weight: 0.35)
+    - availability_score (benefit - higher is better, weight: 0.25)
+    
+    You can provide custom weights and criteria to adjust the ranking.
+    """
+    if len(data.offer_ids) < 2:
+        raise HttpError(400, "Need at least 2 offers for TOPSIS ranking")
+    
+    if len(data.offer_ids) > 100:
+        raise HttpError(400, "Maximum 100 offers for TOPSIS ranking")
+    
+    try:
+        result = await get_topsis_ranking(
+            offer_ids=data.offer_ids,
+            custom_weights=data.weights,
+            custom_criteria=data.criteria,
+        )
+        
+        return TOPSISRankingResponse(**result)
+        
+    except Exception as e:
+        logger.error(f"TOPSIS calculation failed: {e}")
+        raise HttpError(500, "TOPSIS calculation failed")
+
+
+@router.get("/browse/regions", auth=None)
+async def list_regions(request: HttpRequest):
+    """
+    List all available regions with GPU offer counts.
+    
+    Returns regions sorted by offer count (most offers first).
+    """
+    from django.db.models import Count
+    from .models import GPUOffer
+    
+    regions = []
+    async for item in GPUOffer.objects.values('region').annotate(
+        count=Count('id')
+    ).order_by('-count'):
+        if item['region']:
+            regions.append({
+                "region": item['region'],
+                "count": item['count'],
+            })
+    
+    return {"regions": regions}
+
+
+@router.get("/browse/gpu-types", auth=None)
+async def list_gpu_types(request: HttpRequest):
+    """
+    List all available GPU types with counts and memory ranges.
+    
+    Returns GPU types sorted by offer count (most offers first).
+    """
+    from django.db.models import Count, Min, Max
+    from .models import GPUOffer
+    
+    gpu_types = []
+    async for item in GPUOffer.objects.values('gpu_type').annotate(
+        count=Count('id'),
+        min_memory=Min('gpu_memory_gb'),
+        max_memory=Max('gpu_memory_gb'),
+    ).order_by('-count'):
+        if item['gpu_type']:
+            gpu_types.append({
+                "gpu_type": item['gpu_type'],
+                "count": item['count'],
+                "memory_range": {
+                    "min": item['min_memory'],
+                    "max": item['max_memory'],
+                },
+            })
+    
+    return {"gpu_types": gpu_types}

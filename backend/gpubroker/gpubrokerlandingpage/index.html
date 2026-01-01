@@ -10,8 +10,8 @@
     <!-- Open Graph -->
     <meta property="og:title" content="GPUBROKER - GPU Brokerage Platform con Agentes IA">
     <meta property="og:description" content="Accede a poder de cómputo GPU con agentes inteligentes. Analíticas en tiempo real y optimización automatizada.">
-    <meta property="og:image" content="https://gpubroker.live/images/og-image.png">
-    <meta property="og:url" content="https://gpubroker.live">
+    <meta property="og:image" content="https://gpubroker.site/images/og-image.png">
+    <meta property="og:url" content="https://gpubroker.site">
     <meta property="og:type" content="website">
     
     <!-- Favicon -->
@@ -24,6 +24,9 @@
     
     <!-- Styles -->
     <link rel="stylesheet" href="css/styles.css">
+    
+    <!-- PayPal SDK - Sandbox Mode -->
+    <script src="https://www.paypal.com/sdk/js?client-id=AdN8KE5YsUHHCpwKs8cdmzCBOH0BTymz-YhJ2h6Yz9QNZVm8VH-n5JHKJd5bbA11tdwmkoW52IWThOGb&currency=USD&intent=capture"></script>
     
     <title>GPUBROKER - GPU Brokerage Platform con Agentes IA</title>
 </head>
@@ -51,7 +54,7 @@
             </nav>
             
             <div class="nav__actions">
-                <a href="https://admin.gpubroker.live/admin/login/" class="nav__login">Iniciar Sesión</a>
+                <a href="https://admin.gpubroker.site/admin/login/" class="nav__login">Iniciar Sesión</a>
                 <a href="#pricing" class="btn btn--primary btn--sm">Comenzar</a>
             </div>
             
@@ -69,7 +72,7 @@
             <a href="#features" class="mobile-menu__link">Características</a>
             <a href="#pricing" class="mobile-menu__link">Planes</a>
             <a href="#how-it-works" class="mobile-menu__link">Cómo Funciona</a>
-            <a href="https://admin.gpubroker.live/admin/login/" class="mobile-menu__link">Iniciar Sesión</a>
+            <a href="https://admin.gpubroker.site/admin/login/" class="mobile-menu__link">Iniciar Sesión</a>
             <a href="#pricing" class="btn btn--green btn--full">Comenzar Ahora</a>
         </nav>
     </div>
@@ -87,12 +90,12 @@
                     que optimizan costos, monitorean rendimiento y automatizan tu infraestructura.
                 </p>
                 <div class="hero__actions">
-                    <a href="https://admin.gpubroker.live/checkout/?plan=trial" class="btn btn--green btn--lg">
+                    <button type="button" class="btn btn--green btn--lg" data-plan="trial" onclick="openEnrollmentModal('trial')">
                         Comenzar Gratis
                         <svg class="btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M5 12h14M12 5l7 7-7 7"/>
                         </svg>
-                    </a>
+                    </button>
                     <a href="#pricing" class="btn btn--outline btn--lg">Ver Planes</a>
                 </div>
                 <div class="hero__stats">
@@ -224,7 +227,7 @@
                                 Dashboard básico
                             </li>
                         </ul>
-                        <a href="https://admin.gpubroker.live/checkout/?plan=trial" class="btn btn--outline btn--full" data-plan="trial">Comenzar Gratis</a>
+                        <button type="button" class="btn btn--outline btn--full" data-plan="trial" onclick="openEnrollmentModal('trial')">Comenzar Gratis</button>
                     </div>
 
                     <!-- Basic -->
@@ -252,7 +255,7 @@
                                 Soporte email
                             </li>
                         </ul>
-                        <a href="https://admin.gpubroker.live/checkout/?plan=basic" class="btn btn--outline btn--full" data-plan="basic">Seleccionar</a>
+                        <button type="button" class="btn btn--outline btn--full" data-plan="basic" onclick="openEnrollmentModal('basic')">Seleccionar</button>
                     </div>
 
                     <!-- Pro (Popular) -->
@@ -285,7 +288,7 @@
                                 API access
                             </li>
                         </ul>
-                        <a href="https://admin.gpubroker.live/checkout/?plan=pro" class="btn btn--green btn--full" data-plan="pro">Seleccionar</a>
+                        <button type="button" class="btn btn--green btn--full" data-plan="pro" onclick="openEnrollmentModal('pro')">Seleccionar</button>
                     </div>
 
                     <!-- Corp -->
@@ -317,7 +320,7 @@
                                 SLA 99.9%
                             </li>
                         </ul>
-                        <a href="https://admin.gpubroker.live/checkout/?plan=corp" class="btn btn--outline btn--full" data-plan="corp">Seleccionar</a>
+                        <button type="button" class="btn btn--outline btn--full" data-plan="corp" onclick="openEnrollmentModal('corp')">Seleccionar</button>
                     </div>
 
                     <!-- Enterprise -->
@@ -345,7 +348,7 @@
                                 Account manager
                             </li>
                         </ul>
-                        <a href="https://admin.gpubroker.live/checkout/?plan=enterprise" class="btn btn--outline btn--full" data-plan="enterprise">Contactar</a>
+                        <button type="button" class="btn btn--outline btn--full" data-plan="enterprise" onclick="openEnrollmentModal('enterprise')">Seleccionar</button>
                     </div>
                 </div>
             </div>
@@ -411,10 +414,10 @@
                 <div class="cta__content">
                     <h2 class="cta__title">¿Listo para empezar?</h2>
                     <p class="cta__subtitle">Únete a empresas que ya optimizan su infraestructura GPU con GPUBROKER.</p>
-                    <a href="https://admin.gpubroker.live/checkout/?plan=trial" class="btn btn--green btn--lg">
+                    <button type="button" class="btn btn--green btn--lg" data-plan="trial" onclick="openEnrollmentModal('trial')">
                         Comenzar Gratis
                         <svg class="btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-                    </a>
+                    </button>
                 </div>
             </div>
         </section>
@@ -461,7 +464,7 @@
                 <div class="footer__col">
                     <h4 class="footer__heading">Contacto</h4>
                     <nav class="footer__nav">
-                        <a href="mailto:soporte@gpubroker.live" class="footer__link">soporte@gpubroker.live</a>
+                        <a href="mailto:soporte@gpubroker.site" class="footer__link">soporte@gpubroker.site</a>
                         <a href="https://www.somatech.dev" target="_blank" rel="noopener" class="footer__link">www.somatech.dev</a>
                     </nav>
                 </div>
@@ -485,6 +488,228 @@
             <div class="cookie-banner__actions">
                 <button class="cookie-banner__btn cookie-banner__btn--accept" id="acceptCookies">Aceptar</button>
                 <button class="cookie-banner__btn cookie-banner__btn--settings" id="cookieSettings">Configurar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enrollment Modal -->
+    <div class="enrollment-modal" id="enrollmentModal">
+        <div class="enrollment-modal__backdrop" id="modalBackdrop"></div>
+        <div class="enrollment-modal__container">
+            <!-- Modal Header -->
+            <header class="enrollment-modal__header">
+                <div class="enrollment-modal__logo">
+                    <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="36" height="36" rx="8" fill="#0A0A0A"/>
+                        <rect x="8" y="10" width="20" height="4" rx="1" fill="white"/>
+                        <rect x="8" y="16" width="20" height="4" rx="1" fill="white"/>
+                        <rect x="8" y="22" width="20" height="4" rx="1" fill="white"/>
+                        <circle cx="24" cy="12" r="2" fill="#22C55E"/>
+                        <circle cx="24" cy="18" r="2" fill="#22C55E"/>
+                        <circle cx="24" cy="24" r="2" fill="#22C55E"/>
+                    </svg>
+                    <span>GPUBROKER</span>
+                </div>
+                <button class="enrollment-modal__close" id="modalClose" aria-label="Cerrar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                </button>
+            </header>
+            
+            <!-- Modal Body -->
+            <div class="enrollment-modal__body">
+                <div class="enrollment-modal__content" id="modalContent">
+                    <!-- Step 1: Loading / Geo Detection -->
+                    <div class="modal-step" id="stepGeo">
+                        <div class="modal-step__header">
+                            <h2>Iniciando Registro</h2>
+                            <p class="modal-step__subtitle">Preparando tu experiencia personalizada</p>
+                        </div>
+                        <div class="modal-step__body">
+                            <div class="loading-spinner">
+                                <div class="spinner"></div>
+                                <p>Detectando ubicación...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Tax ID Validation (Ecuador only) -->
+                    <div class="modal-step" id="stepTaxId" style="display: none;">
+                        <div class="modal-step__header">
+                            <h2>Verifica tu Identidad</h2>
+                            <p class="modal-step__subtitle" id="taxIdSubtitle">Ingresa tu RUC o Cédula para continuar</p>
+                        </div>
+                        <div class="modal-step__body">
+                            <div class="form-group">
+                                <label for="modalIdentifier" id="modalTaxIdLabel">RUC (13 dígitos) o Cédula (10 dígitos)</label>
+                                <input type="text" id="modalIdentifier" placeholder="1790869571001" maxlength="13">
+                                <div class="validation-status" id="modalValidationStatus"></div>
+                            </div>
+                            <button type="button" class="btn" id="modalValidateBtn">
+                                Verificar Identidad
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Step 3: Plan Summary + Payment Form -->
+                    <div class="modal-step" id="stepPayment" style="display: none;">
+                        <div class="modal-step__header">
+                            <h2>Finaliza tu Suscripción</h2>
+                        </div>
+                        <div class="modal-step__body">
+                            <!-- Plan Summary -->
+                            <div class="plan-summary-card">
+                                <div class="plan-summary-card__header">
+                                    <span class="plan-summary-card__name" id="modalPlanName">Profesional</span>
+                                    <span class="plan-summary-card__price" id="modalPlanPrice">$40 USD/mes</span>
+                                </div>
+                                <ul class="plan-summary-card__features">
+                                    <li>GPUBROKER Agent AI ilimitado</li>
+                                    <li id="modalPlanTokens">10,000 tokens mensuales</li>
+                                    <li>Acceso a 20+ proveedores GPU</li>
+                                    <li>Optimización automática de costos</li>
+                                </ul>
+                                <div class="plan-summary-card__country" id="modalCountryInfo"></div>
+                            </div>
+
+                            <!-- User Info Form -->
+                            <form id="modalUserInfoForm" class="checkout-form">
+                                <div class="form-group">
+                                    <label for="modalEmail">Email Corporativo</label>
+                                    <input type="email" id="modalEmail" required placeholder="tu@empresa.com">
+                                </div>
+                                <div class="form-group">
+                                    <label for="modalName">Nombre Completo</label>
+                                    <input type="text" id="modalName" required placeholder="Juan Pérez">
+                                </div>
+                                <div class="terms-checkbox">
+                                    <input type="checkbox" id="modalTerms" required>
+                                    <label for="modalTerms">
+                                        Acepto los <a href="legal/terms-of-service.html" target="_blank">Términos de Servicio</a>
+                                    </label>
+                                </div>
+                            </form>
+
+                            <!-- PayPal Payment Section -->
+                            <div class="paypal-section">
+                                <div class="paypal-divider">
+                                    <span>Pagar con</span>
+                                </div>
+                                <div id="paypal-button-container"></div>
+                                <div id="paypalError" class="paypal-error" style="display: none;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 4: Processing Payment -->
+                    <div class="modal-step" id="stepProcessing" style="display: none;">
+                        <div class="modal-step__header">
+                            <h2>Procesando Pago</h2>
+                        </div>
+                        <div class="modal-step__body">
+                            <div class="loading-spinner">
+                                <div class="spinner"></div>
+                                <p>Procesando tu pago de forma segura...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 5: Provisioning POD -->
+                    <div class="modal-step" id="stepProvisioning" style="display: none;">
+                        <div class="modal-step__header">
+                            <h2>Activando tu POD</h2>
+                            <p class="modal-step__subtitle">Tu GPUBROKER POD se está desplegando en AWS</p>
+                        </div>
+                        <div class="modal-step__body">
+                            <div class="provisioning-progress">
+                                <div class="provisioning-step completed" id="provStep1">
+                                    <div class="provisioning-step__icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                    </div>
+                                    <span>Pago confirmado</span>
+                                </div>
+                                <div class="provisioning-step active" id="provStep2">
+                                    <div class="provisioning-step__icon">
+                                        <div class="mini-spinner"></div>
+                                    </div>
+                                    <span>Creando cuenta</span>
+                                </div>
+                                <div class="provisioning-step" id="provStep3">
+                                    <div class="provisioning-step__icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
+                                    </div>
+                                    <span>Desplegando POD en AWS</span>
+                                </div>
+                                <div class="provisioning-step" id="provStep4">
+                                    <div class="provisioning-step__icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
+                                    </div>
+                                    <span>Configurando agentes IA</span>
+                                </div>
+                            </div>
+                            <p class="provisioning-note">Esto puede tomar 1-2 minutos...</p>
+                        </div>
+                    </div>
+
+                    <!-- Step 6: POD Ready -->
+                    <div class="modal-step" id="stepReady" style="display: none;">
+                        <div class="modal-step__header">
+                            <div class="success-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                    <polyline points="22 4 12 14.01 9 11.01"/>
+                                </svg>
+                            </div>
+                            <h2>¡Tu POD está Listo!</h2>
+                            <p class="modal-step__subtitle">Tu GPUBROKER POD ha sido desplegado exitosamente</p>
+                        </div>
+                        <div class="modal-step__body">
+                            <div class="pod-info-card">
+                                <div class="pod-info-card__row">
+                                    <span class="pod-info-card__label">API Key</span>
+                                    <code class="pod-info-card__value" id="modalApiKey">gpb_xxxx</code>
+                                </div>
+                                <div class="pod-info-card__row">
+                                    <span class="pod-info-card__label">POD URL</span>
+                                    <code class="pod-info-card__value" id="modalPodUrl">https://pod-xxx.gpubroker.site</code>
+                                </div>
+                                <div class="pod-info-card__row">
+                                    <span class="pod-info-card__label">Plan</span>
+                                    <span class="pod-info-card__value" id="modalFinalPlan">Profesional</span>
+                                </div>
+                            </div>
+                            <p class="email-notice">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                                Hemos enviado los detalles a tu email
+                            </p>
+                            <a href="#" class="btn" id="modalGoToDashboard">
+                                Ir al Dashboard
+                                <svg class="btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Error State -->
+                    <div class="modal-step" id="stepError" style="display: none;">
+                        <div class="modal-step__header">
+                            <div class="error-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <line x1="15" y1="9" x2="9" y2="15"/>
+                                    <line x1="9" y1="9" x2="15" y2="15"/>
+                                </svg>
+                            </div>
+                            <h2>Error</h2>
+                            <p class="modal-step__subtitle" id="modalErrorMessage">Ha ocurrido un error</p>
+                        </div>
+                        <div class="modal-step__body">
+                            <button type="button" class="btn btn--outline" id="modalRetryBtn">
+                                Intentar de nuevo
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

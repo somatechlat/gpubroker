@@ -12,8 +12,8 @@ logger = logging.getLogger('gpubroker.email')
 
 # AWS Configuration
 AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
-SES_FROM_EMAIL = os.getenv("SES_FROM_EMAIL", "noreply@gpubroker.live")
-VENDOR_EMAIL = os.getenv("VENDOR_EMAIL", "admin@gpubroker.live")
+SES_FROM_EMAIL = os.getenv("SES_FROM_EMAIL", "noreply@gpubroker.site")
+VENDOR_EMAIL = os.getenv("VENDOR_EMAIL", "admin@gpubroker.site")
 
 
 def _get_ses_client():
@@ -174,7 +174,7 @@ class EmailService:
                     <div class="section">
                         <div class="section-title">Acceso a tu GPUBROKER POD</div>
                         <div class="key-box">{pod_url}</div>
-                        <a href="https://admin.gpubroker.live/activate?key={api_key}" class="btn">
+                        <a href="https://admin.gpubroker.site/activate?key={api_key}" class="btn">
                             Activar mi GPUBROKER POD
                         </a>
                     </div>
@@ -182,7 +182,7 @@ class EmailService:
                 
                 <div class="footer">
                     <p>© 2025 GPUBROKER - Todos los derechos reservados.</p>
-                    <p>Soporte: soporte@gpubroker.live | www.gpubroker.live</p>
+                    <p>Soporte: soporte@gpubroker.site | www.gpubroker.site</p>
                 </div>
             </div>
         </body>
@@ -222,11 +222,11 @@ class EmailService:
         ---------------
         {pod_url}
         
-        Activa tu pod: https://admin.gpubroker.live/activate?key={api_key}
+        Activa tu pod: https://admin.gpubroker.site/activate?key={api_key}
         
         ================================
         Guarda este email para tus registros.
-        Soporte: soporte@gpubroker.live
+        Soporte: soporte@gpubroker.site
         """
         
         ses = _get_ses_client()
@@ -359,7 +359,7 @@ class EmailService:
                     </div>
                     <div class="info-row">
                         <span class="info-label">URL</span>
-                        <span class="info-value">https://{pod_id}.gpubroker.live</span>
+                        <span class="info-value">https://{pod_id}.gpubroker.site</span>
                     </div>
                 </div>
                 
@@ -421,12 +421,12 @@ class EmailService:
                 <div class="key-box">{api_key}</div>
                 
                 <p>Haz click para activar tu GPUBROKER POD:</p>
-                <a href="https://admin.gpubroker.live/activate?key={api_key}" class="btn">
+                <a href="https://admin.gpubroker.site/activate?key={api_key}" class="btn">
                     ⚡ Activar mi GPUBROKER POD
                 </a>
                 
                 <div class="footer">
-                    <p>Este email fue enviado porque compraste una suscripción en gpubroker.live</p>
+                    <p>Este email fue enviado porque compraste una suscripción en gpubroker.site</p>
                     <p>Si no fuiste tú, ignora este mensaje.</p>
                 </div>
             </div>

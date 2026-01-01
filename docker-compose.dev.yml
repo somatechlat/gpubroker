@@ -1,6 +1,7 @@
 # GPUBROKER - Django 5 Development Stack
 # All services migrated to Django 5 + Django Ninja
 # FastAPI legacy services have been removed
+# MEMORY LIMIT: 8GB total cluster
 
 services:
   # ============================================
@@ -27,6 +28,12 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
 
   # ============================================
   # Core Infrastructure
@@ -47,12 +54,18 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
 
   redis:
     image: redis:7-alpine
     ports:
       - "${PORT_REDIS:-28004}:6379"
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
     healthcheck:
@@ -60,6 +73,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 192M
+        reservations:
+          memory: 64M
 
   kafka:
     image: confluentinc/cp-kafka:7.4.0
@@ -73,11 +92,18 @@ services:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_HEAP_OPTS: "-Xmx512m -Xms256m"
     healthcheck:
       test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list"]
       interval: 30s
       timeout: 10s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+        reservations:
+          memory: 384M
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.4.0
@@ -86,6 +112,13 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+      KAFKA_HEAP_OPTS: "-Xmx256m -Xms128m"
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+        reservations:
+          memory: 128M
 
   # ============================================
   # Django Backend (All Services Unified)
@@ -128,6 +161,12 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
 
   # ============================================
   # ClickHouse for Analytics
@@ -143,6 +182,12 @@ services:
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?set CLICKHOUSE_PASSWORD}
     volumes:
       - clickhouse_data:/var/lib/clickhouse
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
 
   # ============================================
   # Nginx Reverse Proxy
@@ -163,6 +208,12 @@ services:
       timeout: 10s
       retries: 3
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 32M
 
   # ============================================
   # Frontend
@@ -183,6 +234,12 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 256M
 
   # ============================================
   # Observability
@@ -200,6 +257,12 @@ services:
       - "--web.console.libraries=/etc/prometheus/console_libraries"
       - "--web.console.templates=/etc/prometheus/consoles"
       - "--web.enable-lifecycle"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
 
   grafana:
     image: grafana/grafana:latest
@@ -211,20 +274,33 @@ services:
       - grafana_data:/var/lib/grafana
       - ./infrastructure/grafana/dashboards:/etc/grafana/provisioning/dashboards
       - ./infrastructure/grafana/datasources:/etc/grafana/provisioning/datasources
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
 
   # ============================================
-  # Storybook (Development)
+  # Storybook (Development) - DISABLED BY DEFAULT
+  # Uncomment to enable - adds 512MB to cluster
   # ============================================
-  storybook:
-    build: ./frontend
-    ports:
-      - "${PORT_STORYBOOK:-28033}:6006"
-    environment:
-      STORYBOOK_MODE: "true"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    command: npm run storybook
+  # storybook:
+  #   build: ./frontend
+  #   ports:
+  #     - "${PORT_STORYBOOK:-28033}:6006"
+  #   environment:
+  #     STORYBOOK_MODE: "true"
+  #   volumes:
+  #     - ./frontend:/app
+  #     - /app/node_modules
+  #   command: npm run storybook
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         memory: 512M
+  #       reservations:
+  #         memory: 256M
 
 volumes:
   vault_data:
