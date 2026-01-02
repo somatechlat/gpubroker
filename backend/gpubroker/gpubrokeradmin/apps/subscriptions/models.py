@@ -90,7 +90,7 @@ class Subscription(models.Model):
     def generate_api_key(cls) -> str:
         """Generate a unique API key."""
         unique = uuid.uuid4().hex
-        return f"sk_live_{unique}"
+        return f"gpuk_{unique}"
     
     @classmethod
     def hash_api_key(cls, api_key: str) -> str:

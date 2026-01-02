@@ -321,6 +321,41 @@ class FeatureFlagsConfig:
         return config.mode.is_live
 
 
+@dataclass
+class GeoConfig:
+    """Geographic and regional configuration."""
+    
+    @property
+    def force_country(self) -> str:
+        """Force specific country code for testing. Empty = auto-detect."""
+        return os.getenv('GPUBROKER_FORCE_COUNTRY', '')
+    
+    @property
+    def default_region(self) -> str:
+        """Default region if geo-detection fails."""
+        return os.getenv('GPUBROKER_DEFAULT_REGION', 'US')
+    
+    @property
+    def deployment_region(self) -> str:
+        """Deployment region: GLOBAL, LATAM, EC, US, EU."""
+        return os.getenv('GPUBROKER_DEPLOYMENT_REGION', 'GLOBAL')
+    
+    @property
+    def is_ecuador_deployment(self) -> bool:
+        """Check if this is an Ecuador-specific deployment."""
+        return self.deployment_region == 'EC' or self.force_country == 'EC'
+    
+    @property
+    def is_latam_deployment(self) -> bool:
+        """Check if this is a LATAM deployment."""
+        return self.deployment_region in ('LATAM', 'EC')
+    
+    @property
+    def s3_knowledge_bucket(self) -> str:
+        """S3 bucket for Ecuador RUC/Cedula validation data."""
+        return os.getenv('S3_KNOWLEDGE_BUCKET', 'yachaq-lex-raw-0017472631')
+
+
 class ModeConfig:
     """Mode management (sandbox/live)."""
     
@@ -377,6 +412,7 @@ class Config:
         self._email = EmailConfig()
         self._domain = DomainConfig()
         self._features = FeatureFlagsConfig()
+        self._geo = GeoConfig()
     
     @property
     def mode(self) -> ModeConfig:
@@ -414,6 +450,10 @@ class Config:
     def features(self) -> FeatureFlagsConfig:
         return self._features
     
+    @property
+    def geo(self) -> GeoConfig:
+        return self._geo
+    
     def get_status(self) -> Dict[str, Any]:
         """Get configuration status for admin dashboard."""
         return {
@@ -425,6 +465,11 @@ class Config:
             'mock_gpu': self.gpu.mock_data,
             'email_backend': self.email.backend,
             'domain': self.domain.base,
+            'geo': {
+                'force_country': self.geo.force_country,
+                'deployment_region': self.geo.deployment_region,
+                'is_ecuador': self.geo.is_ecuador_deployment,
+            },
         }
     
     def get_all(self) -> Dict[str, Any]:

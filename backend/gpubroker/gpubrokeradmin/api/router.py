@@ -117,9 +117,11 @@ def detect_geo(request):
     else:
         ip_address = request.META.get('REMOTE_ADDR', '127.0.0.1')
     
-    # Check for forced country setting (for testing or single-country deployments)
-    from django.conf import settings
-    force_country = getattr(settings, 'GPUBROKER_FORCE_COUNTRY', '')
+    # Check for forced country setting (from query param for testing, or centralized config)
+    from ..services.config import config as app_config
+    force_country = request.GET.get('force_country', '')
+    if not force_country:
+        force_country = app_config.geo.force_country
     
     if force_country:
         # Use forced country instead of geo-detection
