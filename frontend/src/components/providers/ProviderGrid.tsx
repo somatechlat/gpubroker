@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { BookingModal } from '../booking/BookingModal'
 import { fetchProviders } from '@/lib/api/providers'
 import { connectPriceStream, PriceUpdateMessage } from '@/lib/realtime/priceUpdates'
+import { EogButton, EogProviderCard } from '@/components/lit/react-wrappers'
 
 export function ProviderGrid() {
   const [loading, setLoading] = useState(true)
@@ -56,10 +57,10 @@ export function ProviderGrid() {
     load()
 
     const onFilters = () => { load() }
-      window.addEventListener('filters:changed', onFilters)
-      window.addEventListener('popstate', onFilters)
+    window.addEventListener('filters:changed', onFilters)
+    window.addEventListener('popstate', onFilters)
 
-      disconnectWs = connectPriceStream(applyPriceUpdate)
+    disconnectWs = connectPriceStream(applyPriceUpdate)
 
     return () => {
       mounted = false
@@ -91,17 +92,14 @@ export function ProviderGrid() {
     <div>
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {items.map((p: any) => (
-          <div key={p.id} className={`card ${flashes[p.id] ? 'price-flash' : ''}`}>
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="text-sm font-medium text-gray-600">{p.name}</div>
-                <div className="text-lg font-bold mt-2">{p.gpu || '—'}</div>
-                <div className="mt-2 text-sm text-gray-500">{p.price_per_hour ? `$${p.price_per_hour} / hr` : 'Price N/A'}</div>
-              </div>
-              <div className="flex flex-col items-end">
-                <button className="btn-primary" onClick={() => setSelected(p)}>Book</button>
-              </div>
-            </div>
+          <div key={p.id} className="h-full">
+            <EogProviderCard
+              name={p.name}
+              gpu={p.gpu || '—'}
+              price={p.price_per_hour ? `$${p.price_per_hour} / hr` : 'Price N/A'}
+              flash={!!flashes[p.id]}
+              onBook={() => setSelected(p)}
+            />
           </div>
         ))}
       </div>
@@ -109,7 +107,7 @@ export function ProviderGrid() {
       <BookingModal open={!!selected} onClose={() => setSelected(null)} provider={selected} />
 
       <div className="mt-6 flex justify-center items-center space-x-3">
-        <button className="btn-secondary" onClick={() => {
+        <EogButton variant="secondary" onClick={() => {
           const url = new URL(window.location.href)
           const page = Number(url.searchParams.get('page') || '1')
           if (page > 1) {
@@ -117,14 +115,14 @@ export function ProviderGrid() {
             window.history.pushState({}, '', url.toString())
             window.dispatchEvent(new Event('filters:changed'))
           }
-        }}>Prev</button>
-        <button className="btn-secondary" onClick={() => {
+        }}>Prev</EogButton>
+        <EogButton variant="secondary" onClick={() => {
           const url = new URL(window.location.href)
           const page = Number(url.searchParams.get('page') || '1')
           url.searchParams.set('page', String(page + 1))
           window.history.pushState({}, '', url.toString())
           window.dispatchEvent(new Event('filters:changed'))
-        }}>Next</button>
+        }}>Next</EogButton>
       </div>
     </div>
   )

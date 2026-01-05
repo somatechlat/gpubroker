@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { EogKpiCard } from '@/components/lit/react-wrappers'
 
 export function KPIOverview() {
   const [data, setData] = useState<any | null>(null)
@@ -44,9 +45,8 @@ export function KPIOverview() {
       {error && <div className="card text-red-600 text-sm">KPI error: {error}</div>}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {cards.map((c) => (
-          <div key={c.label} className="card">
-            <h4 className="text-sm text-gray-500">{c.label}</h4>
-            <p className="text-2xl font-bold">{loading ? '...' : c.value}</p>
+          <div key={c.label} className="h-32">
+            <EogKpiCard label={c.label} value={loading ? '...' : String(c.value)} loading={loading} />
           </div>
         ))}
       </div>

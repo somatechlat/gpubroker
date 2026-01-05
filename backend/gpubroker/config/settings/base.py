@@ -42,6 +42,7 @@ GPUBROKER_MODE = env('GPUBROKER_MODE')
 
 INSTALLED_APPS = [
     # Django core
+    'apps.core',  # Core Infrastructure (Apache Signals)
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -155,6 +156,11 @@ CACHES = {
         }
     }
 }
+
+# =============================================================================
+# APACHE KAFKA
+# =============================================================================
+KAFKA_BROKERS = env('KAFKA_BROKERS', default='kafka:9092')
 
 # Channels layer configuration
 CHANNEL_LAYERS = {
