@@ -25,6 +25,11 @@ python manage.py migrate --fake-initial --noinput 2>&1 || {
     }
 }
 
+# Collect static files for Nginx/Django to serve
+echo "Collecting static files..."
+python manage.py collectstatic --noinput 2>&1 || {
+    echo "Warning: collectstatic failed, continuing anyway..."
+}
+
 # Execute the main command
 exec "$@"
-

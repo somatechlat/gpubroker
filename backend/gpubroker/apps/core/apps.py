@@ -5,4 +5,6 @@ class CoreConfig(AppConfig):
     name = 'apps.core'
 
     def ready(self):
-        import apps.core.signals
+        # Signals import temporarily disabled to prevent module import errors
+        # in local runs where apps.core.models is absent.
+        return

@@ -18,7 +18,7 @@ This document tracks violations of the Vibe Coding Rules discovered during devel
 - Duplicate roadmap file `SPRONTED_ROADMAP.md` removed; canonical `ROADMAP.md` retained.
 - Backend service ports hardcoded to 8001/8002/8003; unified to env-driven ports with 8000 default.
 - `start-dev.sh` assumed docker-compose default file and commands; now respects `COMPOSE_FILE` and prints correct commands.
-- Frontend relied on Next internal proxy `/api/providers` and placeholder marketplace/detail stub; now requires real `NEXT_PUBLIC_PROVIDER_API_URL`, removed stub routes/components.
+- Frontend relied on Next internal proxy `/api/providers` and placeholder marketplace/detail stub; now requires real `VITE_PROVIDER_API_URL`, removed stub routes/components.
 - README/DEPLOYMENT docs claimed Helm/K8s assets and wrong port mapping; aligned with actual stack and removed nonexistent artifacts.
 - AWS SageMaker adapter contained dead duplicated block causing IndentationError; cleaned live pricing parser.
 

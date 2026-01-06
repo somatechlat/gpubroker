@@ -11,7 +11,7 @@ storage "file" {
 
 # Listener configuration
 listener "tcp" {
-  address         = "0.0.0.0:8200"
+  address         = "0.0.0.0:18280"
   tls_disable     = true  # Enable TLS in production!
   
   # Telemetry
@@ -21,8 +21,8 @@ listener "tcp" {
 }
 
 # API address
-api_addr     = "http://0.0.0.0:8200"
-cluster_addr = "http://0.0.0.0:8201"
+api_addr     = "http://0.0.0.0:18280"
+cluster_addr = "http://0.0.0.0:18281"
 
 # Disable mlock for Docker (enable in production with proper capabilities)
 disable_mlock = true

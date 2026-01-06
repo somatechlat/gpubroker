@@ -1,4 +1,4 @@
-const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:28080/ws';
+const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:28080/ws';
 
 export interface PriceUpdateMessage {
   offer_id: string;

@@ -24,7 +24,7 @@ datasources:
   - name: PostgreSQL
     type: postgres
     url: postgres:5432
-    database: gpubroker_dev
+    database: gpubroker
     user: gpubroker
     secureJsonData:
       password: ${POSTGRES_PASSWORD}

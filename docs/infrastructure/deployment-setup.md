@@ -1,37 +1,53 @@
 # GPUBROKER - Live Deployment Guide
 
-## Instant Deployment Checklist (Safe, No Secrets in Repo)
+## Local Production-Like (Minikube + Tilt)
 
-### Step 1 - Prepare Environment
+### Step 1 - Prepare Minikube Build Context
 ```bash
-cp .env.example .env
-# Adjust ports if needed (defaults are 28000+ to avoid conflicts).
-# Do NOT add API keys here.
-# Required frontend targets:
-#   NEXT_PUBLIC_PROVIDER_API_URL=http://localhost/api/v2/providers
-#   NEXT_PUBLIC_KPI_API_URL=http://localhost/api/v2/kpi
-#   NEXT_PUBLIC_AI_API_URL=http://localhost/api/v2/ai
+minikube status
+# Use Minikube's Docker daemon for image builds
+# (see https://minikube.sigs.k8s.io/docs/handbook/pushing/)
+eval $(minikube docker-env)
 ```
 
-### Step 2 - Load Secrets into Vault
+### Step 2 - Export Required Secrets (No Secrets in Repo)
 ```bash
-./infrastructure/vault/scripts/init-vault.sh        # once per environment
-./infrastructure/vault/scripts/store-secrets.sh     # writes provider keys into Vault
+export POSTGRES_PASSWORD=...
+export CLICKHOUSE_PASSWORD=...
+export DJANGO_SECRET_KEY=...
+export JWT_PRIVATE_KEY=...                # or set JWT_PRIVATE_KEY_FILE
+export JWT_PUBLIC_KEY=...                 # or set JWT_PUBLIC_KEY_FILE
+export GRAFANA_PASSWORD=...
+export SPICEDB_KEY=...
+export AIRFLOW__CORE__FERNET_KEY=...
+export AIRFLOW_ADMIN_PASSWORD=...
 ```
-Note: Vault client exists in the repo, but provider integrations currently read API keys from user preferences or environment variables; Vault wiring is pending.
 
-### Step 3 - Start Services
+Optional:
 ```bash
-docker-compose -f docker-compose.dev.yml up --build
+export AIRFLOW_ADMIN_USER=admin
+export DATABASE_URL=...
+export CLICKHOUSE_URL=...
+export AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=...
+export SPICEDB_DATASTORE_CONN_URI=...
 ```
 
-### Step 4 - Test Live Marketplace
+### Step 3 - Start Tilt
 ```bash
-# Frontend
-open http://localhost:${PORT_FRONTEND:-28030}
-# API docs (Django Ninja)
-open http://localhost/api/v2/docs
+tilt up
 ```
+
+Tilt applies Kubernetes manifests from `infrastructure/k8s/local-prod.yaml` and generates
+namespace/configmaps/secrets via `scripts/tilt/render-k8s-config.sh`.
+
+### Step 4 - Verify Endpoints (Port-Forwards)
+- `http://localhost:28080` (Nginx + frontend + API)
+- `http://localhost:28080/api/v2/docs` (Django Ninja API docs)
+- `http://localhost:28009` (Grafana)
+- `http://localhost:28008` (Prometheus)
+- `http://localhost:28010` (Airflow UI)
+- `http://localhost:28011` (Flink UI)
+- `http://localhost:28006` (Vault UI, optional)
 
 ## Current Capabilities
 
@@ -52,21 +68,16 @@ Adapters return live pricing once provider API keys are configured via `/config/
 - Provider pricing is fetched from upstream APIs at runtime; availability depends on supplied credentials and provider uptime.
 
 ## Monitoring
-- **Prometheus**: http://localhost:${PORT_PROMETHEUS:-28031}
-- **Grafana**: http://localhost:${PORT_GRAFANA:-28032}
-
-Note: docker-compose.dev.yml includes a Storybook service, but `npm run storybook` is not defined in `frontend/package.json`.
+- **Prometheus**: `http://localhost:28008`
+- **Grafana**: `http://localhost:28009`
 
 ## Troubleshooting
 
 ### Common Issues
-1. **API Key Issues**: Ensure secrets are loaded in Vault (see infrastructure/vault/scripts/store-secrets.sh) and services have VAULT_* env vars.
-2. **Docker Issues**: `docker-compose down && docker-compose up --build`
-3. **Port Conflicts**: Use `docker-compose --scale` to adjust
-4. **Rate Limits**: Add retry logic in adapters
+1. **Secret/Env Issues**: `scripts/tilt/render-k8s-config.sh` fails if required env vars are missing.
+2. **Image Build Issues**: Re-run `eval $(minikube docker-env)` before `tilt up`.
+3. **Port Conflicts**: Adjust `port_forward(...)` values in `Tiltfile`.
+4. **Vault**: Vault is deployed but not initialized by default; initialize via Vault CLI before enabling `VAULT_ENABLED`.
 
 ## Scaling
-- Kubernetes and Helm manifests are not included in this repository yet. Use Docker Compose for local and staging environments.
-
-## Next Steps
-- Load provider credentials into Vault, start the stack, and verify `/providers` returns live offers.
+- Kubernetes manifests live in `infrastructure/k8s/local-prod.yaml` and are applied by Tilt for local production-like testing.

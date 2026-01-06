@@ -1,0 +1,1317 @@
+# GPUBROKER local production-like stack for Minikube
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gpubroker-django-config
+  namespace: gpubroker-local
+data:
+  DJANGO_SETTINGS_MODULE: "config.settings.sandbox"
+  DEBUG: "False"
+  ALLOWED_HOSTS: "*"
+  CORS_ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:28080"
+  REDIS_URL: "redis://redis:6379/0"
+  KAFKA_BROKERS: "kafka:9092"
+  VAULT_ADDR: "http://vault:18280"
+  SOMA_AGENT_BASE: "http://localhost:8080"
+  GPUBROKER_FORCE_COUNTRY: "EC"
+  GPUBROKER_DEFAULT_REGION: "US"
+  GPUBROKER_DEPLOYMENT_REGION: "LATAM"
+  S3_KNOWLEDGE_BUCKET: "yachaq-lex-raw-0017472631"
+  LOG_LEVEL: "INFO"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gpubroker-frontend-config
+  namespace: gpubroker-local
+data:
+  VITE_API_URL: "http://localhost:28080/api/v2"
+  VITE_WS_URL: "ws://localhost:28080/ws"
+  VITE_PROVIDER_API_URL: "http://localhost:28080/api/v2/providers"
+  VITE_KPI_API_URL: "http://localhost:28080/api/v2/kpi"
+  VITE_PRICE_WS_URL: "ws://localhost:28080/ws/prices"
+  VITE_AI_API_URL: "http://localhost:28080/api/v2/ai"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gpubroker-airflow-config
+  namespace: gpubroker-local
+data:
+  AIRFLOW__CORE__EXECUTOR: "LocalExecutor"
+  AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+  AIRFLOW_ADMIN_USER: "admin"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prometheus-data
+  namespace: gpubroker-local
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-data
+  namespace: gpubroker-local
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: airflow-dags
+  namespace: gpubroker-local
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: airflow-logs
+  namespace: gpubroker-local
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: airflow-plugins
+  namespace: gpubroker-local
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vault
+  namespace: gpubroker-local
+  labels:
+    app: gpubroker
+    component: vault
+spec:
+  ports:
+    - name: http
+      port: 18280
+      targetPort: 18280
+  selector:
+    app: gpubroker
+    component: vault
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vault
+  namespace: gpubroker-local
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gpubroker
+      component: vault
+  template:
+    metadata:
+      labels:
+        app: gpubroker
+        component: vault
+    spec:
+      containers:
+        - name: vault
+          image: hashicorp/vault:1.15
+          args:
+            - "server"
+            - "-dev"
+            - "-dev-listen-address=0.0.0.0:18280"
+            - "-dev-root-token-id=root"
+          ports:
+            - containerPort: 18280
+          env:
+            - name: VAULT_ADDR
+              value: "http://0.0.0.0:18280"
+            - name: VAULT_API_ADDR
+              value: "http://0.0.0.0:18280"
+            - name: VAULT_LOG_LEVEL
+              value: "info"
+          securityContext:
+            capabilities:
+              add:
+                - IPC_LOCK
+          resources:
+            limits:
+              memory: "256Mi"
+            requests:
+              memory: "192Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: gpubroker-local
+  labels:
+    app: gpubroker
+    component: postgres
+spec:
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+  selector:
+    app: gpubroker
+    component: postgres
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: gpubroker-local
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gpubroker
+      component: postgres
+  template:
+    metadata:
+      labels:
+        app: gpubroker
+        component: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: gpubroker
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: gpubroker-secrets
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              value: gpubroker
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+            - name: POSTGRES_INITDB_ARGS
+              value: "--encoding=UTF8 --locale=C"
+          args:
+            - "-c"
+            - "shared_buffers=256MB"
+            - "-c"
+            - "effective_cache_size=512MB"
+            - "-c"
+            - "maintenance_work_mem=64MB"
+            - "-c"
+            - "checkpoint_completion_target=0.9"
+            - "-c"
+            - "wal_buffers=16MB"
+            - "-c"
+            - "random_page_cost=1.1"
+            - "-c"
+            - "log_statement=all"
+            - "-c"
+            - "log_min_duration_statement=1000"
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql/data
+            - name: postgres-init
+              mountPath: /docker-entrypoint-initdb.d
+              readOnly: true
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "gpubroker", "-d", "gpubroker"]
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "gpubroker", "-d", "gpubroker"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          resources:
+            limits:
+              memory: "512Mi"
+            requests:
+              memory: "256Mi"
+      volumes:
+        - name: postgres-init
+          configMap:
+            name: gpubroker-postgres-init
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: gpubroker-local
+  labels:
+    app: gpubroker
+    component: redis
+spec:
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: 6379
+  selector:
+    app: gpubroker
+    component: redis
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: gpubroker-local
+spec:
+  serviceName: redis
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gpubroker
+      component: redis
+  template:
+    metadata:
+      labels:
+        app: gpubroker
+        component: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports:
+            - containerPort: 6379
+          args:
+            - "--appendonly"
+            - "yes"
+            - "--appendfsync"
+            - "everysec"
+            - "--maxmemory"
+            - "256mb"
+            - "--maxmemory-policy"
+            - "allkeys-lru"
+            - "--save"
+            - "900"
+            - "1"
+            - "--save"
+            - "300"
+            - "10"
+            - "--save"
+            - "60"
+            - "10000"
+            - "--loglevel"
+            - "notice"
+            - "--tcp-keepalive"
+            - "300"
+            - "--timeout"
+            - "0"
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
+          livenessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          resources:
+            limits:
+              memory: "128Mi"
+            requests:
+              memory: "64Mi"
+  volumeClaimTemplates:
+    - metadata:
+        name: redis-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka
+  namespace: gpubroker-local
+  labels:
+    app: gpubroker
+    component: kafka
+spec:
+  clusterIP: None
+  ports:
+    - name: kafka
+      port: 9092
+      targetPort: 9092
+  selector:
+    app: gpubroker
+    component: kafka
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kafka
+  namespace: gpubroker-local
+spec:
+  serviceName: kafka
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gpubroker
+      component: kafka
+  template:
+    metadata:
+      labels:
+        app: gpubroker
+        component: kafka
+    spec:
+      containers:
+        - name: kafka
+          image: apache/kafka:3.7.0
+          ports:
+            - containerPort: 9092
+          env:
+            - name: KAFKA_NODE_ID
+              value: "1"
+            - name: KAFKA_PROCESS_ROLES
+              value: "broker,controller"
+            - name: KAFKA_LISTENERS
+              value: "PLAINTEXT://:9092,CONTROLLER://:9093"
+            - name: KAFKA_ADVERTISED_LISTENERS
+              value: "PLAINTEXT://kafka:9092"
+            - name: KAFKA_CONTROLLER_LISTENER_NAMES
+              value: "CONTROLLER"
+            - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
+              value: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
+            - name: KAFKA_CONTROLLER_QUORUM_VOTERS
+              value: "1@kafka:9093"
+            - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+              value: "1"
+            - name: KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR
+              value: "1"
+            - name: KAFKA_TRANSACTION_STATE_LOG_MIN_ISR
+              value: "1"
+            - name: KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS
+              value: "0"
+            - name: KAFKA_NUM_PARTITIONS
+              value: "3"
+          volumeMounts:
+            - name: kafka-data
+              mountPath: /var/lib/kafka/data
+          resources:
+            limits:
+              memory: "512Mi"
+            requests:
+              memory: "256Mi"
+  volumeClaimTemplates:
+    - metadata:
+        name: kafka-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: clickhouse
+  namespace: gpubroker-local
+  labels:
+    app: gpubroker
+    component: clickhouse
+spec:
+  ports:
+    - name: http
+      port: 8123
+      targetPort: 8123
+    - name: native
+      port: 9000
+      targetPort: 9000
+  selector:
+    app: gpubroker
+    component: clickhouse
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: clickhouse
+  namespace: gpubroker-local
+spec:
+  serviceName: clickhouse
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gpubroker
+      component: clickhouse
+  template:
+    metadata:
+      labels:
+        app: gpubroker
+        component: clickhouse
+    spec:
+      containers:
+        - name: clickhouse
+          image: clickhouse/clickhouse-server:23.8
+          ports:
+            - containerPort: 8123
+            - containerPort: 9000
+          env:
+            - name: CLICKHOUSE_DB
+              value: gpubroker_analytics
+            - name: CLICKHOUSE_USER
+              value: gpubroker
+            - name: CLICKHOUSE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: gpubroker-secrets
+                  key: CLICKHOUSE_PASSWORD
+            - name: CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT
+              value: "1"
+          volumeMounts:
+            - name: clickhouse-data
+              mountPath: /var/lib/clickhouse
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: 8123
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: 8123
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          resources:
+            limits:
+              memory: "512Mi"
+            requests:
+              memory: "256Mi"
+  volumeClaimTemplates:
+    - metadata:
+        name: clickhouse-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: django
+  namespace: gpubroker-local
+  labels:
+    app: gpubroker
+    component: django
+spec:
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+  selector:
+    app: gpubroker
+    component: django
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: django
+  namespace: gpubroker-local
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gpubroker
+      component: django
+  template:
+    metadata:
+      labels:
+        app: gpubroker
+        component: django
+    spec:
+      containers:
+        - name: django
+          image: gpubroker-backend
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          env:
+            - name: DJANGO_SETTINGS_MODULE
+              valueFrom:
+                configMapKeyRef:
+                  name: gpubroker-django-config
+                  key: DJANGO_SETTINGS_MODULE
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gpubroker-secrets
+                  key: DJANGO_SECRET_KEY
+            - name: DEBUG
+              valueFrom:
+                configMapKeyRef:
+                  name: gpubroker-django-config
+                  key: DEBUG
+            - name: ALLOWED_HOSTS
+              valueFrom:
+                configMapKeyRef:
+                  name: gpubroker-django-config
+                  key: ALLOWED_HOSTS
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: gpubroker-secrets
+                  key: DATABASE_URL
+            - name: REDIS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: gpubroker-django-config
+                  key: REDIS_URL
+            - name: KAFKA_BROKERS
+              valueFrom:
+                configMapKeyRef:
+                  name: gpubroker-django-config
+                  key: KAFKA_BROKERS
+            - name: CLICKHOUSE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: gpubroker-secrets
+                  key: CLICKHOUSE_URL
+            - name: VAULT_ADDR
+              valueFrom:
+                configMapKeyRef:
+                  name: gpubroker-django-config
+                  key: VAULT_ADDR
+            - name: CORS_ALLOWED_ORIGINS
+              valueFrom:
+                configMapKeyRef:
+                  name: gpubroker-django-config
+                  key: CORS_ALLOWED_ORIGINS
+            - name: SOMA_AGENT_BASE
+              valueFrom:
+                configMapKeyRef:
+                  name: gpubroker-django-config
+                  key: SOMA_AGENT_BASE
+            - name: GPUBROKER_FORCE_COUNTRY
+              valueFrom:
+                configMapKeyRef:
+                  name: gpubroker-django-config
+                  key: GPUBROKER_FORCE_COUNTRY
+            - name: GPUBROKER_DEFAULT_REGION
+              valueFrom:
+                configMapKeyRef:
+                  name: gpubroker-django-config
+                  key: GPUBROKER_DEFAULT_REGION
+            - name: GPUBROKER_DEPLOYMENT_REGION
+              valueFrom:
+                configMapKeyRef:
+                  name: gpubroker-django-config
+                  key: GPUBROKER_DEPLOYMENT_REGION
+            - name: S3_KNOWLEDGE_BUCKET
+              valueFrom:
+                configMapKeyRef:
+                  name: gpubroker-django-config
+                  key: S3_KNOWLEDGE_BUCKET
+            - name: LOG_LEVEL
+              valueFrom:
+                configMapKeyRef:
+                  name: gpubroker-django-config
+                  key: LOG_LEVEL
+            - name: JWT_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gpubroker-secrets
+                  key: JWT_PRIVATE_KEY
+            - name: JWT_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gpubroker-secrets
+                  key: JWT_PUBLIC_KEY
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          resources:
+            limits:
+              memory: "512Mi"
+            requests:
+              memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: gpubroker-local
+  labels:
+    app: gpubroker
+    component: frontend
+spec:
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+  selector:
+    app: gpubroker
+    component: frontend
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: gpubroker-local
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gpubroker
+      component: frontend
+  template:
+    metadata:
+      labels:
+        app: gpubroker
+        component: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: gpubroker-frontend
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: gpubroker-frontend-config
+          resources:
+            limits:
+              memory: "256Mi"
+            requests:
+              memory: "128Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+  namespace: gpubroker-local
+  labels:
+    app: gpubroker
+    component: nginx
+spec:
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+  selector:
+    app: gpubroker
+    component: nginx
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: gpubroker-local
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gpubroker
+      component: nginx
+  template:
+    metadata:
+      labels:
+        app: gpubroker
+        component: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.25-alpine
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+              readOnly: true
+          livenessProbe:
+            exec:
+              command: ["nginx", "-t"]
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 6
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 6
+          resources:
+            limits:
+              memory: "128Mi"
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: gpubroker-nginx-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: gpubroker-local
+  labels:
+    app: gpubroker
+    component: prometheus
+spec:
+  ports:
+    - name: http
+      port: 9090
+      targetPort: 9090
+  selector:
+    app: gpubroker
+    component: prometheus
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: gpubroker-local
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gpubroker
+      component: prometheus
+  template:
+    metadata:
+      labels:
+        app: gpubroker
+        component: prometheus
+    spec:
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v2.47.0
+          args:
+            - "--config.file=/etc/prometheus/prometheus.yml"
+            - "--storage.tsdb.path=/prometheus"
+            - "--storage.tsdb.retention.size=2GB"
+          ports:
+            - containerPort: 9090
+          volumeMounts:
+            - name: prometheus-config
+              mountPath: /etc/prometheus/prometheus.yml
+              subPath: prometheus.yml
+              readOnly: true
+            - name: prometheus-data
+              mountPath: /prometheus
+          resources:
+            limits:
+              memory: "256Mi"
+      volumes:
+        - name: prometheus-config
+          configMap:
+            name: gpubroker-prometheus-config
+        - name: prometheus-data
+          persistentVolumeClaim:
+            claimName: prometheus-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: gpubroker-local
+  labels:
+    app: gpubroker
+    component: grafana
+spec:
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+  selector:
+    app: gpubroker
+    component: grafana
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: gpubroker-local
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gpubroker
+      component: grafana
+  template:
+    metadata:
+      labels:
+        app: gpubroker
+        component: grafana
+    spec:
+      containers:
+        - name: grafana
+          image: grafana/grafana:10.2.0
+          ports:
+            - containerPort: 3000
+          env:
+            - name: GF_SECURITY_ADMIN_USER
+              value: admin
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: gpubroker-secrets
+                  key: GRAFANA_PASSWORD
+            - name: GF_SERVER_ROOT_URL
+              value: "http://localhost:3000"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: gpubroker-secrets
+                  key: POSTGRES_PASSWORD
+          volumeMounts:
+            - name: grafana-data
+              mountPath: /var/lib/grafana
+            - name: grafana-datasources
+              mountPath: /etc/grafana/provisioning/datasources/datasources.yml
+              subPath: datasources.yml
+              readOnly: true
+            - name: grafana-dashboards
+              mountPath: /etc/grafana/provisioning/dashboards/dashboards.yml
+              subPath: dashboards.yml
+              readOnly: true
+          resources:
+            limits:
+              memory: "256Mi"
+      volumes:
+        - name: grafana-data
+          persistentVolumeClaim:
+            claimName: grafana-data
+        - name: grafana-datasources
+          configMap:
+            name: gpubroker-grafana-datasources
+        - name: grafana-dashboards
+          configMap:
+            name: gpubroker-grafana-dashboards
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spicedb
+  namespace: gpubroker-local
+  labels:
+    app: gpubroker
+    component: spicedb
+spec:
+  ports:
+    - name: grpc
+      port: 50051
+      targetPort: 50051
+    - name: http
+      port: 8443
+      targetPort: 8443
+  selector:
+    app: gpubroker
+    component: spicedb
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spicedb
+  namespace: gpubroker-local
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gpubroker
+      component: spicedb
+  template:
+    metadata:
+      labels:
+        app: gpubroker
+        component: spicedb
+    spec:
+      containers:
+        - name: spicedb
+          image: authzed/spicedb:v1.48.0
+          args:
+            - "serve"
+            - "--datastore-engine"
+            - "memory"
+            - "--http-enabled=false"
+            - "--metrics-enabled=false"
+            - "--skip-release-check"
+          ports:
+            - containerPort: 50051
+            - containerPort: 8443
+          env:
+            - name: SPICEDB_GRPC_PRESHARED_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gpubroker-secrets
+                  key: SPICEDB_GRPC_PRESHARED_KEY
+          resources:
+            limits:
+              memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flink-jobmanager
+  namespace: gpubroker-local
+  labels:
+    app: gpubroker
+    component: flink-jobmanager
+spec:
+  ports:
+    - name: ui
+      port: 8081
+      targetPort: 8081
+    - name: rpc
+      port: 6123
+      targetPort: 6123
+  selector:
+    app: gpubroker
+    component: flink-jobmanager
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flink-jobmanager
+  namespace: gpubroker-local
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gpubroker
+      component: flink-jobmanager
+  template:
+    metadata:
+      labels:
+        app: gpubroker
+        component: flink-jobmanager
+    spec:
+      containers:
+        - name: flink-jobmanager
+          image: flink:1.18-scala_2.12
+          args:
+            - "jobmanager"
+          ports:
+            - containerPort: 8081
+            - containerPort: 6123
+            - containerPort: 6124
+          env:
+            - name: FLINK_PROPERTIES
+              value: |
+                jobmanager.rpc.address: flink-jobmanager
+          resources:
+            limits:
+              memory: "512Mi"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flink-taskmanager
+  namespace: gpubroker-local
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gpubroker
+      component: flink-taskmanager
+  template:
+    metadata:
+      labels:
+        app: gpubroker
+        component: flink-taskmanager
+    spec:
+      containers:
+        - name: flink-taskmanager
+          image: flink:1.18-scala_2.12
+          args:
+            - "taskmanager"
+          env:
+            - name: FLINK_PROPERTIES
+              value: |
+                jobmanager.rpc.address: flink-jobmanager
+                jobmanager.rpc.port: 6123
+                taskmanager.numberOfTaskSlots: 2
+          resources:
+            limits:
+              memory: "512Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: airflow-webserver
+  namespace: gpubroker-local
+  labels:
+    app: gpubroker
+    component: airflow-webserver
+spec:
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+  selector:
+    app: gpubroker
+    component: airflow-webserver
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: airflow-webserver
+  namespace: gpubroker-local
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gpubroker
+      component: airflow-webserver
+  template:
+    metadata:
+      labels:
+        app: gpubroker
+        component: airflow-webserver
+    spec:
+      containers:
+        - name: airflow-webserver
+          image: apache/airflow:2.8.0
+          args:
+            - "webserver"
+          ports:
+            - containerPort: 8080
+          env:
+            - name: AIRFLOW__CORE__EXECUTOR
+              valueFrom:
+                configMapKeyRef:
+                  name: gpubroker-airflow-config
+                  key: AIRFLOW__CORE__EXECUTOR
+            - name: AIRFLOW__CORE__LOAD_EXAMPLES
+              valueFrom:
+                configMapKeyRef:
+                  name: gpubroker-airflow-config
+                  key: AIRFLOW__CORE__LOAD_EXAMPLES
+            - name: AIRFLOW__DATABASE__SQL_ALCHEMY_CONN
+              valueFrom:
+                secretKeyRef:
+                  name: gpubroker-secrets
+                  key: AIRFLOW__DATABASE__SQL_ALCHEMY_CONN
+            - name: AIRFLOW__CORE__FERNET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gpubroker-secrets
+                  key: AIRFLOW__CORE__FERNET_KEY
+          volumeMounts:
+            - name: airflow-dags
+              mountPath: /opt/airflow/dags
+            - name: airflow-logs
+              mountPath: /opt/airflow/logs
+            - name: airflow-plugins
+              mountPath: /opt/airflow/plugins
+          resources:
+            limits:
+              memory: "1Gi"
+      volumes:
+        - name: airflow-dags
+          persistentVolumeClaim:
+            claimName: airflow-dags
+        - name: airflow-logs
+          persistentVolumeClaim:
+            claimName: airflow-logs
+        - name: airflow-plugins
+          persistentVolumeClaim:
+            claimName: airflow-plugins
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: airflow-scheduler
+  namespace: gpubroker-local
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gpubroker
+      component: airflow-scheduler
+  template:
+    metadata:
+      labels:
+        app: gpubroker
+        component: airflow-scheduler
+    spec:
+      containers:
+        - name: airflow-scheduler
+          image: apache/airflow:2.8.0
+          args:
+            - "scheduler"
+          env:
+            - name: AIRFLOW__CORE__EXECUTOR
+              valueFrom:
+                configMapKeyRef:
+                  name: gpubroker-airflow-config
+                  key: AIRFLOW__CORE__EXECUTOR
+            - name: AIRFLOW__CORE__LOAD_EXAMPLES
+              valueFrom:
+                configMapKeyRef:
+                  name: gpubroker-airflow-config
+                  key: AIRFLOW__CORE__LOAD_EXAMPLES
+            - name: AIRFLOW__DATABASE__SQL_ALCHEMY_CONN
+              valueFrom:
+                secretKeyRef:
+                  name: gpubroker-secrets
+                  key: AIRFLOW__DATABASE__SQL_ALCHEMY_CONN
+            - name: AIRFLOW__CORE__FERNET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gpubroker-secrets
+                  key: AIRFLOW__CORE__FERNET_KEY
+          volumeMounts:
+            - name: airflow-dags
+              mountPath: /opt/airflow/dags
+            - name: airflow-logs
+              mountPath: /opt/airflow/logs
+            - name: airflow-plugins
+              mountPath: /opt/airflow/plugins
+          resources:
+            limits:
+              memory: "1Gi"
+      volumes:
+        - name: airflow-dags
+          persistentVolumeClaim:
+            claimName: airflow-dags
+        - name: airflow-logs
+          persistentVolumeClaim:
+            claimName: airflow-logs
+        - name: airflow-plugins
+          persistentVolumeClaim:
+            claimName: airflow-plugins
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: airflow-init
+  namespace: gpubroker-local
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: gpubroker
+        component: airflow-init
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: airflow-init
+          image: apache/airflow:2.8.0
+          env:
+            - name: AIRFLOW__CORE__EXECUTOR
+              valueFrom:
+                configMapKeyRef:
+                  name: gpubroker-airflow-config
+                  key: AIRFLOW__CORE__EXECUTOR
+            - name: AIRFLOW__CORE__LOAD_EXAMPLES
+              valueFrom:
+                configMapKeyRef:
+                  name: gpubroker-airflow-config
+                  key: AIRFLOW__CORE__LOAD_EXAMPLES
+            - name: AIRFLOW__DATABASE__SQL_ALCHEMY_CONN
+              valueFrom:
+                secretKeyRef:
+                  name: gpubroker-secrets
+                  key: AIRFLOW__DATABASE__SQL_ALCHEMY_CONN
+            - name: AIRFLOW__CORE__FERNET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gpubroker-secrets
+                  key: AIRFLOW__CORE__FERNET_KEY
+            - name: _AIRFLOW_DB_MIGRATE
+              value: "true"
+            - name: _AIRFLOW_WWW_USER_CREATE
+              value: "true"
+            - name: _AIRFLOW_WWW_USER_USERNAME
+              valueFrom:
+                configMapKeyRef:
+                  name: gpubroker-airflow-config
+                  key: AIRFLOW_ADMIN_USER
+            - name: _AIRFLOW_WWW_USER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: gpubroker-secrets
+                  key: AIRFLOW_ADMIN_PASSWORD
+          volumeMounts:
+            - name: airflow-dags
+              mountPath: /opt/airflow/dags
+            - name: airflow-logs
+              mountPath: /opt/airflow/logs
+            - name: airflow-plugins
+              mountPath: /opt/airflow/plugins
+      volumes:
+        - name: airflow-dags
+          persistentVolumeClaim:
+            claimName: airflow-dags
+        - name: airflow-logs
+          persistentVolumeClaim:
+            claimName: airflow-logs
+        - name: airflow-plugins
+          persistentVolumeClaim:
+            claimName: airflow-plugins

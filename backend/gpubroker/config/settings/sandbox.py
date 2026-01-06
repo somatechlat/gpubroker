@@ -12,7 +12,7 @@ GPUBROKER_MODE = 'sandbox'
 DEBUG = True
 
 # Sandbox-specific settings
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
+ALLOWED_HOSTS = ['*']
 
 # CORS - allow all in sandbox
 CORS_ALLOW_ALL_ORIGINS = True

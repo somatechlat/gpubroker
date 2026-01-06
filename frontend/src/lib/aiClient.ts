@@ -3,7 +3,7 @@
  * Provides chat and history retrieval functionality
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_AI_API_URL || '/api/ai';
+const API_BASE = import.meta.env.VITE_AI_API_URL || '/api/ai';
 
 interface ChatResponse {
     reply?: string;

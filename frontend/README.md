@@ -1,6 +1,6 @@
 # GPUBROKER Frontend
 
-This is a Next.js 14 + TypeScript + Tailwind CSS frontend scaffold for the GPUBROKER UI based on the `UI_UX_SPECIFICATIONS.md` document.
+This is a Vite + Lit + TypeScript + Tailwind CSS frontend for the GPUBROKER UI based on the `UI_UX_SPECIFICATIONS.md` document.
 
 Quick start:
 
@@ -10,7 +10,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:${PORT_FRONTEND:-28030} to see the dashboard and pages. The scaffold includes:
+Open http://localhost:3000 to see the dashboard and pages. The scaffold includes:
 - Header/navigation
 - Login page
 - Marketplace (provider grid + filter sidebar)

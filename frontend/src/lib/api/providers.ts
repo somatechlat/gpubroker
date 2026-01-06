@@ -1,4 +1,4 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:28080';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:28080';
 
 export interface Provider {
   id: string;
