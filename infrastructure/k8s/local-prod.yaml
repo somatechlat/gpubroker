@@ -4,15 +4,16 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: gpubroker-django-config
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
 data:
   DJANGO_SETTINGS_MODULE: "config.settings.sandbox"
   DEBUG: "False"
   ALLOWED_HOSTS: "*"
-  CORS_ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:28080"
+  CORS_ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:10355"
   REDIS_URL: "redis://redis:6379/0"
   KAFKA_BROKERS: "kafka:9092"
   VAULT_ADDR: "http://vault:18280"
+  VAULT_ENABLED: "true"
   SOMA_AGENT_BASE: "http://localhost:8080"
   GPUBROKER_FORCE_COUNTRY: "EC"
   GPUBROKER_DEFAULT_REGION: "US"
@@ -24,20 +25,20 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: gpubroker-frontend-config
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
 data:
-  VITE_API_URL: "http://localhost:28080/api/v2"
-  VITE_WS_URL: "ws://localhost:28080/ws"
-  VITE_PROVIDER_API_URL: "http://localhost:28080/api/v2/providers"
-  VITE_KPI_API_URL: "http://localhost:28080/api/v2/kpi"
-  VITE_PRICE_WS_URL: "ws://localhost:28080/ws/prices"
-  VITE_AI_API_URL: "http://localhost:28080/api/v2/ai"
+  VITE_API_URL: "http://localhost:10355/api/v2"
+  VITE_WS_URL: "ws://localhost:10355/ws"
+  VITE_PROVIDER_API_URL: "http://localhost:10355/api/v2/providers"
+  VITE_KPI_API_URL: "http://localhost:10355/api/v2/kpi"
+  VITE_PRICE_WS_URL: "ws://localhost:10355/ws/prices"
+  VITE_AI_API_URL: "http://localhost:10355/api/v2/ai"
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: gpubroker-airflow-config
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
 data:
   AIRFLOW__CORE__EXECUTOR: "LocalExecutor"
   AIRFLOW__CORE__LOAD_EXAMPLES: "false"
@@ -47,7 +48,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: prometheus-data
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
 spec:
   accessModes:
     - ReadWriteOnce
@@ -59,7 +60,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: grafana-data
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
 spec:
   accessModes:
     - ReadWriteOnce
@@ -71,7 +72,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: airflow-dags
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
 spec:
   accessModes:
     - ReadWriteOnce
@@ -83,7 +84,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: airflow-logs
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
 spec:
   accessModes:
     - ReadWriteOnce
@@ -95,7 +96,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: airflow-plugins
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
 spec:
   accessModes:
     - ReadWriteOnce
@@ -107,7 +108,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: vault
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
   labels:
     app: gpubroker
     component: vault
@@ -124,7 +125,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: vault
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
 spec:
   replicas: 1
   selector:
@@ -140,20 +141,27 @@ spec:
       containers:
         - name: vault
           image: hashicorp/vault:1.15
+          command: ["/bin/sh", "-c"]
           args:
-            - "server"
-            - "-dev"
-            - "-dev-listen-address=0.0.0.0:18280"
-            - "-dev-root-token-id=root"
+            - "vault server -dev -dev-listen-address=0.0.0.0:18280 -dev-root-token-id=${VAULT_DEV_ROOT_TOKEN}"
           ports:
             - containerPort: 18280
           env:
+            - name: VAULT_DEV_ROOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: gpubroker-secrets
+                  key: VAULT_TOKEN
             - name: VAULT_ADDR
               value: "http://0.0.0.0:18280"
             - name: VAULT_API_ADDR
               value: "http://0.0.0.0:18280"
             - name: VAULT_LOG_LEVEL
               value: "info"
+          volumeMounts:
+            - name: vault-scripts
+              mountPath: /vault/scripts
+              readOnly: true
           securityContext:
             capabilities:
               add:
@@ -163,12 +171,17 @@ spec:
               memory: "256Mi"
             requests:
               memory: "192Mi"
+      volumes:
+        - name: vault-scripts
+          configMap:
+            name: gpubroker-vault-scripts
+            defaultMode: 0755
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: postgres
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
   labels:
     app: gpubroker
     component: postgres
@@ -185,7 +198,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: postgres
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
 spec:
   serviceName: postgres
   replicas: 1
@@ -238,9 +251,6 @@ spec:
           volumeMounts:
             - name: postgres-data
               mountPath: /var/lib/postgresql/data
-            - name: postgres-init
-              mountPath: /docker-entrypoint-initdb.d
-              readOnly: true
           livenessProbe:
             exec:
               command: ["pg_isready", "-U", "gpubroker", "-d", "gpubroker"]
@@ -261,9 +271,6 @@ spec:
             requests:
               memory: "256Mi"
       volumes:
-        - name: postgres-init
-          configMap:
-            name: gpubroker-postgres-init
   volumeClaimTemplates:
     - metadata:
         name: postgres-data
@@ -278,7 +285,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: redis
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
   labels:
     app: gpubroker
     component: redis
@@ -295,7 +302,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: redis
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
 spec:
   serviceName: redis
   replicas: 1
@@ -374,7 +381,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: kafka
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
   labels:
     app: gpubroker
     component: kafka
@@ -392,7 +399,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: kafka
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
 spec:
   serviceName: kafka
   replicas: 1
@@ -458,7 +465,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: clickhouse
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
   labels:
     app: gpubroker
     component: clickhouse
@@ -478,7 +485,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: clickhouse
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
 spec:
   serviceName: clickhouse
   replicas: 1
@@ -494,7 +501,8 @@ spec:
     spec:
       containers:
         - name: clickhouse
-          image: clickhouse/clickhouse-server:23.8
+          image: gpubroker-clickhouse
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8123
             - containerPort: 9000
@@ -513,6 +521,8 @@ spec:
           volumeMounts:
             - name: clickhouse-data
               mountPath: /var/lib/clickhouse
+            - name: clickhouse-logs
+              mountPath: /var/log/clickhouse-server
           livenessProbe:
             httpGet:
               path: /ping
@@ -534,6 +544,9 @@ spec:
               memory: "512Mi"
             requests:
               memory: "256Mi"
+      volumes:
+        - name: clickhouse-logs
+          emptyDir: {}
   volumeClaimTemplates:
     - metadata:
         name: clickhouse-data
@@ -548,7 +561,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: django
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
   labels:
     app: gpubroker
     component: django
@@ -565,7 +578,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: django
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
 spec:
   replicas: 1
   selector:
@@ -630,6 +643,16 @@ spec:
                 configMapKeyRef:
                   name: gpubroker-django-config
                   key: VAULT_ADDR
+            - name: VAULT_ENABLED
+              valueFrom:
+                configMapKeyRef:
+                  name: gpubroker-django-config
+                  key: VAULT_ENABLED
+            - name: VAULT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: gpubroker-secrets
+                  key: VAULT_TOKEN
             - name: CORS_ALLOWED_ORIGINS
               valueFrom:
                 configMapKeyRef:
@@ -701,7 +724,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: frontend
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
   labels:
     app: gpubroker
     component: frontend
@@ -718,7 +741,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: frontend
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
 spec:
   replicas: 1
   selector:
@@ -750,7 +773,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: nginx
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
   labels:
     app: gpubroker
     component: nginx
@@ -767,7 +790,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: nginx
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
 spec:
   replicas: 1
   selector:
@@ -817,7 +840,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: prometheus
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
   labels:
     app: gpubroker
     component: prometheus
@@ -834,7 +857,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: prometheus
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
 spec:
   replicas: 1
   selector:
@@ -878,7 +901,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: grafana
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
   labels:
     app: gpubroker
     component: grafana
@@ -895,7 +918,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: grafana
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
 spec:
   replicas: 1
   selector:
@@ -957,7 +980,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: spicedb
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
   labels:
     app: gpubroker
     component: spicedb
@@ -977,7 +1000,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: spicedb
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
 spec:
   replicas: 1
   selector:
@@ -1017,7 +1040,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: flink-jobmanager
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
   labels:
     app: gpubroker
     component: flink-jobmanager
@@ -1037,7 +1060,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: flink-jobmanager
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
 spec:
   replicas: 1
   selector:
@@ -1071,7 +1094,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: flink-taskmanager
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
 spec:
   replicas: 1
   selector:
@@ -1103,7 +1126,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: airflow-webserver
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
   labels:
     app: gpubroker
     component: airflow-webserver
@@ -1120,7 +1143,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: airflow-webserver
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
 spec:
   replicas: 1
   selector:
@@ -1186,7 +1209,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: airflow-scheduler
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
 spec:
   replicas: 1
   selector:
@@ -1250,7 +1273,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: airflow-init
-  namespace: gpubroker-local
+  namespace: gpubrokernamespace
 spec:
   backoffLimit: 3
   template:
