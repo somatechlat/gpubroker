@@ -33,7 +33,7 @@ GPUBroker is a **"No Brain Inside"** streaming broker that facilitates the tradi
 - Vite for development
 - Universal "Clean Light Theme"
 
-**Architecture Principle**: **"Port Authority Compliance"** - All services run on ports 28000-28199.
+**Architecture Principle**: **"Isolated Local Ingress"** - Local Minikube/Tilt ingress is exposed on port 10355 and Kubernetes resources are isolated in the `gpubrokernamespace` namespace.
 
 ### 1.3 Definitions, Acronyms, and Abbreviations
 
@@ -114,8 +114,8 @@ GPUBroker is the **Compute Marketplace pillar** of the SOMA ecosystem, providing
 - **Runtime**: Python 3.11
 - **Database**: PostgreSQL 15, ClickHouse 24
 - **Streaming**: Kafka 3.5, Flink 1.18
-- **Orchestration**: Airflow 2.8, Docker Compose, Kubernetes
-- **Port Range**: 28000-28199 (Port Authority compliance)
+- **Orchestration**: Airflow 2.8, Tilt, Kubernetes
+- **Local Ingress Port**: 10355 (Tilt/Minikube)
 
 **Frontend**:
 - **Browser**: Chrome/Firefox/Safari (latest 2 versions)
@@ -125,7 +125,7 @@ GPUBroker is the **Compute Marketplace pillar** of the SOMA ecosystem, providing
 ### 2.5 Constraints
 
 1. **Memory Limit**: 10GB total cluster memory allocation (production infrastructure constraint)
-2. **Port Authority**: All services MUST use ports 28000-28199
+2. **Local Ingress**: Ingress MUST use port 10355 and resources MUST be isolated in `gpubrokernamespace`
 3. **Log Rotation**: Aggressive log rotation to prevent disk exhaustion
 4. **No Brain Inside**: Zero ML/AI processing in broker - pure marketplace logic
 5. **Eventual Consistency**: Pricing and availability updates are eventually consistent
@@ -637,28 +637,14 @@ ws.onmessage = (event) => {
   delaycompress
 ```
 
-### 6.5 Port Authority Compliance
+### 6.5 Local Ingress & Namespace Isolation
 
-**All services must use ports 28000-28199**:
+Local Minikube/Tilt deployments expose ingress on port 10355 through Nginx.
+All Kubernetes resources are scoped to the `gpubrokernamespace` namespace.
 
 | Service | Port | Protocol |
 |---------|------|----------|
-| Django API | 28000 | HTTP |
-| PostgreSQL | 28001 | TCP |
-| Redis | 28002 | TCP |
-| Kafka (Broker 1) | 28003 | TCP |
-| Kafka (Broker 2) | 28004 | TCP |
-| Kafka (Broker 3) | 28005 | TCP |
-| Zookeeper | 28006 | TCP |
-| ClickHouse HTTP | 28007 | HTTP |
-| ClickHouse Native | 28008 | TCP |
-| Flink Job Manager | 28081 | HTTP |
-| Flink Task Manager | 28082 | TCP |
-| Airflow Webserver | 28090 | HTTP |
-| Frontend Dev Server | 28100 | HTTP |
-| WebSocket Gateway | 28050 | WS |
-| Prometheus | 28150 | HTTP |
-| Grafana | 28151 | HTTP |
+| Nginx Ingress | 10355 | HTTP |
 
 ---
 
@@ -749,9 +735,9 @@ class Trade:
 
 ## 8. Deployment Architecture
 
-### 8.1 Docker Compose Services
+### 8.1 Kubernetes Services
 
-**Production Stack** (`docker-compose.yml` - 21 services):
+**Local + Production Stack** (Kubernetes services):
 
 1. `postgres` - PostgreSQL 15
 2. `redis` - Redis 7
@@ -776,7 +762,7 @@ class Trade:
 **Tiltfile** manages:
 - Kubernetes resources via `infrastructure/k8s/local-prod.yaml`
 - Namespace/configmap/secret generation via `scripts/tilt/render-k8s-config.sh`
-- Live code sync for `backend/` and `frontend/` with process restart for Django
+- Image builds via `minikube image build` for backend/frontend
 - Automatic rebuild on dependency changes
 
 **Services Health Checks**:
@@ -849,7 +835,7 @@ class Trade:
 **Scalability**:
 - ✅ System handles 1M orders/day without degradation
 - ✅ Memory usage stays under 10GB cluster-wide
-- ✅ All services comply with Port Authority (28000-28199)
+- ✅ Ingress uses port 10355 and resources are isolated in `gpubrokernamespace`
 
 ### 10.2 Manual Verification
 

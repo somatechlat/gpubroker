@@ -2,7 +2,13 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-NAMESPACE="gpubroker-local"
+NAMESPACE="gpubrokernamespace"
+CURRENT_CONTEXT="$(kubectl config current-context 2>/dev/null || true)"
+
+if [[ "${CURRENT_CONTEXT}" != "gpubroker" ]]; then
+  echo "Refusing to apply configs outside the gpubroker context (current: ${CURRENT_CONTEXT:-unknown})." >&2
+  exit 1
+fi
 
 require_env() {
   local name="$1"
@@ -37,8 +43,10 @@ require_env GRAFANA_PASSWORD
 require_env SPICEDB_KEY
 require_env AIRFLOW__CORE__FERNET_KEY
 require_env AIRFLOW_ADMIN_PASSWORD
+require_env VAULT_TOKEN
 
-DATABASE_URL="${DATABASE_URL:-postgresql://gpubroker:${POSTGRES_PASSWORD}@postgres:5432/gpubroker}"
+# Override DATABASE_URL for K8s - always use internal service name
+DATABASE_URL="postgresql://gpubroker:${POSTGRES_PASSWORD}@postgres:5432/gpubroker"
 CLICKHOUSE_URL="${CLICKHOUSE_URL:-http://gpubroker:${CLICKHOUSE_PASSWORD}@clickhouse:8123/gpubroker_analytics}"
 AIRFLOW_DB_URL="${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN:-postgresql+psycopg2://gpubroker:${POSTGRES_PASSWORD}@postgres:5432/gpubroker}"
 SPICEDB_DATASTORE_CONN_URI="${SPICEDB_DATASTORE_CONN_URI:-postgres://gpubroker:${POSTGRES_PASSWORD}@postgres:5432/gpubroker?sslmode=disable}"
@@ -105,9 +113,9 @@ kubectl create configmap gpubroker-vault-config \
 
 echo "---"
 
-kubectl create configmap gpubroker-postgres-init \
+kubectl create configmap gpubroker-vault-scripts \
   --namespace "${NAMESPACE}" \
-  --from-file=01-init.sql="${ROOT_DIR}/database/init/01-init.sql" \
+  --from-file="${ROOT_DIR}/infrastructure/vault/scripts" \
   --dry-run=client -o yaml
 
 echo "---"
@@ -127,4 +135,5 @@ kubectl create secret generic gpubroker-secrets \
   --from-literal=AIRFLOW__DATABASE__SQL_ALCHEMY_CONN="${AIRFLOW_DB_URL}" \
   --from-literal=AIRFLOW__CORE__FERNET_KEY="${AIRFLOW__CORE__FERNET_KEY}" \
   --from-literal=AIRFLOW_ADMIN_PASSWORD="${AIRFLOW_ADMIN_PASSWORD}" \
+  --from-literal=VAULT_TOKEN="${VAULT_TOKEN}" \
   --dry-run=client -o yaml

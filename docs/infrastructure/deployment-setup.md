@@ -2,12 +2,11 @@
 
 ## Local Production-Like (Minikube + Tilt)
 
-### Step 1 - Prepare Minikube Build Context
+### Step 1 - Start Minikube (Isolated Profile)
 ```bash
-minikube status
-# Use Minikube's Docker daemon for image builds
-# (see https://minikube.sigs.k8s.io/docs/handbook/pushing/)
-eval $(minikube docker-env)
+minikube start -p gpubroker --driver=vfkit --container-runtime=containerd --disk=10g --memory=8g --cpus=4 --addons=ingress
+minikube status -p gpubroker
+kubectl config use-context gpubroker
 ```
 
 ### Step 2 - Export Required Secrets (No Secrets in Repo)
@@ -21,6 +20,7 @@ export GRAFANA_PASSWORD=...
 export SPICEDB_KEY=...
 export AIRFLOW__CORE__FERNET_KEY=...
 export AIRFLOW_ADMIN_PASSWORD=...
+export VAULT_TOKEN=...                    # dev root token for local Vault
 ```
 
 Optional:
@@ -39,15 +39,21 @@ tilt up
 
 Tilt applies Kubernetes manifests from `infrastructure/k8s/local-prod.yaml` and generates
 namespace/configmaps/secrets via `scripts/tilt/render-k8s-config.sh`.
+All resources are isolated in the `gpubrokernamespace` namespace.
 
 ### Step 4 - Verify Endpoints (Port-Forwards)
-- `http://localhost:28080` (Nginx + frontend + API)
-- `http://localhost:28080/api/v2/docs` (Django Ninja API docs)
+- `http://localhost:10355` (Nginx + frontend + API)
+- `http://localhost:10355/api/v2/docs` (Django Ninja API docs)
 - `http://localhost:28009` (Grafana)
 - `http://localhost:28008` (Prometheus)
 - `http://localhost:28010` (Airflow UI)
 - `http://localhost:28011` (Flink UI)
 - `http://localhost:28006` (Vault UI, optional)
+
+If ingress endpoints are not reachable, run:
+```bash
+minikube -p gpubroker tunnel
+```
 
 ## Current Capabilities
 
@@ -75,7 +81,7 @@ Adapters return live pricing once provider API keys are configured via `/config/
 
 ### Common Issues
 1. **Secret/Env Issues**: `scripts/tilt/render-k8s-config.sh` fails if required env vars are missing.
-2. **Image Build Issues**: Re-run `eval $(minikube docker-env)` before `tilt up`.
+2. **Image Build Issues**: Ensure `minikube -p gpubroker` is running; Tilt builds images via `minikube image build`.
 3. **Port Conflicts**: Adjust `port_forward(...)` values in `Tiltfile`.
 4. **Vault**: Vault is deployed but not initialized by default; initialize via Vault CLI before enabling `VAULT_ENABLED`.
 

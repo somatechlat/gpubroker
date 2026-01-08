@@ -7,7 +7,7 @@ info:
     All endpoints served by Django 5 + Django Ninja at /api/v2/.
 
 servers:
-  - url: http://localhost:28080/api/v2
+  - url: http://localhost:10355/api/v2
     description: Django backend
 
 paths:

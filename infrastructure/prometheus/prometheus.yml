@@ -55,6 +55,5 @@ scrape_configs:
   # Node exporter for system metrics
   - job_name: 'node'
     static_configs:
-      - targets: ['host.docker.internal:9100']
+      - targets: ['host.minikube.internal:9100']
     metrics_path: /metrics
-

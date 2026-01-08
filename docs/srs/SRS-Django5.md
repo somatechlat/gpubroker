@@ -43,8 +43,8 @@ This Software Requirements Specification defines the complete, testable requirem
 
 GPUBROKER delivers:
 - **Backend Services:** Auth, Provider Aggregator, KPI Analytics, Math Core, AI Assistant, WebSocket Gateway
-- **Frontend:** Next.js SPA with marketplace, AI chat, admin console
-- **Infrastructure:** Docker, Kubernetes, Helm, GitHub Actions CI/CD
+- **Frontend:** Lit 3 SPA with marketplace, AI chat, admin console
+- **Infrastructure:** Kubernetes, Tilt, Minikube (vfkit), GitHub Actions CI/CD
 - **Integrations:** 20+ cloud GPU providers, Identity (OIDC), Observability (OTEL/Prometheus/Grafana/Loki)
 
 **Exclusions:** Hardware procurement, provider SLA negotiations, marketing operations.
@@ -122,7 +122,7 @@ GPUBROKER is a stand-alone SaaS platform deployed on Kubernetes that:
 
 | Component | Specification |
 |-----------|---------------|
-| **Container Runtime** | Docker 24+, Kubernetes 1.28+ |
+| **Container Runtime** | containerd, Kubernetes 1.28+ |
 | **Database** | PostgreSQL 15 (OLTP), ClickHouse 23 (analytics) |
 | **Cache** | Redis 7 cluster |
 | **Message Bus** | Kafka 3.5 / Redis Pub/Sub |
@@ -678,7 +678,7 @@ gpubroker/
 ```mermaid
 graph TD
     subgraph Frontend
-        UI[Next.js SPA] -->|REST /api/v2| GW[Django Ninja API]
+        UI[Lit 3 SPA] -->|REST /api/v2| GW[Django Ninja API]
         UI -->|WebSocket| WS[Django Channels]
     end
     

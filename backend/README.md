@@ -37,7 +37,7 @@ backend/
 │   ├── tests/                    # Test suite
 │   ├── manage.py
 │   ├── requirements.txt
-│   └── Dockerfile
+│   └── Containerfile
 └── shared/                       # Shared utilities
     ├── vault_client.py           # HashiCorp Vault client
     └── audit_hash.py             # Audit log hashing
@@ -87,19 +87,6 @@ pytest -v
 
 # With coverage
 pytest --cov=apps --cov-report=html
-```
-
-### Docker
-
-```bash
-# Build
-docker build -t gpubroker-backend ./gpubroker
-
-# Run
-docker run -p 8000:8000 \
-  -e DATABASE_URL=... \
-  -e REDIS_URL=... \
-  gpubroker-backend
 ```
 
 ### Environment Variables

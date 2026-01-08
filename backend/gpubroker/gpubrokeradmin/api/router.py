@@ -15,6 +15,7 @@ from ..apps.subscriptions.services import SubscriptionService
 from ..apps.subscriptions.models import Subscription
 from ..services.deploy import DeployService
 from ..services.geo import geo_service
+from ..common.messages import get_message
 
 
 # ============================================
@@ -186,7 +187,11 @@ def create_subscription(request, data: SubscriptionCreateSchema):
     if requirements['requires_tax_id'] and not data.ruc:
         return {
             "success": False,
-            "error": f"{requirements['tax_id_name']} es requerido para registros desde {country_code}",
+            "error": get_message(
+                "validation.tax_id.required",
+                field_name=requirements.get("tax_id_name", "Tax ID"),
+                country_code=country_code,
+            ),
         }
     
     result = SubscriptionService.create_subscription(
@@ -225,12 +230,12 @@ def validate_ruc(request, data: Dict[str, str]):
     
     # Basic RUC validation (13 digits)
     if not ruc or len(ruc) != 13 or not ruc.isdigit():
-        return {"valid": False, "message": "RUC debe tener 13 dígitos"}
+        return {"valid": False, "message": get_message("validation.ruc.length")}
     
     # Check province code (first 2 digits)
     province = int(ruc[:2])
     if province < 1 or province > 24:
-        return {"valid": False, "message": "Código de provincia inválido"}
+        return {"valid": False, "message": get_message("validation.ruc.province")}
     
     return {"valid": True, "message": "RUC válido", "type": "ruc"}
 
@@ -241,12 +246,12 @@ def validate_cedula(request, data: Dict[str, str]):
     cedula = data.get("cedula", "")
     
     if not cedula or len(cedula) != 10 or not cedula.isdigit():
-        return {"valid": False, "message": "Cédula debe tener 10 dígitos"}
+        return {"valid": False, "message": get_message("validation.cedula.length")}
     
     # Checksum validation
     province = int(cedula[:2])
     if province < 1 or province > 24:
-        return {"valid": False, "message": "Código de provincia inválido"}
+        return {"valid": False, "message": get_message("validation.cedula.province")}
     
     # Luhn-like algorithm for Ecuador cedula
     coefficients = [2, 1, 2, 1, 2, 1, 2, 1, 2]
@@ -259,7 +264,7 @@ def validate_cedula(request, data: Dict[str, str]):
     
     check_digit = (10 - (total % 10)) % 10
     if check_digit != int(cedula[9]):
-        return {"valid": False, "message": "Dígito verificador inválido"}
+        return {"valid": False, "message": get_message("validation.cedula.check_digit")}
     
     return {"valid": True, "message": "Cédula válida", "type": "cedula"}
 
@@ -280,7 +285,7 @@ def validate_identity(request, data: Dict[str, str]):
     else:
         return {
             "valid": False,
-            "message": "Ingrese RUC (13 dígitos) o Cédula (10 dígitos)",
+            "message": get_message("validation.identity.format"),
         }
 
 
@@ -697,13 +702,13 @@ def admin_switch_mode(request, data: ModeSwitchSchema):
     if data.mode not in ('sandbox', 'live'):
         return {
             "success": False,
-            "error": f"Invalid mode: {data.mode}. Must be 'sandbox' or 'live'"
+            "error": get_message("mode.invalid", mode=data.mode),
         }
     
     if data.mode == 'live' and not data.confirm:
         return {
             "success": False,
-            "error": "Switching to LIVE mode requires confirm=true",
+            "error": get_message("mode.live_requires_confirm"),
             "warning": "Live mode will process REAL payments and provision REAL resources!",
             "current_mode": config.mode.current,
         }

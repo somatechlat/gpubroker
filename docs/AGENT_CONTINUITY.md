@@ -43,10 +43,10 @@ GPUBROKER is an AI-Powered GPU Marketplace & Control Tower SaaS platform deploye
 - **SES**: Email notifications (ai@somatech.dev)
 - **SNS**: SMS notifications (+593997202547)
 
-### Docker Compose (DEV ONLY)
-The docker-compose.dev.yml is for local development testing only. Production uses AWS managed services.
+### Local Development (Minikube + Tilt)
+Local development runs in an isolated Minikube profile (vfkit) orchestrated by Tilt. Production uses AWS managed services.
 
-Memory limits configured (8GB total):
+Default local resource limits (8GB total):
 - Postgres: 512MB
 - Redis: 192MB
 - Kafka: 768MB
@@ -100,15 +100,15 @@ backend/gpubroker/
 ## Key Credentials (Development)
 
 ### Admin Dashboard
-- **URL**: http://localhost:28080/admin/
+- **URL**: http://localhost:10355/admin/
 - **Email**: admin@gpubroker.io
 - **Password**: admin123
 
 ### PayPal Sandbox
-- **Client ID**: AdN8KE5YsUHHCpwKs8cdmzCBOH0BTymz-YhJ2h6Yz9QNZVm8VH-n5JHKJd5bbA11tdwmkoW52IWThOGb
-- **Client Secret**: EPAQoVh0vmdbGyxuzd3GMS0f0fyzLmMX4nwfsEowE1UHsqcttWPQIVkMC0kDPsoqr2YMgIn433rqh8h3
+- **Client ID**: [REDACTED - Use Vault or environment variables]
+- **Client Secret**: [REDACTED - Use Vault or environment variables]
 - **Mode**: sandbox
-- **Test Buyer**: sb-zp64z48418674@personal.example.com / mdEcL1$w
+- **Test Buyer**: [REDACTED - Use PAYPAL_SANDBOX_EMAIL/PASSWORD env vars]
 
 ### Database (Development)
 - **URL**: postgresql://gpubroker:gpubroker_dev_password@localhost:28001/gpubroker_dev
@@ -193,15 +193,17 @@ backend/gpubroker/gpubrokeradmin/templates/
 
 ## Development Commands
 
-### Start Docker (Dev Infrastructure)
+### Start Minikube + Tilt (Dev Infrastructure)
 ```bash
-docker-compose -f docker-compose.dev.yml up -d postgres redis
+minikube start -p gpubroker --driver=vfkit --container-runtime=containerd --disk=10g --memory=8g --cpus=4 --addons=ingress
+kubectl config use-context gpubroker
+tilt up
 ```
 
 ### Start Django Server
 ```bash
 cd backend/gpubroker
-python manage.py runserver 0.0.0.0:28080
+python manage.py runserver 0.0.0.0:10355
 ```
 
 ### Run Tests

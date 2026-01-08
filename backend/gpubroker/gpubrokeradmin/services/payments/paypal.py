@@ -17,6 +17,9 @@ from typing import Optional
 
 import requests
 
+from gpubrokeradmin.apps.subscriptions.models import PaymentTransaction, Payment
+from gpubrokeradmin.common.messages import get_message
+
 logger = logging.getLogger('gpubrokeradmin.payments.paypal')
 
 
@@ -48,9 +51,6 @@ class PayPalService:
         self._config = config
         self._access_token: Optional[str] = None
         self._token_expires: Optional[datetime] = None
-        
-        # In-memory pending transactions (use Redis in production)
-        self._pending_transactions: dict = {}
         logger.info("PayPal service initialized (using centralized config)")
     
     @property
@@ -131,6 +131,67 @@ class PayPalService:
         except requests.RequestException as e:
             logger.exception(f'PayPal auth exception: {e}')
             return None
+
+    def _persist_transaction(
+        self,
+        order_id: str,
+        status: str,
+        *,
+        amount_usd: float = 0.0,
+        transaction_id: str = "",
+        email: str = "",
+        name: str = "",
+        plan: str = "",
+        mode: str = "",
+        metadata: Optional[dict] = None,
+        raw_request: Optional[dict] = None,
+        raw_response: Optional[dict] = None,
+        error_message: str = "",
+    ) -> PaymentTransaction:
+        """
+        Persist a payment transaction event for observability/replay.
+        """
+        metadata = metadata or {}
+        raw_request = raw_request or {}
+        raw_response = raw_response or {}
+        
+        defaults = {
+            "status": status,
+            "transaction_id": transaction_id,
+            "amount_usd": amount_usd,
+            "customer_email": email,
+            "customer_name": name,
+            "plan": plan,
+            "mode": mode or self.mode,
+            "metadata": metadata,
+            "raw_request": raw_request,
+            "raw_response": raw_response,
+            "error_message": error_message,
+            "provider": Payment.Provider.PAYPAL,
+        }
+        transaction, created = PaymentTransaction.objects.get_or_create(
+            order_id=order_id,
+            defaults=defaults,
+        )
+        if not created:
+            for field, value in defaults.items():
+                if value not in (None, "", {}):
+                    setattr(transaction, field, value)
+            transaction.save(update_fields=[
+                "status",
+                "transaction_id",
+                "amount_usd",
+                "customer_email",
+                "customer_name",
+                "plan",
+                "mode",
+                "metadata",
+                "raw_request",
+                "raw_response",
+                "error_message",
+                "updated_at",
+            ])
+        return transaction
     
     def create_order(
         self,
@@ -160,12 +221,12 @@ class PayPalService:
         if not self.is_configured:
             return {
                 'success': False,
-                'error': 'PayPal not configured. Set PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET.',
+                'error': get_message("paypal.not_configured"),
             }
         
         access_token = self._get_access_token()
         if not access_token:
-            return {'success': False, 'error': 'Failed to authenticate with PayPal'}
+            return {'success': False, 'error': get_message("paypal.auth_failed")}
         
         # Generate unique reference ID
         reference_id = hashlib.sha256(
@@ -220,15 +281,21 @@ class PayPalService:
                         break
                 
                 # Store pending transaction
-                self._pending_transactions[order_id] = {
-                    'email': email,
-                    'plan': plan,
-                    'amount': amount_usd,
-                    'ruc': ruc,
-                    'name': name,
-                    'reference_id': reference_id,
-                    'created_at': datetime.now(timezone.utc).isoformat(),
-                }
+                self._persist_transaction(
+                    order_id=order_id,
+                    status=Payment.Status.PENDING,
+                    amount_usd=amount_usd,
+                    email=email,
+                    name=name,
+                    plan=plan,
+                    mode=self.mode,
+                    metadata={
+                        "ruc": ruc,
+                        "reference_id": reference_id,
+                    },
+                    raw_request=order_data,
+                    raw_response=order,
+                )
                 
                 logger.info(f'PayPal order created: {order_id} for {email}')
                 return {
@@ -241,12 +308,25 @@ class PayPalService:
                 logger.error(f'PayPal order creation failed: {error_data}')
                 return {
                     'success': False,
-                    'error': error_data.get('message', 'Failed to create PayPal order'),
+                    'error': error_data.get('message', get_message("paypal.create_failed")),
                     'details': error_data,
                 }
         except requests.RequestException as e:
             logger.exception(f'PayPal API error: {e}')
-            return {'success': False, 'error': f'PayPal API error: {str(e)}'}
+            self._persist_transaction(
+                order_id=reference_id,
+                status=Payment.Status.FAILED,
+                amount_usd=amount_usd,
+                email=email,
+                name=name,
+                plan=plan,
+                mode=self.mode,
+                metadata={'ruc': ruc},
+                raw_request=order_data,
+                raw_response={},
+                error_message=str(e),
+            )
+            return {'success': False, 'error': get_message("paypal.api_error", error=str(e))}
 
     def capture_order(self, order_id: str) -> dict:
         """
@@ -259,11 +339,11 @@ class PayPalService:
             dict with success, transaction_id, email, plan, amount or error
         """
         if not self.is_configured:
-            return {'success': False, 'error': 'PayPal not configured'}
+            return {'success': False, 'error': get_message("paypal.not_configured")}
         
         access_token = self._get_access_token()
         if not access_token:
-            return {'success': False, 'error': 'Failed to authenticate with PayPal'}
+            return {'success': False, 'error': get_message("paypal.auth_failed")}
         
         url = f'{self.api_base}/v2/checkout/orders/{order_id}/capture'
         
@@ -281,10 +361,14 @@ class PayPalService:
                 capture_data = response.json()
                 status = capture_data.get('status')
                 
+                # Record capture attempt
+                self._persist_transaction(
+                    order_id=order_id,
+                    status=Payment.Status.PROCESSING,
+                    raw_response=capture_data,
+                )
+                
                 if status == 'COMPLETED':
-                    # Get stored transaction data
-                    pending = self._pending_transactions.pop(order_id, {})
-                    
                     # Get capture ID from response
                     capture_id = ''
                     payments = capture_data.get('purchase_units', [{}])[0].get('payments', {})
@@ -292,36 +376,73 @@ class PayPalService:
                     if captures:
                         capture_id = captures[0].get('id', '')
                     
+                    pending = PaymentTransaction.objects.filter(order_id=order_id).first()
+                    metadata = pending.metadata if pending else {}
+                    email = pending.customer_email if pending else ''
+                    plan = pending.plan if pending else 'pro'
+                    amount = pending.amount_usd if pending else 0
+                    ruc = metadata.get('ruc', '')
+                    name = pending.customer_name if pending else ''
+                    
+                    self._persist_transaction(
+                        order_id=order_id,
+                        status=Payment.Status.COMPLETED,
+                        transaction_id=capture_id,
+                        amount_usd=float(amount or 0),
+                        email=email,
+                        name=name,
+                        plan=plan,
+                        raw_response=capture_data,
+                    )
+                    
                     logger.info(f'PayPal payment captured: {capture_id} for order {order_id}')
                     return {
                         'success': True,
                         'status': 'COMPLETED',
                         'transaction_id': capture_id,
                         'order_id': order_id,
-                        'email': pending.get('email', ''),
-                        'plan': pending.get('plan', 'pro'),
-                        'amount': pending.get('amount', 0),
-                        'ruc': pending.get('ruc', ''),
-                        'name': pending.get('name', ''),
+                        'email': email,
+                        'plan': plan,
+                        'amount': float(amount or 0),
+                        'ruc': ruc,
+                        'name': name,
                     }
                 else:
                     logger.warning(f'PayPal payment not completed: {status}')
+                    self._persist_transaction(
+                        order_id=order_id,
+                        status=Payment.Status.FAILED,
+                        raw_response=capture_data,
+                        error_message=get_message("paypal.capture_not_completed", status=status),
+                    )
                     return {
                         'success': False,
-                        'error': f'Payment not completed. Status: {status}',
+                        'error': get_message("paypal.capture_not_completed", status=status),
                         'status': status,
                     }
             else:
                 error_data = response.json()
                 logger.error(f'PayPal capture failed: {error_data}')
+                self._persist_transaction(
+                    order_id=order_id,
+                    status=Payment.Status.FAILED,
+                    raw_response=error_data,
+                    error_message=error_data.get('message', ''),
+                )
                 return {
                     'success': False,
-                    'error': error_data.get('message', 'Failed to capture payment'),
+                    'error': error_data.get('message', get_message("paypal.capture_failed")),
                     'details': error_data,
                 }
         except requests.RequestException as e:
             logger.exception(f'PayPal capture error: {e}')
-            return {'success': False, 'error': f'PayPal capture error: {str(e)}'}
+            self._persist_transaction(
+                order_id=order_id,
+                status=Payment.Status.FAILED,
+                raw_response={},
+                error_message=str(e),
+            )
+            return {'success': False, 'error': get_message("paypal.capture_failed")}
     
     def create_payment_for_subscription(
         self,
@@ -386,7 +507,19 @@ class PayPalService:
         Returns:
             Transaction data dict or None
         """
-        return self._pending_transactions.get(order_id)
+        transaction = PaymentTransaction.objects.filter(order_id=order_id).first()
+        if not transaction:
+            return None
+        return {
+            "order_id": transaction.order_id,
+            "transaction_id": transaction.transaction_id,
+            "status": transaction.status,
+            "provider": transaction.provider,
+            "email": transaction.customer_email,
+            "plan": transaction.plan,
+            "amount": float(transaction.amount_usd),
+            "metadata": transaction.metadata,
+        }
 
 
 # Singleton instance

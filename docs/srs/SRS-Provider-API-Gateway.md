@@ -128,7 +128,7 @@ The Provider API Gateway is a subsystem of GPUBROKER that serves as the central 
 | Component | Specification |
 |-----------|---------------|
 | Runtime | Python 3.11+, Django 5.0+ |
-| Container | Docker, Kubernetes |
+| Container | containerd, Kubernetes |
 | Database | PostgreSQL 15+ (Patroni HA) |
 | Cache | Redis 7+ (Cluster mode) |
 | Message Queue | Apache Kafka 3.6+ (KRaft mode, NO ZooKeeper) |
@@ -818,73 +818,11 @@ default.replication.factor=3
 min.insync.replicas=2
 ```
 
-### 9.2 Docker Compose (Development)
+### 9.2 Minikube + Tilt (Development)
 
-```yaml
-version: '3.8'
-
-services:
-  # Kafka KRaft (NO ZOOKEEPER)
-  kafka:
-    image: confluentinc/cp-kafka:7.5.0
-    environment:
-      KAFKA_NODE_ID: 1
-      KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_LOG_DIRS: /var/lib/kafka/data
-      CLUSTER_ID: 'MkU3OEVBNTcwNTJENDM2Qk'
-    ports:
-      - "9092:9092"
-    volumes:
-      - kafka_data:/var/lib/kafka/data
-
-  flink-jobmanager:
-    image: flink:1.18-scala_2.12
-    command: jobmanager
-    environment:
-      FLINK_PROPERTIES: |
-        jobmanager.rpc.address: flink-jobmanager
-        taskmanager.numberOfTaskSlots: 4
-    ports:
-      - "8081:8081"
-
-  flink-taskmanager:
-    image: flink:1.18-scala_2.12
-    command: taskmanager
-    depends_on:
-      - flink-jobmanager
-    environment:
-      FLINK_PROPERTIES: |
-        jobmanager.rpc.address: flink-jobmanager
-        taskmanager.numberOfTaskSlots: 4
-
-  airflow-webserver:
-    image: apache/airflow:2.8.0
-    command: webserver
-    environment:
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql://postgres:postgres@postgres:5432/airflow
-    ports:
-      - "8080:8080"
-    volumes:
-      - ./airflow/dags:/opt/airflow/dags
-
-  airflow-scheduler:
-    image: apache/airflow:2.8.0
-    command: scheduler
-    environment:
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql://postgres:postgres@postgres:5432/airflow
-    volumes:
-      - ./airflow/dags:/opt/airflow/dags
-
-volumes:
-  kafka_data:
-```
+Local development is standardized on Minikube (vfkit) with Tilt orchestration.
+See `docs/infrastructure/deployment-setup.md` for the workflow and required
+environment variables.
 
 ### 9.3 Traceability Matrix
 

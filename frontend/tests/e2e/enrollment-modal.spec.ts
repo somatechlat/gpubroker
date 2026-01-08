@@ -8,9 +8,9 @@
  */
 import { test, expect, Page } from '@playwright/test'
 
-// Landing page URL (served separately from Next.js frontend)
+// Landing page URL (served separately from frontend UI)
 const LANDING_PAGE_URL = process.env.LANDING_PAGE_URL || 'http://localhost:28090'
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:28080'
+const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:10355'
 
 test.describe('Enrollment Modal Flow', () => {
   

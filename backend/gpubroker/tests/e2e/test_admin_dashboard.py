@@ -15,7 +15,7 @@ import pytest
 from playwright.sync_api import Page, expect
 
 
-BASE_URL = "http://localhost:28080"
+BASE_URL = "http://localhost:10355"
 
 # Admin credentials (for testing)
 ADMIN_EMAIL = "admin@gpubroker.io"

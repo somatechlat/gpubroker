@@ -2,6 +2,10 @@
 Django base settings for GPUBROKER project.
 
 Common settings shared between development and production.
+Uses Django patterns for configuration management:
+- System environment variables via django-environ
+- Application secrets via Vault integration
+- Centralized configuration through Django settings
 """
 import os
 from pathlib import Path
@@ -11,20 +15,37 @@ import environ
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-# Initialize django-environ
+# Initialize django-environ for system-level environment variables only
 env = environ.Env(
     DEBUG=(bool, False),
     ALLOWED_HOSTS=(list, ['localhost', '127.0.0.1']),
     CORS_ALLOWED_ORIGINS=(list, ['http://localhost:3000']),
 )
 
-# Read .env file if it exists
+# Read .env file if it exists (for system variables only)
 env_file = BASE_DIR / '.env'
 if env_file.exists():
     environ.Env.read_env(str(env_file))
 
+# =============================================================================
+# DJANGO PATTERN: Centralized Configuration System
+# Import the centralized configuration module (Django pattern)
+# =============================================================================
+from .centralized import (
+    CENTRALIZED_CONFIG,
+    get_paypal_config,
+    get_database_config,
+    get_security_config,
+    get_system_config,
+    DATABASE_CONFIG,
+    PAYPAL_CONFIG,
+    SECURITY_CONFIG,
+    SYSTEM_CONFIG,
+    VAULT_CONFIG,
+)
+
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = env('SECRET_KEY', default='django-insecure-change-me-in-production')
+SECRET_KEY = SECURITY_CONFIG.secret_key
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env('DEBUG')
@@ -93,13 +114,15 @@ WSGI_APPLICATION = 'gpubroker.wsgi.application'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 import dj_database_url
 
-DATABASE_URL = env('DATABASE_URL', default='postgresql://postgres:postgres@localhost:5432/gpubroker')
+# Get database configuration from centralized config (Django pattern)
+DATABASE_URL = DATABASE_CONFIG.url
 DATABASES = {
     'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
 }
 
 # Redis configuration
-REDIS_URL = env('REDIS_URL', default='redis://localhost:6379/0')
+# Get Redis configuration from centralized config (Django pattern)
+REDIS_URL = DATABASE_CONFIG.redis_url
 
 # Cache configuration
 CACHES = {
@@ -152,14 +175,16 @@ CORS_ALLOWED_ORIGINS = env('CORS_ALLOWED_ORIGINS')
 CORS_ALLOW_CREDENTIALS = True
 
 # JWT Configuration
-JWT_PRIVATE_KEY = env('JWT_PRIVATE_KEY', default='')
-JWT_PUBLIC_KEY = env('JWT_PUBLIC_KEY', default='')
+# Get JWT configuration from centralized config (Django pattern)
+JWT_PRIVATE_KEY = SECURITY_CONFIG.jwt_private_key
+JWT_PUBLIC_KEY = SECURITY_CONFIG.jwt_public_key
 JWT_ALGORITHM = 'RS256'
 JWT_ACCESS_TOKEN_EXPIRE_MINUTES = 15
 JWT_REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 # External services
-VAULT_ADDR = env('VAULT_ADDR', default='http://localhost:8200')
+# Get external services configuration from centralized config (Django pattern)
+VAULT_ADDR = VAULT_CONFIG.addr
 SOMA_AGENT_BASE = env('SOMA_AGENT_BASE', default='http://localhost:8080')
 
 

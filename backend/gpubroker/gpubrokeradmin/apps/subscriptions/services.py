@@ -10,7 +10,8 @@ from decimal import Decimal
 from django.utils import timezone
 from django.db import transaction
 
-from .models import Subscription, Payment, PodMetrics
+from .models import Subscription, Payment, PodMetrics, PaymentTransaction
+from gpubrokeradmin.common.messages import get_message
 
 logger = logging.getLogger('gpubroker.subscriptions')
 
@@ -95,6 +96,18 @@ class SubscriptionService:
                 expires_at=timezone.now() + timedelta(days=30),
             )
             
+            # Link any pending payment transaction record
+            if order_id or transaction_id:
+                try:
+                    PaymentTransaction.objects.filter(
+                        order_id=order_id
+                    ).update(
+                        subscription=subscription,
+                        status=Payment.Status.COMPLETED if amount > 0 else Payment.Status.PENDING,
+                    )
+                except Exception as link_error:
+                    logger.warning(f"[Subscription] Unable to link payment transaction: {link_error}")
+            
             # Create payment record if amount > 0
             if amount > 0:
                 Payment.objects.create(
@@ -117,14 +130,14 @@ class SubscriptionService:
                 "pod_id": pod_id,
                 "pod_url": f"https://{pod_id}.gpubroker.site",
                 "status": "pending_activation",
-                "message": "Revisa tu email para activar tu GPUBROKER POD",
+                "message": get_message("subscription.created_pending"),
             }
             
         except Exception as e:
             logger.error(f"[Subscription] Error creating: {e}")
             return {
                 "success": False,
-                "error": f"Error creando suscripción: {str(e)}",
+                "error": get_message("subscription.create_error", error=str(e)),
             }
     
     @staticmethod
@@ -147,7 +160,7 @@ class SubscriptionService:
         except Subscription.DoesNotExist:
             return {
                 "valid": False,
-                "error": "API Key inválida o expirada",
+                "error": get_message("subscription.api_key_invalid"),
             }
     
     @staticmethod
@@ -173,7 +186,7 @@ class SubscriptionService:
             Subscription.Status.PENDING_ACTIVATION, 
             Subscription.Status.FAILED
         ]:
-            return {"success": False, "error": "Suscripción ya está activa o en proceso"}
+            return {"success": False, "error": get_message("subscription.already_active")}
         
         # Update status to provisioning
         subscription.status = Subscription.Status.PROVISIONING
@@ -198,7 +211,7 @@ class SubscriptionService:
             "pod_id": subscription.pod_id,
             "pod_url": subscription.pod_url,
             "status": "provisioning",
-            "message": "Desplegando tu GPUBROKER POD...",
+            "message": get_message("subscription.provisioning"),
         }
     
     @staticmethod

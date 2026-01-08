@@ -11,13 +11,13 @@
  * 7. Pod Provisioning Animation
  * 8. Pod Ready → API Key Generated
  * 
- * @run LANDING_PAGE_URL=http://localhost:28080 npx playwright test real-e2e-flow --headed
+ * @run LANDING_PAGE_URL=http://localhost:10355 npx playwright test real-e2e-flow --headed
  */
 import { test, expect, Page } from '@playwright/test'
 
 // Configuration - REAL credentials, no mocks
-const LANDING_PAGE_URL = process.env.LANDING_PAGE_URL || 'http://localhost:28080'
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:28080'
+const LANDING_PAGE_URL = process.env.LANDING_PAGE_URL || 'http://localhost:10355'
+const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:10355'
 const DASHBOARD_URL = 'http://localhost:28030'
 
 // Real test user credentials

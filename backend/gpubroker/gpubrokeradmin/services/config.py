@@ -293,7 +293,7 @@ class DomainConfig:
     def api_url(self) -> str:
         if config.mode.is_live:
             return os.getenv('GPUBROKER_API_URL', f'https://api.{self.base}')
-        return 'http://localhost:28080/api/v2'
+        return 'http://localhost:10355/api/v2'
 
 
 @dataclass

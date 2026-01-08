@@ -45,7 +45,7 @@ Scope: applies to all services (auth, provider, kpi, math-core, websocket-gatewa
 ## 8) Deployment Hooks
 - CI: fail if handler lacks trace_id/tenant_id in logs; fail on missing /metrics or /health.
 - SBOM + Trivy/Grype per image; store alongside build artifacts.
-- Telemetry opt-out: honor Next.js telemetry settings in prod.
+- Telemetry opt-out: honor frontend telemetry settings in prod.
 
 ## 9) Task Checklist (assign owners)
 - [ ] Implement structured logging middleware (all services).

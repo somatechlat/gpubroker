@@ -1,11 +1,11 @@
-ARCHITECRURE FOR MILLIO#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 GPUBROKER Integration Test Suite
 
 Tests all API endpoints end-to-end on real infrastructure:
 - PostgreSQL database (port 28001)
 - Redis cache (port 28004)
-- Django server (port 28080)
+- Django server (port 10355)
 
 This script verifies:
 1. Health endpoint
@@ -30,7 +30,7 @@ from typing import Optional
 import httpx
 
 # Configuration
-BASE_URL = os.getenv('BASE_URL', 'http://localhost:28080')
+BASE_URL = os.getenv('BASE_URL', 'http://localhost:10355')
 API_V2 = f'{BASE_URL}/api/v2'
 
 # Test data

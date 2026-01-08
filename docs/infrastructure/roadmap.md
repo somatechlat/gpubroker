@@ -14,7 +14,7 @@ Last updated: 2025-12-29
 
 GPUBROKER uses Django 5 + Django Ninja as the unified backend framework:
 - **Backend**: Django 5 monolith with Django Ninja API (`/api/v2/`)
-- **Frontend**: Next.js 14 with TypeScript
+- **Frontend**: Lit 3 with TypeScript
 - **Database**: PostgreSQL with Django ORM
 - **Cache**: Redis
 - **WebSocket**: Django Channels
@@ -24,7 +24,7 @@ GPUBROKER uses Django 5 + Django Ninja as the unified backend framework:
 
 - Backend: Django 5 monolith with apps for auth, providers, kpi, math_core, ai_assistant, websocket_gateway. Migrations exist for auth/providers/math_core; kpi/ai_assistant/websocket apps define no models.
 - Providers: adapter registry lists 20 providers, but only `runpod` and `vastai` adapter modules exist in repo; missing adapters are skipped at runtime.
-- Frontend: Next.js pages/components for dashboard/marketplace/ai/settings/login exist; analytics page is placeholder; imports reference missing `src/lib` modules for provider API, AI client, and realtime WebSocket.
+- Frontend: Lit 3 components and Vite entry are present; analytics page remains a placeholder; imports reference missing `src/lib` modules for provider API, AI client, and realtime WebSocket.
 - Booking/Billing: no backend apps or endpoints in repo; frontend booking proxy expects an external booking service.
 - Vault: client exists in `backend/shared/vault_client.py`, but provider API keys are currently read from user preferences or environment variables.
 
@@ -36,10 +36,10 @@ Each sprint is two weeks. Keep this file updated with progress, owners, and any 
 
 ### Sprint 1 — Project & Core Scaffold (Weeks 1–2) COMPLETE
 
-Goal: Finalize repository structure, CI, dev environments; complete Next.js + Tailwind frontend scaffold and core backend auth service integration points.
+Goal: Finalize repository structure, CI, dev environments; complete Lit 3 + Tailwind frontend scaffold and core backend auth service integration points.
 
 Deliverables:
-- Working dev environment (docker-compose start-dev) and frontend dev server instructions
+- Working dev environment (Minikube + Tilt) and frontend dev server instructions
 - Frontend scaffold with Header, Layout, Login/Register pages, KPI shell, Provider Grid wired to Django API
 - API contracts (OpenAPI) for Auth and Provider endpoints
 - CI pipeline skeleton (lint + build)
@@ -104,11 +104,7 @@ npm install
 npm run dev
 ```
 
-If you prefer Docker Compose local dev (recommended):
-
-```bash
-./start-dev.sh
-```
+Local stack is standardized on Minikube + Tilt. See `docs/infrastructure/deployment-setup.md`.
 
 ---
 
@@ -127,14 +123,14 @@ If you prefer Docker Compose local dev (recommended):
 ### Sprint 1A: Core Infrastructure COMPLETE
 **Track Lead**: Backend Infrastructure
 - [x] Django 5 project structure with Django Ninja API
-- [x] Docker & docker-compose setup with hot reload
+- [x] Minikube + Tilt setup with hot reload
 - [x] PostgreSQL + Redis containers
 - [x] Basic health checks and service discovery
 - [x] Nginx reverse proxy configuration
 
 ### Sprint 1B: Frontend Foundation
 **Track Lead**: Frontend Architecture
-- [ ] Next.js 14 project with TypeScript
+- [ ] Lit 3 project with TypeScript
 - [ ] Tailwind CSS + shadcn/ui component library
 - [ ] Basic routing and layout structure
 - [ ] Dark/light theme support
@@ -168,7 +164,7 @@ If you prefer Docker Compose local dev (recommended):
 - [x] GitHub Actions CI/CD pipeline
 - [x] Automated testing framework setup (pytest-django)
 - [x] Code quality checks (ruff, pytest, eslint)
-- [x] Docker image building and optimization
+- [x] Container image building and optimization
 - [x] Development environment automation
 
 ---
@@ -314,8 +310,8 @@ If you prefer Docker Compose local dev (recommended):
 
 | Week | Backend | Frontend | AI/ML | Integrations | Security | DevOps |
 |------|---------|----------|-------|--------------|----------|---------|
-| 1 | Django Setup | Next.js Setup | Model Planning | SDK Framework | JWT + Auth | CI/CD Pipeline |
-| 2 | API Endpoints | Dashboard UI | Cost Engine | Provider APIs | RBAC + MFA | Docker Config |
+| 1 | Django Setup | Lit 3 Setup | Model Planning | SDK Framework | JWT + Auth | CI/CD Pipeline |
+| 2 | API Endpoints | Dashboard UI | Cost Engine | Provider APIs | RBAC + MFA | Container Config |
 | 3 | KPI Engine | Charts + Viz | ML Training | Real Data Feeds | Audit Logging | Monitoring |
 | 4 | WebSockets | AI Chat UI | Predictions | Provider Testing | Compliance | Observability |
 | 5 | Project API | Wizard UI | NLP Pipeline | More Providers | Security Scan | Helm Charts |

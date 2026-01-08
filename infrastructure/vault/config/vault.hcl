@@ -24,7 +24,7 @@ listener "tcp" {
 api_addr     = "http://0.0.0.0:18280"
 cluster_addr = "http://0.0.0.0:18281"
 
-# Disable mlock for Docker (enable in production with proper capabilities)
+# Disable mlock for local development (enable in production with proper capabilities)
 disable_mlock = true
 
 # UI enabled for development

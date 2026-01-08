@@ -9,7 +9,7 @@ Saves screenshots to /tmp/gpubroker-e2e/ (gitignored)
 Test Data:
 - Email: ai@somatech.dev
 - Recovery Email: adriancadena@yachaq.org  
-- PayPal Sandbox: sb-zp64z48418674@personal.example.com / mdEcL1$w
+- PayPal Sandbox: [REDACTED - Use PAYPAL_SANDBOX_EMAIL/PASSWORD env vars]
 - RUC: 1790869571001
 
 Flow:
@@ -31,8 +31,8 @@ from datetime import datetime
 from playwright.sync_api import Page, expect, TimeoutError as PlaywrightTimeout
 
 # Configuration
-BASE_URL = "http://localhost:28080"
-LANDING_URL = "http://localhost:28080"
+BASE_URL = "http://localhost:10355"
+LANDING_URL = "http://localhost:10355"
 DASHBOARD_URL = "http://localhost:28030"
 SCREENSHOTS_DIR = "/tmp/gpubroker-e2e"
 
@@ -49,8 +49,8 @@ TEST_USER = {
 }
 
 PAYPAL_SANDBOX = {
-    "email": "sb-zp64z48418674@personal.example.com",
-    "password": "mdEcL1$w",
+    "email": os.getenv('PAYPAL_SANDBOX_EMAIL', 'test@example.com'),
+    "password": os.getenv('PAYPAL_SANDBOX_PASSWORD', 'test_password'),
 }
 
 

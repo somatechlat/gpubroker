@@ -33,21 +33,51 @@ gpubroker/
 │   ├── srs/                     # Software Requirements Specs
 │   ├── ui-ux/                   # UI/UX specifications
 │   └── user-journeys/           # User journey documentation
-├── frontend/                    # Next.js 14 frontend (legacy)
+├── frontend/                    # Lit 3 + Vite frontend
 ├── infrastructure/              # Vault, scripts
-└── database/                    # PostgreSQL init scripts
 ```
 
 ---
 
 ## Quick Start
 
-### Prerequisites
-- Docker & Docker Compose
+### Option 1: Docker Compose (Recommended for Quick Testing)
+
+**Prerequisites**: Docker & Docker Compose
+
+```bash
+# 1. Clone and setup
+git clone https://github.com/somatechlat/gpubroker.git
+cd gpubroker
+
+# 2. Setup Docker environment
+cd docker
+./start.sh
+```
+
+The `start.sh` script will:
+- Create `.env` file from template
+- Validate all required secrets
+- Build and start all services
+- Wait for health checks
+- Provide access URLs
+
+**Access Points**:
+- Main Dashboard: http://localhost:10355
+- API: http://localhost:10355/api/v2
+- Airflow: http://localhost:10355/airflow
+- Grafana: http://localhost:10355/grafana
+
+See [infrastructure/docker/README.md](infrastructure/docker/README.md) for full details.
+
+### Option 2: Kubernetes + Tilt (Production-like Development)
+
+**Prerequisites**:
+- Minikube (vfkit driver)
+- Tilt
+- kubectl
 - Python 3.11+
 - Node.js 18+ (for frontend)
-
-### Development Setup
 
 ```bash
 # 1. Clone and setup
@@ -58,21 +88,34 @@ cd gpubroker
 cp .env.example .env
 # Edit .env with your secrets
 
-# 3. Start the stack
-docker-compose -f docker-compose.dev.yml up --build
+# 3. Start Minikube (isolated profile)
+minikube start -p gpubroker --driver=vfkit --container-runtime=containerd --disk=10g --memory=8g --cpus=4 --addons=ingress
+kubectl config use-context gpubroker
 
-# 4. Run migrations
-docker-compose exec django python manage.py migrate
+# 4. Export required secrets (see docs/infrastructure/deployment-setup.md)
+export POSTGRES_PASSWORD=...
+export CLICKHOUSE_PASSWORD=...
+export DJANGO_SECRET_KEY=...
+export JWT_PRIVATE_KEY=...
+export JWT_PUBLIC_KEY=...
+export GRAFANA_PASSWORD=...
+export SPICEDB_KEY=...
+export AIRFLOW__CORE__FERNET_KEY=...
+export AIRFLOW_ADMIN_PASSWORD=...
+export VAULT_TOKEN=...
+
+# 5. Start Tilt
+tilt up
 ```
 
 ### Access Points
 
 | Service | URL | Description |
 |---------|-----|-------------|
-| Landing Page | http://localhost:28080/ | Public landing page |
-| Admin Dashboard | http://localhost:28080/admin/ | Admin login & dashboard |
-| API Docs | http://localhost:28080/api/v2/docs | OpenAPI documentation |
-| Enrollment | http://localhost:28080/checkout | Subscription checkout |
+| Landing Page | http://localhost:10355/ | Public landing page |
+| Admin Dashboard | http://localhost:10355/admin/ | Admin login & dashboard |
+| API Docs | http://localhost:10355/api/v2/docs | OpenAPI documentation |
+| Enrollment | http://localhost:10355/checkout | Subscription checkout |
 
 ### Default Admin Credentials
 
@@ -196,11 +239,37 @@ python manage.py shell
 
 - **Backend**: Django 5, Django Ninja, Django Channels
 - **Database**: PostgreSQL 15, Redis 7
-- **Frontend**: Next.js 14, TypeScript, Tailwind CSS
+- **Frontend**: Lit 3, TypeScript, Tailwind CSS
 - **Payments**: PayPal SDK
-- **Infrastructure**: Docker, AWS
+- **Infrastructure**: Kubernetes (Minikube + Tilt), Docker Compose, AWS
 - **Testing**: Pytest, Playwright
 - **Observability**: Prometheus, Grafana
+- **Streaming**: Apache Kafka, Apache Flink
+- **Orchestration**: Apache Airflow
+
+## Docker Compose Architecture
+
+The `infrastructure/docker/` directory provides a complete single-file Docker Compose setup:
+
+**Services (17 total)**:
+- **Core**: PostgreSQL, Redis
+- **Streaming**: Kafka, Zookeeper
+- **Analytics**: ClickHouse, Prometheus, Grafana
+- **Backend**: Django API, WebSocket Gateway
+- **Frontend**: Lit UI
+- **Infrastructure**: Vault, SpiceDB
+- **Orchestration**: Airflow (webserver + scheduler), Flink (jobmanager + taskmanager)
+- **Proxy**: Nginx (port 10355)
+
+**Memory Usage**: ~8GB (within 10GB constraint)
+
+**Quick Start**:
+```bash
+cd docker
+./start.sh
+```
+
+See [infrastructure/docker/README.md](infrastructure/docker/README.md) for complete documentation.
 
 ---
 
@@ -221,7 +290,5 @@ Proprietary - SOMATECH
 
 *Built with Django 5 + Django Ninja*
 *No mocks. No fake data. Only real APIs and real results.*
-
-
 
 

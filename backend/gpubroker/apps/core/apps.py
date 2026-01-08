@@ -5,6 +5,14 @@ class CoreConfig(AppConfig):
     name = 'apps.core'
 
     def ready(self):
-        # Signals import temporarily disabled to prevent module import errors
-        # in local runs where apps.core.models is absent.
-        return
+        """
+        Core app ready method.
+        
+        NOTE: Core infrastructure signals have been moved to their respective apps
+        following Django best practices:
+        - Provider signals: gpubrokerpod.gpubrokerapp.apps.providers.signals
+        
+        This method is kept for future core infrastructure initialization if needed.
+        """
+        # Core infrastructure initialization can go here
+        pass

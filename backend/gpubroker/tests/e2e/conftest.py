@@ -3,6 +3,7 @@ Pytest configuration and fixtures for GPUBROKER E2E tests.
 
 Provides Playwright fixtures for browser automation testing.
 """
+import os
 import pytest
 from playwright.sync_api import sync_playwright
 
@@ -65,7 +66,7 @@ def authenticated_page(context):
 @pytest.fixture(scope="session")
 def base_url():
     """Base URL for the application."""
-    return "http://localhost:28080"
+    return "http://localhost:10355"
 
 
 @pytest.fixture(scope="session")
@@ -77,8 +78,8 @@ def test_credentials():
             'password': 'admin123',
         },
         'paypal_sandbox': {
-            'email': 'sb-zp64z48418674@personal.example.com',
-            'password': 'mdEcL1$w',
+            'email': os.getenv('PAYPAL_SANDBOX_EMAIL', 'test@example.com'),
+            'password': os.getenv('PAYPAL_SANDBOX_PASSWORD', 'test_password'),
         },
         'test_customer': {
             'ruc': '1790869571001',

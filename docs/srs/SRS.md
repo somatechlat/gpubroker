@@ -10,7 +10,7 @@ Standards: ISO/IEC/IEEE 29148, ISO/IEC 25010, ISO/IEC 27001, ISO/IEC 12207
 Note on naming: GOUBROKER (aka “GPU Broker”, “GPUBROKER”) is the project codename. All references refer to the same SaaS.
 
 Current implementation status (December 2025):
-- Implemented services in this repo: Auth, Provider Aggregator, KPI, Math Core, AI Assistant, WebSocket Gateway, Next.js frontend, Vault/DB/Redis/ClickHouse dev compose.
+- Implemented services in this repo: Auth, Provider Aggregator, KPI, Math Core, AI Assistant, WebSocket Gateway, Lit 3 frontend, Vault/DB/Redis/ClickHouse local stack via Minikube + Tilt.
 - Not yet implemented in repo: Booking/Billing/Kill Bill integration, Helm charts, Kubernetes manifests, payment flows. These remain planned requirements.
 
 ## 1. Introduction
@@ -20,8 +20,8 @@ Define the complete, testable requirements for GOUBROKER, a SaaS marketplace tha
 ### 1.2 Scope
 - Deliver a multi-tenant web app and API:
   - Backend microservices: Auth, Provider Aggregator, AI Assistant, Cost Prediction, Booking, Billing Integration, Analytics/KPI, Observability, Security/Policy.
-  - Frontend: Next.js SPA with marketplace, AI chat, admin console, and wizards.
-  - Infra: Docker, Kubernetes, Helm, GitHub Actions CI/CD, observability (Prometheus/Grafana/Loki), secrets (Vault), OPA policies.
+  - Frontend: Lit 3 SPA with marketplace, AI chat, admin console, and wizards.
+  - Infra: Kubernetes, Tilt, Minikube (vfkit), Helm, GitHub Actions CI/CD, observability (Prometheus/Grafana/Loki), secrets (Vault), OPA policies.
   - Integrations: Cloud providers (≥15), Identity (OIDC), Payments (Kill Bill), Metrics (Prometheus), Logs (Loki).
 - Excludes: Hardware procurement, provider SLA negotiations, marketing.
 
@@ -33,7 +33,7 @@ Define the complete, testable requirements for GOUBROKER, a SaaS marketplace tha
 
 ### 1.4 References
 - ISO/IEC/IEEE 29148, ISO/IEC 25010, ISO/IEC 27001.
-- Django 5, Django Ninja, Next.js, ClickHouse, PostgreSQL, Redis, Kafka, Vault, OPA.
+- Django 5, Django Ninja, Lit 3, ClickHouse, PostgreSQL, Redis, Kafka, Vault, OPA.
 
 ## 2. Overall Description
 ### 2.1 Product Perspective
@@ -62,7 +62,7 @@ Define the complete, testable requirements for GOUBROKER, a SaaS marketplace tha
 - Third‑Party Developer: Integrates via API/SDK.
 
 ### 2.4 Operating Environment
-- Kubernetes 1.28+, Docker 24+, Linux containers (Debian-based).
+- Kubernetes 1.28+, containerd, Linux containers (Debian-based).
 - Datastores: PostgreSQL 15 (OLTP), ClickHouse 23 (analytics).
 - Cache: Redis 7 cluster; Queue/Bus: Kafka 3.5 (or Redpanda).
 - AI runtime: Ollama or OpenAI-compatible endpoint.
@@ -222,7 +222,7 @@ Retention
 - FR-BILL-2 Tax and Currency: Support multi-currency display; normalize to tenant currency using FX feed (hourly). AC: invoices show both raw currency and converted totals; FX rate source logged.
 - FR-ADMIN-1 Tenant Management: CRUD tenants, assign roles, set plan limits (rate, seats). AC: audit log entry for each change; limits enforced at gateway.
 - FR-OBS-2 Traces: Propagate trace_id/span_id via W3C Trace Context across all services. AC: Every HTTP handler emits trace; missing header generates new root.
-- FR-DX-1 Local Dev: `start-dev.sh` provisions full stack with sample env; failure exits non-zero. AC: script validates Docker, .env, waits for DB/Redis/ClickHouse; prints service URLs.
+- FR-DX-1 Local Dev: Tilt + Minikube provisions full stack with sample env; failure exits non-zero. AC: Tilt validates required env, waits for DB/Redis/ClickHouse, prints service URLs.
 
 ### 3.7 Interface Specifications
 - **API Gateway**: REST+gRPC passthrough; CORS per-tenant origins; rate-limiter headers `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `Retry-After`.
@@ -286,7 +286,7 @@ Retention
 ```mermaid
 graph TD
   subgraph Frontend
-    UI[Next.js SPA] -->|REST| GW[API Gateway]
+    UI[Lit 3 SPA] -->|REST| GW[API Gateway]
     UI -->|WebSocket| WS[WS Gateway]
   end
   subgraph Backend

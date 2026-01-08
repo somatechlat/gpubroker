@@ -3,23 +3,23 @@ GPUBROKER Admin E2E Tests - PayPal Sandbox Integration
 
 Tests the complete PayPal payment flow using sandbox credentials.
 This test requires:
-1. Django server running on localhost:28080
+1. Django server running on localhost:10355
 2. PayPal sandbox credentials configured
 3. Network access to PayPal sandbox
 
 Test Data:
-- PayPal Sandbox Email: sb-zp64z48418674@personal.example.com
-- PayPal Sandbox Password: mdEcL1$w
+- PayPal Sandbox Email: [REDACTED - Use PAYPAL_SANDBOX_EMAIL env var]
+- PayPal Sandbox Password: [REDACTED - Use PAYPAL_SANDBOX_PASSWORD env var]
 """
-import pytest
+import os
 from playwright.sync_api import Page, expect, TimeoutError as PlaywrightTimeout
 
 
-BASE_URL = "http://localhost:28080"
+BASE_URL = "http://localhost:10355"
 
-# PayPal sandbox buyer credentials
-PAYPAL_SANDBOX_EMAIL = "sb-zp64z48418674@personal.example.com"
-PAYPAL_SANDBOX_PASSWORD = "mdEcL1$w"
+# PayPal sandbox buyer credentials from environment
+PAYPAL_SANDBOX_EMAIL = os.getenv('PAYPAL_SANDBOX_EMAIL', 'test@example.com')
+PAYPAL_SANDBOX_PASSWORD = os.getenv('PAYPAL_SANDBOX_PASSWORD', 'test_password')
 
 # Test customer data
 TEST_RUC = "1790869571001"
@@ -199,7 +199,7 @@ class TestPayPalSandboxIntegration:
                     print(f"✅ Step 5: Final URL - {current_url[:60]}...")
                     
                     # Check if redirected back to our app
-                    if "localhost:28080" in current_url:
+                    if "localhost:10355" in current_url:
                         print("✅ Successfully redirected back to app!")
                         if "payment=success" in current_url:
                             print("✅ Payment marked as successful!")

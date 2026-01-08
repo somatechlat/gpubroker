@@ -10,7 +10,7 @@ Status: Draft
 - Scope includes full broker platform plus pod deployment and monitoring.
 - Payments are external; GPUBROKER only stores configuration and ingests confirmations.
 - User can deploy pods from the dashboard and monitor all deployed infra in one place.
-- Local development uses Kubernetes + Tilt (no docker-compose), configured to be production-like with local limits.
+- Local development uses Kubernetes + Tilt with Minikube (vfkit), configured to be production-like with local limits.
 - Compliance targets: ISO/IEC 27001:2022 (primary), plus crosswalk to PCI DSS 4.0, SOC 2, and GDPR.
 
 ## Architecture summary (current code)
@@ -105,7 +105,7 @@ Status: Draft
 | PR-INF-002 | Database migrations and rollback strategy | Infra | Runbook | Unassigned | not_started | P1 |
 | PR-INF-003 | WAF/rate limiting on public endpoints | Infra | WAF config | Unassigned | not_started | P1 |
 | PR-INF-004 | CDN and caching for landing pages | Infra | CDN config | Unassigned | not_started | P2 |
-| PR-INF-005 | Replace docker-compose with Kubernetes manifests and Tilt workflows | Infra | Manifests + Tiltfile | Unassigned | not_started | P0 |
+| PR-INF-005 | Standardize Kubernetes manifests and Tilt workflows | Infra | Manifests + Tiltfile | Unassigned | not_started | P0 |
 | PR-INF-006 | Local prod-like configmaps and secrets for all services | Infra | Config docs | Unassigned | not_started | P0 |
 | PR-INF-007 | Local ingress and DNS for app/admin/api/ws/landing endpoints | Infra | Ingress config | Unassigned | not_started | P1 |
 | PR-INF-008 | Tilt runbook for local production-like testing | Infra | Runbook | Unassigned | not_started | P1 |

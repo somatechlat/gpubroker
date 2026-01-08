@@ -182,6 +182,49 @@ class Payment(models.Model):
         return f"{self.provider} - ${self.amount_usd} ({self.status})"
 
 
+class PaymentTransaction(models.Model):
+    """
+    Gateway transaction lifecycle for observability and replay.
+    """
+    
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    provider = models.CharField(max_length=20, choices=Payment.Provider.choices)
+    subscription = models.ForeignKey(
+        Subscription,
+        on_delete=models.SET_NULL,
+        related_name='payment_transactions',
+        null=True,
+        blank=True,
+    )
+    order_id = models.CharField(max_length=100, db_index=True)
+    transaction_id = models.CharField(max_length=100, blank=True, db_index=True)
+    mode = models.CharField(max_length=10, default='sandbox')
+    status = models.CharField(max_length=20, choices=Payment.Status.choices, default=Payment.Status.PENDING)
+    amount_usd = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    currency = models.CharField(max_length=3, default='USD')
+    customer_email = models.EmailField(blank=True)
+    customer_name = models.CharField(max_length=255, blank=True)
+    plan = models.CharField(max_length=20, blank=True)
+    metadata = models.JSONField(default=dict)
+    raw_request = models.JSONField(default=dict)
+    raw_response = models.JSONField(default=dict)
+    error_message = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        db_table = 'gpubroker_payment_transactions'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['provider', 'order_id']),
+            models.Index(fields=['status', 'created_at']),
+            models.Index(fields=['transaction_id']),
+        ]
+    
+    def __str__(self):
+        return f"{self.provider} {self.order_id} ({self.status})"
+
+
 class PodMetrics(models.Model):
     """
     Pod metrics snapshot for monitoring.

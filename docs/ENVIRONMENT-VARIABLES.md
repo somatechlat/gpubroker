@@ -212,7 +212,7 @@ GPUBROKER_MODE=sandbox
 GPUBROKER_DOMAIN=localhost
 DEBUG=true
 
-# Database (Docker)
+# Database (Local)
 DATABASE_URL=postgresql://gpubroker:gpubroker_dev_password@localhost:28001/gpubroker
 REDIS_URL=redis://localhost:28004/0
 
@@ -280,29 +280,11 @@ LOG_WEBHOOK_PAYLOADS=false
 
 ---
 
-## 10. Docker Compose Overrides
+## 10. Kubernetes Local Overrides
 
-### 10.1 Development (docker-compose.local-prod.yml)
-```yaml
-services:
-  django:
-    environment:
-      - GPUBROKER_MODE=sandbox
-      - DEBUG=true
-      - MOCK_GPU_PROVISIONING=true
-```
-
-### 10.2 Production (docker-compose.production.yml)
-```yaml
-services:
-  django:
-    environment:
-      - GPUBROKER_MODE=live
-      - DEBUG=false
-      - MOCK_GPU_PROVISIONING=false
-```
-
----
+Local development uses Minikube + Tilt. Override settings via the generated
+`gpubroker-django-config` ConfigMap and `gpubroker-secrets` Secret produced
+by `scripts/tilt/render-k8s-config.sh`.
 
 ## 11. AWS Parameter Store / Secrets Manager
 

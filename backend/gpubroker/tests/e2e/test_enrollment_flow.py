@@ -10,11 +10,12 @@ Tests the full user journey from checkout to pod deployment:
 
 Uses Playwright with real PayPal sandbox credentials.
 """
+import os
 import pytest
 from playwright.sync_api import Page, expect
 
 
-BASE_URL = "http://localhost:28080"
+BASE_URL = "http://localhost:10355"
 
 # Test data from env.json - INGELSI CIA LTDA
 TEST_RUC = "1790869571001"
@@ -23,9 +24,9 @@ TEST_EMAIL = "ai@somatech.dev"
 TEST_NAME = "INGELSI CIA LTDA"
 TEST_PHONE = "+5939997202547"
 
-# PayPal sandbox credentials
-PAYPAL_SANDBOX_EMAIL = "sb-zp64z48418674@personal.example.com"
-PAYPAL_SANDBOX_PASSWORD = "mdEcL1$w"
+# PayPal sandbox credentials from environment
+PAYPAL_SANDBOX_EMAIL = os.getenv('PAYPAL_SANDBOX_EMAIL', 'test@example.com')
+PAYPAL_SANDBOX_PASSWORD = os.getenv('PAYPAL_SANDBOX_PASSWORD', 'test_password')
 
 
 class TestCheckoutFlow:
