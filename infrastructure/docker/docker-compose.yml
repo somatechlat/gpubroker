@@ -72,7 +72,7 @@ services:
       redis:
         condition: service_started
     volumes:
-      - ./backend/gpubroker:/app
+      - ../../backend/gpubroker:/app
       - static_files:/app/staticfiles
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -108,7 +108,7 @@ services:
 
   frontend:
     build:
-      context: ./frontend
+      context: ../../frontend
     environment:
       VITE_API_URL: ${VITE_API_URL:-http://localhost/api/v2}
       VITE_WS_URL: ${VITE_WS_URL:-ws://localhost/ws}

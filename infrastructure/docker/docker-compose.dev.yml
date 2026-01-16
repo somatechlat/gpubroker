@@ -43,7 +43,7 @@ services:
     environment:
       POSTGRES_USER: gpubroker
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
-      POSTGRES_DB: gpubroker_dev
+      POSTGRES_DB: gpubroker
     ports:
       - "${PORT_POSTGRES:-28001}:5432"
     volumes:
@@ -124,7 +124,9 @@ services:
   # Django Backend (All Services Unified)
   # ============================================
   django:
-    build: ./backend/gpubroker
+    build: 
+      context: ../../backend/gpubroker
+      dockerfile: Containerfile
     container_name: gpubroker-django
     ports:
       - "${PORT_DJANGO:-28080}:8000"

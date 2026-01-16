@@ -1,0 +1,17 @@
+{
+	"ulid": "01KEFPHM9EEZSMYG904X8983EX",
+	"minTime": 1767895202769,
+	"maxTime": 1767902400000,
+	"stats": {
+		"numSamples": 95520,
+		"numSeries": 209,
+		"numChunks": 803
+	},
+	"compaction": {
+		"level": 1,
+		"sources": [
+			"01KEFPHM9EEZSMYG904X8983EX"
+		]
+	},
+	"version": 1
+}
