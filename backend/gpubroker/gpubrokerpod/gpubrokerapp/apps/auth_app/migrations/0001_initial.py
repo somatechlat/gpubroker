@@ -3,7 +3,6 @@
 
 import django.contrib.postgres.fields
 import uuid
-from django.conf import settings
 from django.db import migrations, models
 import django.db.models.deletion
 

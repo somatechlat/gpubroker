@@ -30,7 +30,10 @@ class Migration(migrations.Migration):
                 ("display_name", models.CharField(max_length=100)),
                 ("website_url", models.URLField(blank=True, max_length=500, null=True)),
                 ("api_base_url", models.URLField(max_length=500)),
-                ("documentation_url", models.URLField(blank=True, max_length=500, null=True)),
+                (
+                    "documentation_url",
+                    models.URLField(blank=True, max_length=500, null=True),
+                ),
                 (
                     "status",
                     models.CharField(
@@ -105,7 +108,10 @@ class Migration(migrations.Migration):
                 ("price_per_hour", models.DecimalField(decimal_places=4, max_digits=8)),
                 ("currency", models.CharField(default="USD", max_length=3)),
                 ("region", models.CharField(max_length=50)),
-                ("availability_zone", models.CharField(blank=True, max_length=100, null=True)),
+                (
+                    "availability_zone",
+                    models.CharField(blank=True, max_length=100, null=True),
+                ),
                 (
                     "availability_status",
                     models.CharField(
@@ -122,8 +128,18 @@ class Migration(migrations.Migration):
                 ("max_rental_time", models.IntegerField(blank=True, null=True)),
                 ("spot_pricing", models.BooleanField(default=False)),
                 ("preemptible", models.BooleanField(default=False)),
-                ("sla_uptime", models.DecimalField(blank=True, decimal_places=2, max_digits=5, null=True)),
-                ("network_speed_gbps", models.DecimalField(blank=True, decimal_places=2, max_digits=6, null=True)),
+                (
+                    "sla_uptime",
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=5, null=True
+                    ),
+                ),
+                (
+                    "network_speed_gbps",
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=6, null=True
+                    ),
+                ),
                 (
                     "compliance_tags",
                     django.contrib.postgres.fields.ArrayField(
@@ -284,10 +300,14 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="gpuoffer",
-            index=models.Index(fields=["availability_status"], name="gpu_offers_avail_idx"),
+            index=models.Index(
+                fields=["availability_status"], name="gpu_offers_avail_idx"
+            ),
         ),
         migrations.AddIndex(
             model_name="pricehistory",
-            index=models.Index(fields=["offer", "recorded_at"], name="price_hist_offer_idx"),
+            index=models.Index(
+                fields=["offer", "recorded_at"], name="price_hist_offer_idx"
+            ),
         ),
     ]

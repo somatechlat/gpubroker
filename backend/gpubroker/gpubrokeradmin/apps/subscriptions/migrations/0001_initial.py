@@ -10,117 +10,320 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='Subscription',
+            name="Subscription",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('subscription_id', models.CharField(db_index=True, max_length=64, unique=True)),
-                ('api_key', models.CharField(db_index=True, max_length=64, unique=True)),
-                ('api_key_hash', models.CharField(db_index=True, max_length=64)),
-                ('email', models.EmailField(db_index=True, max_length=254)),
-                ('name', models.CharField(blank=True, max_length=255)),
-                ('ruc', models.CharField(blank=True, max_length=20)),
-                ('plan', models.CharField(choices=[('trial', 'Trial'), ('basic', 'Basic'), ('pro', 'Professional'), ('corp', 'Corporate'), ('enterprise', 'Enterprise')], default='trial', max_length=20)),
-                ('status', models.CharField(choices=[('pending_activation', 'Pending Activation'), ('provisioning', 'Provisioning'), ('running', 'Running'), ('active', 'Active'), ('paused', 'Paused'), ('failed', 'Failed'), ('destroyed', 'Destroyed'), ('expired', 'Expired')], default='pending_activation', max_length=30)),
-                ('token_limit', models.IntegerField(default=5000)),
-                ('tokens_used', models.IntegerField(default=0)),
-                ('pod_id', models.CharField(db_index=True, max_length=64, unique=True)),
-                ('pod_url', models.URLField(blank=True)),
-                ('task_arn', models.CharField(blank=True, max_length=255)),
-                ('payment_provider', models.CharField(blank=True, max_length=20)),
-                ('transaction_id', models.CharField(blank=True, db_index=True, max_length=100)),
-                ('order_id', models.CharField(blank=True, db_index=True, max_length=100)),
-                ('amount_usd', models.DecimalField(decimal_places=2, default=Decimal('0.00'), max_digits=10)),
-                ('card_last4', models.CharField(blank=True, max_length=4)),
-                ('payment_status', models.CharField(default='pending', max_length=20)),
-                ('payment_date', models.DateTimeField(blank=True, null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('expires_at', models.DateTimeField()),
-                ('activated_at', models.DateTimeField(blank=True, null=True)),
-                ('destroyed_at', models.DateTimeField(blank=True, null=True)),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                (
+                    "subscription_id",
+                    models.CharField(db_index=True, max_length=64, unique=True),
+                ),
+                (
+                    "api_key",
+                    models.CharField(db_index=True, max_length=64, unique=True),
+                ),
+                ("api_key_hash", models.CharField(db_index=True, max_length=64)),
+                ("email", models.EmailField(db_index=True, max_length=254)),
+                ("name", models.CharField(blank=True, max_length=255)),
+                ("ruc", models.CharField(blank=True, max_length=20)),
+                (
+                    "plan",
+                    models.CharField(
+                        choices=[
+                            ("trial", "Trial"),
+                            ("basic", "Basic"),
+                            ("pro", "Professional"),
+                            ("corp", "Corporate"),
+                            ("enterprise", "Enterprise"),
+                        ],
+                        default="trial",
+                        max_length=20,
+                    ),
+                ),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("pending_activation", "Pending Activation"),
+                            ("provisioning", "Provisioning"),
+                            ("running", "Running"),
+                            ("active", "Active"),
+                            ("paused", "Paused"),
+                            ("failed", "Failed"),
+                            ("destroyed", "Destroyed"),
+                            ("expired", "Expired"),
+                        ],
+                        default="pending_activation",
+                        max_length=30,
+                    ),
+                ),
+                ("token_limit", models.IntegerField(default=5000)),
+                ("tokens_used", models.IntegerField(default=0)),
+                ("pod_id", models.CharField(db_index=True, max_length=64, unique=True)),
+                ("pod_url", models.URLField(blank=True)),
+                ("task_arn", models.CharField(blank=True, max_length=255)),
+                ("payment_provider", models.CharField(blank=True, max_length=20)),
+                (
+                    "transaction_id",
+                    models.CharField(blank=True, db_index=True, max_length=100),
+                ),
+                (
+                    "order_id",
+                    models.CharField(blank=True, db_index=True, max_length=100),
+                ),
+                (
+                    "amount_usd",
+                    models.DecimalField(
+                        decimal_places=2, default=Decimal("0.00"), max_digits=10
+                    ),
+                ),
+                ("card_last4", models.CharField(blank=True, max_length=4)),
+                ("payment_status", models.CharField(default="pending", max_length=20)),
+                ("payment_date", models.DateTimeField(blank=True, null=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                ("expires_at", models.DateTimeField()),
+                ("activated_at", models.DateTimeField(blank=True, null=True)),
+                ("destroyed_at", models.DateTimeField(blank=True, null=True)),
             ],
             options={
-                'db_table': 'gpubroker_subscriptions',
-                'ordering': ['-created_at'],
-                'indexes': [models.Index(fields=['email', 'status'], name='gpubroker_s_email_a6fc62_idx'), models.Index(fields=['pod_id', 'status'], name='gpubroker_s_pod_id_37faa4_idx'), models.Index(fields=['created_at'], name='gpubroker_s_created_4176b3_idx')],
+                "db_table": "gpubroker_subscriptions",
+                "ordering": ["-created_at"],
+                "indexes": [
+                    models.Index(
+                        fields=["email", "status"], name="gpubroker_s_email_a6fc62_idx"
+                    ),
+                    models.Index(
+                        fields=["pod_id", "status"],
+                        name="gpubroker_s_pod_id_37faa4_idx",
+                    ),
+                    models.Index(
+                        fields=["created_at"], name="gpubroker_s_created_4176b3_idx"
+                    ),
+                ],
             },
         ),
         migrations.CreateModel(
-            name='PaymentTransaction',
+            name="PaymentTransaction",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('order_id', models.CharField(db_index=True, max_length=100)),
-                ('transaction_id', models.CharField(blank=True, db_index=True, max_length=100)),
-                ('mode', models.CharField(default='sandbox', max_length=10)),
-                ('status', models.CharField(choices=[('pending', 'Pending'), ('processing', 'Processing'), ('completed', 'Completed'), ('failed', 'Failed'), ('refunded', 'Refunded'), ('cancelled', 'Cancelled')], default='pending', max_length=20)),
-                ('amount_usd', models.DecimalField(decimal_places=2, default=Decimal('0.00'), max_digits=10)),
-                ('currency', models.CharField(default='USD', max_length=3)),
-                ('customer_email', models.EmailField(blank=True, max_length=254)),
-                ('customer_name', models.CharField(blank=True, max_length=255)),
-                ('plan', models.CharField(blank=True, max_length=20)),
-                ('metadata', models.JSONField(default=dict)),
-                ('raw_request', models.JSONField(default=dict)),
-                ('raw_response', models.JSONField(default=dict)),
-                ('error_message', models.TextField(blank=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('provider', models.CharField(choices=[('paypal', 'PayPal'), ('payphone', 'PayPhone'), ('stripe', 'Stripe'), ('manual', 'Manual')], max_length=20)),
-                ('subscription', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='payment_transactions', to='gpubrokeradmin_subscriptions.subscription')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                ("order_id", models.CharField(db_index=True, max_length=100)),
+                (
+                    "transaction_id",
+                    models.CharField(blank=True, db_index=True, max_length=100),
+                ),
+                ("mode", models.CharField(default="sandbox", max_length=10)),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("pending", "Pending"),
+                            ("processing", "Processing"),
+                            ("completed", "Completed"),
+                            ("failed", "Failed"),
+                            ("refunded", "Refunded"),
+                            ("cancelled", "Cancelled"),
+                        ],
+                        default="pending",
+                        max_length=20,
+                    ),
+                ),
+                (
+                    "amount_usd",
+                    models.DecimalField(
+                        decimal_places=2, default=Decimal("0.00"), max_digits=10
+                    ),
+                ),
+                ("currency", models.CharField(default="USD", max_length=3)),
+                ("customer_email", models.EmailField(blank=True, max_length=254)),
+                ("customer_name", models.CharField(blank=True, max_length=255)),
+                ("plan", models.CharField(blank=True, max_length=20)),
+                ("metadata", models.JSONField(default=dict)),
+                ("raw_request", models.JSONField(default=dict)),
+                ("raw_response", models.JSONField(default=dict)),
+                ("error_message", models.TextField(blank=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "provider",
+                    models.CharField(
+                        choices=[
+                            ("paypal", "PayPal"),
+                            ("payphone", "PayPhone"),
+                            ("stripe", "Stripe"),
+                            ("manual", "Manual"),
+                        ],
+                        max_length=20,
+                    ),
+                ),
+                (
+                    "subscription",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="payment_transactions",
+                        to="gpubrokeradmin_subscriptions.subscription",
+                    ),
+                ),
             ],
             options={
-                'db_table': 'gpubroker_payment_transactions',
-                'ordering': ['-created_at'],
-                'indexes': [models.Index(fields=['provider', 'order_id'], name='gpubroker_p_provide_58d85d_idx'), models.Index(fields=['status', 'created_at'], name='gpubroker_p_status_2c8f56_idx'), models.Index(fields=['transaction_id'], name='gpubroker_p_transac_3d39b2_idx')],
+                "db_table": "gpubroker_payment_transactions",
+                "ordering": ["-created_at"],
+                "indexes": [
+                    models.Index(
+                        fields=["provider", "order_id"],
+                        name="gpubroker_p_provide_58d85d_idx",
+                    ),
+                    models.Index(
+                        fields=["status", "created_at"],
+                        name="gpubroker_p_status_2c8f56_idx",
+                    ),
+                    models.Index(
+                        fields=["transaction_id"], name="gpubroker_p_transac_3d39b2_idx"
+                    ),
+                ],
             },
         ),
         migrations.CreateModel(
-            name='PodMetrics',
+            name="PodMetrics",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('cpu_utilization', models.FloatField(default=0.0)),
-                ('memory_utilization', models.FloatField(default=0.0)),
-                ('network_in_bytes', models.BigIntegerField(default=0)),
-                ('network_out_bytes', models.BigIntegerField(default=0)),
-                ('public_ip', models.GenericIPAddressField(blank=True, null=True)),
-                ('private_ip', models.GenericIPAddressField(blank=True, null=True)),
-                ('uptime_seconds', models.IntegerField(default=0)),
-                ('estimated_cost_usd', models.DecimalField(decimal_places=4, default=Decimal('0.0000'), max_digits=10)),
-                ('recorded_at', models.DateTimeField(auto_now_add=True)),
-                ('subscription', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='metrics', to='gpubrokeradmin_subscriptions.subscription')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                ("cpu_utilization", models.FloatField(default=0.0)),
+                ("memory_utilization", models.FloatField(default=0.0)),
+                ("network_in_bytes", models.BigIntegerField(default=0)),
+                ("network_out_bytes", models.BigIntegerField(default=0)),
+                ("public_ip", models.GenericIPAddressField(blank=True, null=True)),
+                ("private_ip", models.GenericIPAddressField(blank=True, null=True)),
+                ("uptime_seconds", models.IntegerField(default=0)),
+                (
+                    "estimated_cost_usd",
+                    models.DecimalField(
+                        decimal_places=4, default=Decimal("0.0000"), max_digits=10
+                    ),
+                ),
+                ("recorded_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "subscription",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="metrics",
+                        to="gpubrokeradmin_subscriptions.subscription",
+                    ),
+                ),
             ],
             options={
-                'db_table': 'gpubroker_pod_metrics',
-                'ordering': ['-recorded_at'],
-                'indexes': [models.Index(fields=['subscription', 'recorded_at'], name='gpubroker_p_subscri_b6c818_idx')],
+                "db_table": "gpubroker_pod_metrics",
+                "ordering": ["-recorded_at"],
+                "indexes": [
+                    models.Index(
+                        fields=["subscription", "recorded_at"],
+                        name="gpubroker_p_subscri_b6c818_idx",
+                    )
+                ],
             },
         ),
         migrations.CreateModel(
-            name='Payment',
+            name="Payment",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('provider', models.CharField(choices=[('paypal', 'PayPal'), ('payphone', 'PayPhone'), ('stripe', 'Stripe'), ('manual', 'Manual')], max_length=20)),
-                ('transaction_id', models.CharField(db_index=True, max_length=100)),
-                ('order_id', models.CharField(blank=True, db_index=True, max_length=100)),
-                ('amount_usd', models.DecimalField(decimal_places=2, max_digits=10)),
-                ('currency', models.CharField(default='USD', max_length=3)),
-                ('status', models.CharField(choices=[('pending', 'Pending'), ('processing', 'Processing'), ('completed', 'Completed'), ('failed', 'Failed'), ('refunded', 'Refunded'), ('cancelled', 'Cancelled')], default='pending', max_length=20)),
-                ('card_last4', models.CharField(blank=True, max_length=4)),
-                ('card_brand', models.CharField(blank=True, max_length=20)),
-                ('metadata', models.JSONField(default=dict)),
-                ('error_message', models.TextField(blank=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('completed_at', models.DateTimeField(blank=True, null=True)),
-                ('subscription', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='payments', to='gpubrokeradmin_subscriptions.subscription')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                (
+                    "provider",
+                    models.CharField(
+                        choices=[
+                            ("paypal", "PayPal"),
+                            ("payphone", "PayPhone"),
+                            ("stripe", "Stripe"),
+                            ("manual", "Manual"),
+                        ],
+                        max_length=20,
+                    ),
+                ),
+                ("transaction_id", models.CharField(db_index=True, max_length=100)),
+                (
+                    "order_id",
+                    models.CharField(blank=True, db_index=True, max_length=100),
+                ),
+                ("amount_usd", models.DecimalField(decimal_places=2, max_digits=10)),
+                ("currency", models.CharField(default="USD", max_length=3)),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("pending", "Pending"),
+                            ("processing", "Processing"),
+                            ("completed", "Completed"),
+                            ("failed", "Failed"),
+                            ("refunded", "Refunded"),
+                            ("cancelled", "Cancelled"),
+                        ],
+                        default="pending",
+                        max_length=20,
+                    ),
+                ),
+                ("card_last4", models.CharField(blank=True, max_length=4)),
+                ("card_brand", models.CharField(blank=True, max_length=20)),
+                ("metadata", models.JSONField(default=dict)),
+                ("error_message", models.TextField(blank=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("completed_at", models.DateTimeField(blank=True, null=True)),
+                (
+                    "subscription",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="payments",
+                        to="gpubrokeradmin_subscriptions.subscription",
+                    ),
+                ),
             ],
             options={
-                'db_table': 'gpubroker_payments',
-                'ordering': ['-created_at'],
-                'indexes': [models.Index(fields=['provider', 'transaction_id'], name='gpubroker_p_provide_35778d_idx'), models.Index(fields=['status', 'created_at'], name='gpubroker_p_status_8940f8_idx')],
+                "db_table": "gpubroker_payments",
+                "ordering": ["-created_at"],
+                "indexes": [
+                    models.Index(
+                        fields=["provider", "transaction_id"],
+                        name="gpubroker_p_provide_35778d_idx",
+                    ),
+                    models.Index(
+                        fields=["status", "created_at"],
+                        name="gpubroker_p_status_8940f8_idx",
+                    ),
+                ],
             },
         ),
     ]

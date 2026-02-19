@@ -18,8 +18,7 @@ SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_SECURE = False
 
 # More verbose logging in development
-LOGGING["root"]["level"] = "DEBUG"  # noqa: F405
-LOGGING["loggers"]["django"]["level"] = "DEBUG"  # noqa: F405
+# LOGGING configuration is handled in base.py if needed
 
 # Disable rate limiting in development (optional)
 RATELIMIT_ENABLE = False

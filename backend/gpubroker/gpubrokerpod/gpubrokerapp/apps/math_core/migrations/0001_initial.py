@@ -27,11 +27,15 @@ class Migration(migrations.Migration):
                 ("gpu_model", models.CharField(max_length=100, unique=True)),
                 (
                     "tflops_fp32",
-                    models.FloatField(help_text="FP32 Tensor Core performance in TFLOPS"),
+                    models.FloatField(
+                        help_text="FP32 Tensor Core performance in TFLOPS"
+                    ),
                 ),
                 (
                     "tflops_fp16",
-                    models.FloatField(help_text="FP16 Tensor Core performance in TFLOPS"),
+                    models.FloatField(
+                        help_text="FP16 Tensor Core performance in TFLOPS"
+                    ),
                 ),
                 (
                     "tflops_int8",
@@ -90,11 +94,16 @@ class Migration(migrations.Migration):
                         blank=True, help_text="Thermal Design Power in Watts", null=True
                     ),
                 ),
-                ("source", models.CharField(help_text="Data source citation", max_length=255)),
+                (
+                    "source",
+                    models.CharField(help_text="Data source citation", max_length=255),
+                ),
                 (
                     "verified_at",
                     models.DateTimeField(
-                        blank=True, help_text="When benchmark was last verified", null=True
+                        blank=True,
+                        help_text="When benchmark was last verified",
+                        null=True,
                     ),
                 ),
                 ("created_at", models.DateTimeField(auto_now_add=True)),

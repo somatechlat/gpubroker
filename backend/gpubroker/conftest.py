@@ -14,7 +14,7 @@ from decimal import Decimal
 import pytest
 
 # Set Django settings BEFORE any Django imports
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.test")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "gpubroker.settings.test")
 
 import django
 

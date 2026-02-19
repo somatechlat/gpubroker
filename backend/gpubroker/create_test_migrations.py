@@ -8,6 +8,7 @@ which is necessary because production models use managed=False.
 The key insight is that we need to patch the model classes BEFORE Django
 inspects them for migration generation.
 """
+
 import os
 
 # Set Django settings
@@ -59,4 +60,13 @@ if hasattr(writer, "_migration_template"):
 from django.core.management import call_command
 
 print("\n--- Creating migrations ---")
-call_command("makemigrations", "auth_app", "providers", "math_core", "kpi", "ai_assistant", "websocket_gateway", verbosity=2)
+call_command(
+    "makemigrations",
+    "auth_app",
+    "providers",
+    "math_core",
+    "kpi",
+    "ai_assistant",
+    "websocket_gateway",
+    verbosity=2,
+)
