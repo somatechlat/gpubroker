@@ -474,7 +474,7 @@ def get_customer(request, email: str):
         {
             "amount": float(s.amount_usd),
             "date": s.created_at.strftime("%Y-%m-%d"),
-            "method": s.payment_provider or "PayPal",
+            "method": s.payment_provider or "Stripe",
             "description": f"Plan {s.plan.upper()}",
         }
         for s in subscriptions
@@ -509,7 +509,7 @@ def get_transaction(request, tx_id: str):
             "plan": subscription.plan,
             "pod_id": subscription.pod_id,
             "status": "completed",
-            "method": subscription.payment_provider or "PayPal",
+            "method": subscription.payment_provider or "Stripe",
             "created_at": subscription.created_at.isoformat(),
             "date": (
                 subscription.payment_date.strftime("%Y-%m-%d")
@@ -598,7 +598,7 @@ def list_transactions(request):
             "name": s.name or s.email.split("@")[0],
             "plan": s.plan,
             "amount": float(s.amount_usd),
-            "method": s.payment_provider or "PayPal",
+            "method": s.payment_provider or "Stripe",
             "status": "completed",
             "pod_id": s.pod_id,
             "order_id": s.order_id,
@@ -616,54 +616,6 @@ def list_transactions(request):
 
 
 # ============================================
-# PAYPAL PAYMENT ENDPOINTS
-# ============================================
-
-
-class PayPalOrderSchema(Schema):
-    email: str
-    plan: str
-    amount: float
-    ruc: str = ""
-    name: str = ""
-
-
-class PayPalCaptureSchema(Schema):
-    order_id: str
-
-
-@public_router.post("/payment/paypal")
-def create_paypal_order(request, data: PayPalOrderSchema):
-    """Create PayPal order for subscription payment."""
-    from ..services.payments.paypal import paypal_service
-
-    result = paypal_service.create_payment_for_subscription(
-        email=data.email,
-        plan=data.plan,
-        amount_usd=data.amount,
-        ruc=data.ruc,
-        name=data.name,
-    )
-    return result
-
-
-@public_router.post("/payment/paypal/capture/{order_id}")
-def capture_paypal_order(request, order_id: str):
-    """Capture approved PayPal order."""
-    from ..services.payments.paypal import paypal_service
-
-    result = paypal_service.capture_order(order_id)
-    return result
-
-
-@public_router.get("/payment/paypal/status")
-def get_paypal_status(request):
-    """Get PayPal configuration status."""
-    from ..services.payments.paypal import paypal_service
-
-    return paypal_service.get_config_status()
-
-
 # ============================================
 # MODE MANAGEMENT ENDPOINTS
 # ============================================

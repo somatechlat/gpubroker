@@ -9,7 +9,6 @@ Saves screenshots to /tmp/gpubroker-e2e/ (gitignored)
 Test Data:
 - Email: ai@somatech.dev
 - Recovery Email: adriancadena@yachaq.org
-- PayPal Sandbox: [REDACTED - Use PAYPAL_SANDBOX_EMAIL/PASSWORD env vars]
 - RUC: 1790869571001
 
 Flow:
@@ -18,7 +17,7 @@ Flow:
 3. Geo-Detection → Ecuador Tax ID
 4. Validate RUC
 5. Fill User Details (email: ai@somatech.dev)
-6. PayPal Payment
+6. Payment Processing
 7. Subscription Created → Email Notification Sent
 8. POD Provisioning
 9. POD Ready → API Key Generated
@@ -47,11 +46,6 @@ TEST_USER = {
     "name": "INGELSI CIA LTDA",
     "ruc": "1790869571001",
     "cedula": "1712345678",
-}
-
-PAYPAL_SANDBOX = {
-    "email": os.getenv("PAYPAL_SANDBOX_EMAIL", "test@example.com"),
-    "password": os.getenv("PAYPAL_SANDBOX_PASSWORD", "test_password"),
 }
 
 
@@ -222,68 +216,10 @@ class TestCompleteE2EFlow:
             print("   ⏳ Waiting for payment step...")
             screenshot(page, "06_waiting")
 
-    def test_step7_paypal_order_creation(self, page: Page):
-        """Step 7: Create PayPal order and verify email notification API."""
+    def test_step7_subscription_creation(self, page: Page):
+        """Step 7: Create subscription and trigger POD provisioning."""
         print("\n" + "=" * 60)
-        print("📍 STEP 7: PayPal Order + Email Notification")
-        print("=" * 60)
-
-        page.goto(f"{BASE_URL}/checkout/?plan=pro")
-
-        # Create PayPal order
-        result = page.evaluate("""
-            async () => {
-                const response = await fetch('/api/v2/admin/public/payment/paypal', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        email: 'ai@somatech.dev',
-                        plan: 'pro',
-                        amount: 40.00,
-                        ruc: '1790869571001',
-                        name: 'INGELSI CIA LTDA'
-                    })
-                });
-                return await response.json();
-            }
-        """)
-
-        print(f"   Order ID: {result.get('order_id', 'N/A')}")
-        print(f"   Success: {result.get('success', False)}")
-
-        if result.get("success"):
-            print("   ✓ PayPal order created")
-            print(f"   ✓ Payment URL: {result.get('payment_url', '')[:50]}...")
-
-        screenshot(page, "07_paypal_order")
-
-        # Test email notification endpoint
-        email_result = page.evaluate("""
-            async () => {
-                try {
-                    const response = await fetch('/api/v2/admin/public/notification/test-email', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({
-                            to: 'ai@somatech.dev',
-                            subject: 'GPUBROKER Test - Order Confirmation',
-                            template: 'order_confirmation'
-                        })
-                    });
-                    return {status: response.status, data: await response.json()};
-                } catch(e) {
-                    return {error: e.message};
-                }
-            }
-        """)
-
-        print(f"   Email API: {email_result}")
-        print("✅ PayPal order created + email notification triggered")
-
-    def test_step8_subscription_creation(self, page: Page):
-        """Step 8: Create subscription and trigger POD provisioning."""
-        print("\n" + "=" * 60)
-        print("📍 STEP 8: Subscription + POD Provisioning")
+        print("📍 STEP 7: Subscription + POD Provisioning")
         print("=" * 60)
 
         page.goto(f"{BASE_URL}/checkout/?plan=pro")
@@ -300,9 +236,9 @@ class TestCompleteE2EFlow:
                         plan: 'pro',
                         amount: 40.00,
                         ruc: '1790869571001',
-                        payment_provider: 'paypal',
-                        paypal_order_id: 'TEST-ORDER-123',
-                        paypal_transaction_id: 'TEST-TXN-123',
+                        payment_provider: 'stripe',
+                        payment_id: 'TEST-PAYMENT-123',
+                        transaction_id: 'TEST-TXN-123',
                         country_code: 'EC'
                     })
                 });
@@ -320,13 +256,13 @@ class TestCompleteE2EFlow:
         print(f"   POD ID: {data.get('pod_id', 'N/A')}")
         print(f"   POD URL: {data.get('pod_url', 'N/A')}")
 
-        screenshot(page, "08_subscription")
+        screenshot(page, "07_subscription")
         print("✅ Subscription creation attempted")
 
-    def test_step9_sms_notification(self, page: Page):
-        """Step 9: Test SMS notification endpoint."""
+    def test_step8_sms_notification(self, page: Page):
+        """Step 8: Test SMS notification endpoint."""
         print("\n" + "=" * 60)
-        print("📍 STEP 9: SMS Notification Test")
+        print("📍 STEP 8: SMS Notification Test")
         print("=" * 60)
 
         page.goto(f"{BASE_URL}/checkout/?plan=pro")
@@ -354,13 +290,13 @@ class TestCompleteE2EFlow:
         print(f"   SMS Status: {result.get('status')}")
         print(f"   Response: {result.get('data', result.get('error', 'N/A'))}")
 
-        screenshot(page, "09_sms_notification")
+        screenshot(page, "08_sms_notification")
         print("✅ SMS notification API tested")
 
-    def test_step10_dashboard_access(self, page: Page):
-        """Step 10: Access dashboard after registration."""
+    def test_step9_dashboard_access(self, page: Page):
+        """Step 9: Access dashboard after registration."""
         print("\n" + "=" * 60)
-        print("📍 STEP 10: Dashboard Access")
+        print("📍 STEP 9: Dashboard Access")
         print("=" * 60)
 
         page.goto(DASHBOARD_URL, wait_until="networkidle", timeout=10000)

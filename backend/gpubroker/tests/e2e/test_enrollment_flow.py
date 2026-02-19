@@ -3,12 +3,12 @@ GPUBROKER Admin E2E Tests - Complete Enrollment Flow
 
 Tests the full user journey from checkout to pod deployment:
 1. Checkout page with RUC/Cedula validation
-2. PayPal payment flow (sandbox)
+2. Payment processing
 3. Subscription activation
 4. Pod provisioning status
 5. Ready page with credentials
 
-Uses Playwright with real PayPal sandbox credentials.
+Uses Playwright for E2E testing.
 """
 
 import os
@@ -24,10 +24,6 @@ TEST_CEDULA = "1713488185"
 TEST_EMAIL = "ai@somatech.dev"
 TEST_NAME = "INGELSI CIA LTDA"
 TEST_PHONE = "+5939997202547"
-
-# PayPal sandbox credentials from environment
-PAYPAL_SANDBOX_EMAIL = os.getenv("PAYPAL_SANDBOX_EMAIL", "test@example.com")
-PAYPAL_SANDBOX_PASSWORD = os.getenv("PAYPAL_SANDBOX_PASSWORD", "test_password")
 
 
 class TestCheckoutFlow:
@@ -126,79 +122,6 @@ class TestCheckoutFlow:
 
         print("✅ Checkout form flow works")
 
-
-class TestPayPalPaymentFlow:
-    """Test PayPal payment integration."""
-
-    def test_paypal_status_endpoint(self, page: Page):
-        """Verify PayPal is configured correctly."""
-        response = page.goto(f"{BASE_URL}/api/v2/admin/public/payment/paypal/status")
-
-        assert response.status == 200
-
-        content = page.content()
-        assert '"configured": true' in content or '"configured":true' in content
-        assert '"mode": "sandbox"' in content or '"mode":"sandbox"' in content
-
-        print("✅ PayPal is configured in sandbox mode")
-
-    def test_paypal_order_creation_api(self, page: Page):
-        """Test PayPal order creation via API."""
-        # Navigate to a page first so fetch works with relative URLs
-        page.goto(f"{BASE_URL}/checkout/?plan=pro")
-        page.wait_for_load_state("networkidle")
-
-        # Use fetch to call the API
-        result = page.evaluate("""
-            async () => {
-                try {
-                    const response = await fetch('/api/v2/admin/public/payment/paypal', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({
-                            email: 'test@example.com',
-                            plan: 'pro',
-                            amount: 49.00,
-                            ruc: '1790869571001',
-                            name: 'Test Company'
-                        })
-                    });
-                    return await response.json();
-                } catch (e) {
-                    return {error: e.message};
-                }
-            }
-        """)
-
-        # Check response structure
-        assert "success" in result
-
-        if result.get("success"):
-            assert "order_id" in result
-            assert "payment_url" in result
-            assert "paypal.com" in result["payment_url"]
-            print(f"✅ PayPal order created: {result['order_id']}")
-        else:
-            # PayPal might reject if credentials are invalid
-            print(f"⚠️ PayPal order creation: {result.get('error', 'Unknown error')}")
-
-    def test_checkout_paypal_button_visible(self, page: Page):
-        """Test that PayPal button is visible on checkout."""
-        page.goto(f"{BASE_URL}/checkout/?plan=pro")
-
-        # Enter valid RUC and validate
-        identifier_input = page.locator("#identifier")
-        identifier_input.fill(TEST_RUC)
-        page.locator("#validateBtn").click()
-        page.wait_for_timeout(3000)
-
-        # Check if PayPal button exists (may be hidden until validation succeeds)
-        paypal_btn = page.locator('button:has-text("PayPal")')
-
-        # The button should exist in the DOM
-        expect(page.locator("#identifier")).to_be_visible()
-
-        print("✅ Checkout page has PayPal integration")
 
 
 class TestActivationFlow:

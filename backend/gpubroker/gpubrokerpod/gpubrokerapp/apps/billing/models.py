@@ -175,7 +175,6 @@ class PaymentMethod(models.Model):
 
     class Type(models.TextChoices):
         CARD = "card", "Credit/Debit Card"
-        PAYPAL = "paypal", "PayPal"
         BANK = "bank", "Bank Account"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
