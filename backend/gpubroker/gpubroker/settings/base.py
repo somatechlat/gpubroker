@@ -29,6 +29,13 @@ INSTALLED_APPS = [
     "gpubrokerpod.gpubrokerapp.apps.kpi",
     "gpubrokerpod.gpubrokerapp.apps.ai_assistant",
     "gpubrokerpod.gpubrokerapp.apps.math_core",
+    # Admin apps
+    "gpubrokeradmin.apps.access_control",
+    "gpubrokeradmin.apps.auth",
+    "gpubrokeradmin.apps.monitoring",
+    "gpubrokeradmin.apps.notifications",
+    "gpubrokeradmin.apps.pod_management",
+    "gpubrokeradmin.apps.subscriptions",
     # Shared utilities
     "shared",
 ]
