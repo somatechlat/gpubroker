@@ -15,36 +15,25 @@ All sensitive credentials (API keys, passwords, tokens) MUST be stored in HashiC
 ### 1. Start Vault
 
 ```bash
-docker-compose -f docker-compose.dev.yml up -d vault
+minikube start -p gpubroker --driver=vfkit --container-runtime=containerd --disk=10g --memory=8g --cpus=4 --addons=ingress
+tilt up
 ```
 
-### 2. Initialize Vault (First Time Only)
+Vault runs in dev mode for local development and does not require manual unseal.
+
+### 2. Store Your API Keys
 
 ```bash
-docker exec -it gpubroker-vault /vault/scripts/init-vault.sh
+kubectl -n gpubrokernamespace exec -it deploy/vault -- /vault/scripts/store-secrets.sh
 ```
 
-This will:
-- Initialize Vault with 5 unseal keys (threshold: 3)
-- Enable KV v2 secrets engine
-- Create AppRole for services
-- Output credentials to `/vault/config/`
+Or manually via UI at http://localhost:28006 (port-forwarded by Tilt)
 
-**⚠️ SAVE THE UNSEAL KEYS AND ROOT TOKEN SECURELY!**
-
-### 3. Store Your API Keys
-
-```bash
-docker exec -it gpubroker-vault /vault/scripts/store-secrets.sh
-```
-
-Or manually via UI at http://localhost:${PORT_VAULT:-28005}
-
-### 4. Configure Services
+### 3. Configure Services
 
 Add to your `.env`:
 ```bash
-VAULT_ADDR=http://localhost:${PORT_VAULT:-28005}
+VAULT_ADDR=http://vault:18280
 VAULT_ROLE_ID=<from /vault/config/approle-role-id.txt>
 VAULT_SECRET_ID=<from /vault/config/approle-secret-id.txt>
 ```

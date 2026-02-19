@@ -1,0 +1,151 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>¡GPUBROKER POD Listo!</title>
+    <link rel="stylesheet" href="{% static 'gpubrokeradmin/css/admin.css' %}">
+</head>
+<body>
+    <div class="admin-container">
+        <header class="admin-header success">
+            <h1>Tu GPUBROKER POD esta Listo</h1>
+            <p>Tu Agent Zero está corriendo y listo para ayudarte</p>
+        </header>
+
+        <main class="ready-content">
+            <section class="pod-info card">
+                <div class="success-icon">✅</div>
+
+                <div class="pod-url-container">
+                    <label>Tu GPUBROKER POD:</label>
+                    <div class="pod-url" id="podUrl">
+                        {{ pod_url }}
+                    </div>
+                    <button class="btn-secondary" onclick="copyUrl()">
+                        📋 Copiar URL
+                    </button>
+                </div>
+
+                <div class="pod-details">
+                    <div class="detail">
+                        <span class="label">Estado:</span>
+                        <span class="value status-running">ACTIVO</span>
+                    </div>
+                    <div class="detail">
+                        <span class="label">Plan:</span>
+                        <span class="value">Profesional</span>
+                    </div>
+                    <div class="detail">
+                        <span class="label">Tokens:</span>
+                        <span class="value">10,000 disponibles</span>
+                    </div>
+                    <div class="detail">
+                        <span class="label">Expira:</span>
+                        <span class="value" id="expiresAt">30 días</span>
+                    </div>
+                </div>
+
+                <a href="{{ pod_url }}" class="btn-primary btn-large" target="_blank" id="goToPod">
+                    Ir a mi GPUBROKER Agent
+                </a>
+
+                <p class="email-note">
+                    Tambien te enviamos estos datos por email
+                </p>
+            </section>
+
+            <section class="next-steps card">
+                <h3>Próximos Pasos</h3>
+                <ol>
+                    <li>Accede a tu GPUBROKER Agent</li>
+                    <li>Configura tus proveedores de GPU preferidos</li>
+                    <li>¡Empieza a optimizar tus recursos GPU!</li>
+                </ol>
+            </section>
+        </main>
+
+        <footer class="admin-footer" style="text-align: center; padding: 24px; color: #737373; font-size: 0.75rem;">
+            <p>© 2025 GPUBROKER. Todos los derechos reservados.</p>
+            <p style="margin-top: 4px;">Desarrollado por <a href="https://www.somatech.dev" target="_blank" rel="noopener" style="color: #22c55e;">SOMATECH</a></p>
+        </footer>
+    </div>
+
+    <script>
+        // Get pod_url from URL params
+        const urlParams = new URLSearchParams(window.location.search);
+        const podUrl = urlParams.get('pod_url') || sessionStorage.getItem('pod_url') || 'https://pod.gpubroker.site';
+        
+        document.getElementById('podUrl').textContent = podUrl;
+        document.getElementById('goToPod').href = podUrl;
+
+        function copyUrl() {
+            const url = document.getElementById('podUrl').textContent.trim();
+            navigator.clipboard.writeText(url);
+            alert('URL copiada al portapapeles');
+        }
+    </script>
+
+    <style>
+        .success-icon {
+            font-size: 4rem;
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        .pod-url-container {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        .pod-url {
+            background: #f3f4f6;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: monospace;
+            margin: 12px 0;
+            word-break: break-all;
+        }
+        .pod-details {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin: 24px 0;
+        }
+        .detail {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+        .detail .label {
+            color: #6b7280;
+        }
+        .detail .value {
+            font-weight: 600;
+        }
+        .status-running {
+            color: #22c55e;
+        }
+        .btn-large {
+            display: block;
+            width: 100%;
+            padding: 16px;
+            text-align: center;
+            font-size: 1.1rem;
+        }
+        .email-note {
+            text-align: center;
+            color: #6b7280;
+            margin-top: 16px;
+            font-size: 0.875rem;
+        }
+        .next-steps ol {
+            padding-left: 20px;
+        }
+        .next-steps li {
+            margin: 12px 0;
+        }
+    </style>
+</body>
+</html>

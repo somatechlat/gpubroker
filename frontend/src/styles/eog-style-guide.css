@@ -1,0 +1,700 @@
+/**
+ * GPUBROKER Eye of God - Style Guide
+ * Based on VIBE Coding Rules v3.25.0
+ * Design: Clean, Minimal, Elegant, Professional
+ * 
+ * Reference: User-provided UI mockups (Jan 2026)
+ * - Light theme with subtle grays
+ * - Green validation indicators
+ * - Black primary buttons
+ * - Rounded form inputs
+ * - Sidebar navigation with icons
+ */
+
+/* ========================================
+   1. CSS CUSTOM PROPERTIES (DESIGN TOKENS)
+   ======================================== */
+
+:root {
+    /* Typography */
+    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-size-xs: 0.75rem;
+    /* 12px */
+    --font-size-sm: 0.875rem;
+    /* 14px */
+    --font-size-base: 1rem;
+    /* 16px */
+    --font-size-lg: 1.125rem;
+    /* 18px */
+    --font-size-xl: 1.25rem;
+    /* 20px */
+    --font-size-2xl: 1.5rem;
+    /* 24px */
+    --font-size-3xl: 1.875rem;
+    /* 30px */
+    --font-size-4xl: 2.25rem;
+    /* 36px */
+
+    /* Colors - Light Theme (Primary) */
+    --color-bg: #f8f9fa;
+    --color-bg-card: #ffffff;
+    --color-bg-sidebar: #ffffff;
+    --color-bg-input: #ffffff;
+    --color-bg-hover: #f3f4f6;
+
+    /* Text Colors */
+    --color-text-primary: #111827;
+    --color-text-secondary: #6b7280;
+    --color-text-muted: #9ca3af;
+    --color-text-white: #ffffff;
+
+    /* Border Colors */
+    --color-border: #e5e7eb;
+    --color-border-focus: #10b981;
+    --color-border-input: #d1d5db;
+
+    /* Status Colors */
+    --color-success: #10b981;
+    --color-success-light: #d1fae5;
+    --color-success-text: #059669;
+    --color-error: #ef4444;
+    --color-error-light: #fee2e2;
+    --color-error-text: #dc2626;
+    --color-warning: #f59e0b;
+    --color-warning-light: #fef3c7;
+    --color-info: #3b82f6;
+    --color-info-light: #dbeafe;
+
+    /* Brand Colors */
+    --color-primary: #111827;
+    --color-primary-hover: #1f2937;
+    --color-accent: #10b981;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08);
+
+    /* Border Radius */
+    --radius-sm: 0.25rem;
+    /* 4px */
+    --radius-md: 0.5rem;
+    /* 8px */
+    --radius-lg: 0.75rem;
+    /* 12px */
+    --radius-xl: 1rem;
+    /* 16px */
+    --radius-full: 9999px;
+
+    /* Spacing */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.25rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --space-10: 2.5rem;
+    --space-12: 3rem;
+    --space-16: 4rem;
+
+    /* Transitions */
+    --transition-fast: 150ms ease;
+    --transition-base: 200ms ease;
+    --transition-slow: 300ms ease;
+
+    /* Sidebar */
+    --sidebar-width: 64px;
+    --sidebar-width-expanded: 240px;
+}
+
+/* ========================================
+   2. RESET & BASE STYLES
+   ======================================== */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+    font-family: var(--font-family);
+    font-size: var(--font-size-base);
+    line-height: 1.5;
+    color: var(--color-text-primary);
+    background-color: var(--color-bg);
+}
+
+/* ========================================
+   3. TYPOGRAPHY
+   ======================================== */
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--color-text-primary);
+}
+
+h1 {
+    font-size: var(--font-size-4xl);
+}
+
+h2 {
+    font-size: var(--font-size-3xl);
+}
+
+h3 {
+    font-size: var(--font-size-2xl);
+}
+
+h4 {
+    font-size: var(--font-size-xl);
+}
+
+h5 {
+    font-size: var(--font-size-lg);
+}
+
+h6 {
+    font-size: var(--font-size-base);
+}
+
+.text-xs {
+    font-size: var(--font-size-xs);
+}
+
+.text-sm {
+    font-size: var(--font-size-sm);
+}
+
+.text-muted {
+    color: var(--color-text-muted);
+}
+
+.text-secondary {
+    color: var(--color-text-secondary);
+}
+
+/* ========================================
+   4. BUTTONS
+   ======================================== */
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-6);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    line-height: 1.5;
+    border-radius: var(--radius-lg);
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-decoration: none;
+}
+
+.btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.3);
+}
+
+/* Primary Button - Black */
+.btn-primary {
+    background-color: var(--color-primary);
+    color: var(--color-text-white);
+    border-color: var(--color-primary);
+}
+
+.btn-primary:hover {
+    background-color: var(--color-primary-hover);
+}
+
+/* Secondary Button - White with border */
+.btn-secondary {
+    background-color: var(--color-bg-card);
+    color: var(--color-text-primary);
+    border-color: var(--color-border);
+}
+
+.btn-secondary:hover {
+    background-color: var(--color-bg-hover);
+}
+
+/* Success Button - Green */
+.btn-success {
+    background-color: var(--color-success);
+    color: var(--color-text-white);
+}
+
+.btn-success:hover {
+    background-color: #059669;
+}
+
+/* ========================================
+   5. FORM ELEMENTS
+   ======================================== */
+
+.form-group {
+    margin-bottom: var(--space-6);
+}
+
+.form-label {
+    display: block;
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--color-text-primary);
+    margin-bottom: var(--space-2);
+}
+
+.form-label .required {
+    color: var(--color-error);
+    margin-left: var(--space-1);
+}
+
+/* Input Fields - Rounded with validation states */
+.form-input {
+    width: 100%;
+    padding: var(--space-4);
+    font-size: var(--font-size-base);
+    color: var(--color-text-primary);
+    background-color: var(--color-bg-input);
+    border: 2px solid var(--color-border-input);
+    border-radius: var(--radius-xl);
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.form-input::placeholder {
+    color: var(--color-text-muted);
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+/* Validation States */
+.form-input.is-valid {
+    border-color: var(--color-success);
+}
+
+.form-input.is-invalid {
+    border-color: var(--color-error);
+}
+
+.validation-message {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+    font-size: var(--font-size-sm);
+}
+
+.validation-message.success {
+    color: var(--color-success-text);
+}
+
+.validation-message.error {
+    color: var(--color-error-text);
+}
+
+.validation-icon {
+    width: 16px;
+    height: 16px;
+}
+
+/* Select */
+.form-select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right var(--space-3) center;
+    background-repeat: no-repeat;
+    background-size: 1.5em 1.5em;
+    padding-right: var(--space-10);
+}
+
+/* ========================================
+   6. CARDS
+   ======================================== */
+
+.card {
+    background-color: var(--color-bg-card);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-card);
+}
+
+.card-header {
+    padding: var(--space-4) var(--space-6);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.card-body {
+    padding: var(--space-6);
+}
+
+.card-footer {
+    padding: var(--space-4) var(--space-6);
+    border-top: 1px solid var(--color-border);
+}
+
+/* KPI Cards */
+.kpi-card {
+    padding: var(--space-6);
+    background-color: var(--color-bg-card);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border);
+}
+
+.kpi-card .kpi-label {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-2);
+}
+
+.kpi-card .kpi-value {
+    font-size: var(--font-size-3xl);
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.kpi-card .kpi-trend {
+    font-size: var(--font-size-sm);
+    color: var(--color-success);
+}
+
+/* ========================================
+   7. SIDEBAR NAVIGATION
+   ======================================== */
+
+.sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: var(--sidebar-width);
+    background-color: var(--color-bg-sidebar);
+    border-right: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    padding: var(--space-4);
+    z-index: 100;
+}
+
+.sidebar-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 48px;
+    margin-bottom: var(--space-8);
+}
+
+.sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.sidebar-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    transition: all var(--transition-fast);
+}
+
+.sidebar-link:hover,
+.sidebar-link.active {
+    background-color: var(--color-bg-hover);
+    color: var(--color-text-primary);
+}
+
+/* ========================================
+   8. TABLES
+   ======================================== */
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th,
+.table td {
+    padding: var(--space-4);
+    text-align: left;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.table th {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    background-color: var(--color-bg);
+}
+
+.table tbody tr:hover {
+    background-color: var(--color-bg-hover);
+}
+
+/* ========================================
+   9. BADGES
+   ======================================== */
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--space-1) var(--space-3);
+    font-size: var(--font-size-xs);
+    font-weight: 500;
+    border-radius: var(--radius-full);
+}
+
+.badge-success {
+    background-color: var(--color-success-light);
+    color: var(--color-success-text);
+}
+
+.badge-error {
+    background-color: var(--color-error-light);
+    color: var(--color-error-text);
+}
+
+.badge-warning {
+    background-color: var(--color-warning-light);
+    color: #b45309;
+}
+
+.badge-info {
+    background-color: var(--color-info-light);
+    color: #1d4ed8;
+}
+
+/* ========================================
+   10. LAYOUT
+   ======================================== */
+
+.main-content {
+    margin-left: var(--sidebar-width);
+    padding: var(--space-8);
+    min-height: 100vh;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-8);
+}
+
+.page-title {
+    font-size: var(--font-size-2xl);
+    font-weight: 600;
+}
+
+/* Grid System */
+.grid {
+    display: grid;
+    gap: var(--space-6);
+}
+
+.grid-cols-2 {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.grid-cols-3 {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.grid-cols-4 {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+/* ========================================
+   11. AUTH PAGES (LOGIN)
+   ======================================== */
+
+.auth-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--color-bg);
+    padding: var(--space-4);
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 400px;
+    background-color: var(--color-bg-card);
+    border-radius: var(--radius-xl);
+    padding: var(--space-8);
+    box-shadow: var(--shadow-lg);
+}
+
+.auth-logo {
+    text-align: center;
+    margin-bottom: var(--space-8);
+}
+
+.auth-logo h1 {
+    font-size: var(--font-size-2xl);
+    font-weight: 700;
+}
+
+.auth-logo .subtitle {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.auth-footer {
+    margin-top: var(--space-6);
+    text-align: center;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+}
+
+/* ========================================
+   12. WIZARD / STEPPER
+   ======================================== */
+
+.wizard-steps {
+    display: flex;
+    justify-content: center;
+    gap: var(--space-2);
+    margin-bottom: var(--space-8);
+}
+
+.wizard-step {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+}
+
+.wizard-step.active {
+    color: var(--color-text-primary);
+    font-weight: 500;
+}
+
+.wizard-step.completed {
+    color: var(--color-success);
+}
+
+.wizard-step-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: var(--radius-full);
+    background-color: var(--color-border);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+}
+
+.wizard-step.active .wizard-step-number {
+    background-color: var(--color-primary);
+    color: var(--color-text-white);
+}
+
+.wizard-step.completed .wizard-step-number {
+    background-color: var(--color-success);
+    color: var(--color-text-white);
+}
+
+.wizard-divider {
+    width: 40px;
+    height: 2px;
+    background-color: var(--color-border);
+}
+
+.wizard-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-4);
+    margin-top: var(--space-8);
+}
+
+/* ========================================
+   13. UTILITIES
+   ======================================== */
+
+.flex {
+    display: flex;
+}
+
+.flex-col {
+    flex-direction: column;
+}
+
+.items-center {
+    align-items: center;
+}
+
+.justify-between {
+    justify-content: space-between;
+}
+
+.gap-2 {
+    gap: var(--space-2);
+}
+
+.gap-4 {
+    gap: var(--space-4);
+}
+
+.gap-6 {
+    gap: var(--space-6);
+}
+
+.mt-4 {
+    margin-top: var(--space-4);
+}
+
+.mt-6 {
+    margin-top: var(--space-6);
+}
+
+.mb-4 {
+    margin-bottom: var(--space-4);
+}
+
+.mb-6 {
+    margin-bottom: var(--space-6);
+}
+
+.w-full {
+    width: 100%;
+}
+
+.text-center {
+    text-align: center;
+}

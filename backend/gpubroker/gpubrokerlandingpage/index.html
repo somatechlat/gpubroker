@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="GPUBROKER - Plataforma de GPU Brokerage con Agentes IA. Accede a poder de cómputo GPU con agentes inteligentes, analíticas en tiempo real y soporte multi-proveedor.">
+    <meta name="keywords" content="GPU, brokerage, AI, agentes, cloud computing, machine learning, deep learning">
+    <meta name="author" content="SOMATECH DEV">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="GPUBROKER - GPU Brokerage Platform con Agentes IA">
+    <meta property="og:description" content="Accede a poder de cómputo GPU con agentes inteligentes. Analíticas en tiempo real y optimización automatizada.">
+    <meta property="og:image" content="https://gpubroker.site/images/og-image.png">
+    <meta property="og:url" content="https://gpubroker.site">
+    <meta property="og:type" content="website">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="images/favicon.ico">
+    
+    <!-- Fonts - Same as Admin -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/styles.css">
+    
+    <!-- PayPal SDK - Sandbox Mode -->
+    <!-- Client ID should be loaded dynamically from backend -->
+    <script src="https://www.paypal.com/sdk/js?client-id=YOUR_PAYPAL_CLIENT_ID_SANDBOX&currency=USD&intent=capture"></script>
+    
+    <title>GPUBROKER - GPU Brokerage Platform con Agentes IA</title>
+</head>
+<body>
+    <!-- Navigation -->
+    <header class="nav" id="nav">
+        <div class="nav__container">
+            <a href="#" class="nav__logo">
+                <svg class="nav__logo-icon" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="36" height="36" rx="8" fill="#22C55E"/>
+                    <rect x="8" y="10" width="20" height="4" rx="1" fill="white"/>
+                    <rect x="8" y="16" width="20" height="4" rx="1" fill="white"/>
+                    <rect x="8" y="22" width="20" height="4" rx="1" fill="white"/>
+                    <circle cx="24" cy="12" r="2" fill="#1F1F1F"/>
+                    <circle cx="24" cy="18" r="2" fill="#1F1F1F"/>
+                    <circle cx="24" cy="24" r="2" fill="#1F1F1F"/>
+                </svg>
+                <span class="nav__logo-text">GPU<span>BROKER</span></span>
+            </a>
+            
+            <nav class="nav__menu" id="navMenu">
+                <a href="#features" class="nav__link">Características</a>
+                <a href="#pricing" class="nav__link">Planes</a>
+                <a href="#how-it-works" class="nav__link">Cómo Funciona</a>
+            </nav>
+            
+            <div class="nav__actions">
+                <a href="http://localhost:28030/login" class="nav__login">Iniciar Sesión</a>
+                <a href="#pricing" class="btn btn--primary btn--sm">Comenzar</a>
+            </div>
+            
+            <button class="nav__toggle" id="navToggle" aria-label="Toggle menu">
+                <span class="nav__toggle-bar"></span>
+                <span class="nav__toggle-bar"></span>
+                <span class="nav__toggle-bar"></span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Mobile Menu -->
+    <div class="mobile-menu" id="mobileMenu">
+        <nav class="mobile-menu__nav">
+            <a href="#features" class="mobile-menu__link">Características</a>
+            <a href="#pricing" class="mobile-menu__link">Planes</a>
+            <a href="#how-it-works" class="mobile-menu__link">Cómo Funciona</a>
+            <a href="http://localhost:28030/login" class="mobile-menu__link">Iniciar Sesión</a>
+            <a href="#pricing" class="btn btn--green btn--full">Comenzar Ahora</a>
+        </nav>
+    </div>
+
+    <main>
+        <!-- Hero Section -->
+        <section class="hero" id="hero">
+            <div class="hero__container">
+                <h1 class="hero__title">
+                    Poder de <span class="hero__highlight">GPU</span> con<br>
+                    Inteligencia <span class="hero__highlight">Artificial</span>
+                </h1>
+                <p class="hero__subtitle">
+                    Accede a recursos de cómputo GPU de múltiples proveedores con agentes IA 
+                    que optimizan costos, monitorean rendimiento y automatizan tu infraestructura.
+                </p>
+                <div class="hero__actions">
+                    <button type="button" class="btn btn--green btn--lg" data-plan="trial" onclick="openEnrollmentModal('trial')">
+                        Comenzar Gratis
+                        <svg class="btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M5 12h14M12 5l7 7-7 7"/>
+                        </svg>
+                    </button>
+                    <a href="#pricing" class="btn btn--outline btn--lg">Ver Planes</a>
+                </div>
+                <div class="hero__stats">
+                    <div class="hero__stat">
+                        <span class="hero__stat-value">99.9%</span>
+                        <span class="hero__stat-label">Uptime</span>
+                    </div>
+                    <div class="hero__stat">
+                        <span class="hero__stat-value">5+</span>
+                        <span class="hero__stat-label">Proveedores</span>
+                    </div>
+                    <div class="hero__stat">
+                        <span class="hero__stat-value">24/7</span>
+                        <span class="hero__stat-label">Monitoreo IA</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section class="features" id="features">
+            <div class="container">
+                <div class="section-header">
+                    <h2 class="section-title">Características Principales</h2>
+                    <p class="section-subtitle">Todo lo que necesitas para gestionar recursos GPU de forma inteligente</p>
+                </div>
+                
+                <div class="features__grid">
+                    <div class="feature-card">
+                        <div class="feature-card__icon">
+                            <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="4" y="12" width="40" height="24" rx="4" stroke="currentColor" stroke-width="2"/>
+                                <rect x="8" y="16" width="8" height="8" rx="1" fill="currentColor"/>
+                                <rect x="20" y="16" width="8" height="8" rx="1" fill="currentColor"/>
+                                <rect x="32" y="16" width="8" height="8" rx="1" fill="currentColor"/>
+                            </svg>
+                        </div>
+                        <h3 class="feature-card__title">GPU Brokerage</h3>
+                        <p class="feature-card__description">
+                            Accede a GPUs de múltiples proveedores cloud desde una sola plataforma. 
+                            Compara precios, disponibilidad y rendimiento en tiempo real.
+                        </p>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="feature-card__icon">
+                            <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="24" cy="24" r="16" stroke="currentColor" stroke-width="2"/>
+                                <circle cx="24" cy="24" r="8" stroke="currentColor" stroke-width="2"/>
+                                <circle cx="24" cy="24" r="3" fill="currentColor"/>
+                            </svg>
+                        </div>
+                        <h3 class="feature-card__title">Agentes IA</h3>
+                        <p class="feature-card__description">
+                            Agentes inteligentes que monitorean, optimizan y automatizan tu infraestructura GPU. 
+                            Toma de decisiones autónoma basada en tus objetivos.
+                        </p>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="feature-card__icon">
+                            <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M4 40h40" stroke="currentColor" stroke-width="2"/>
+                                <path d="M8 32l8-8 8 4 8-12 8-4" stroke="currentColor" stroke-width="2"/>
+                                <circle cx="8" cy="32" r="2" fill="currentColor"/>
+                                <circle cx="16" cy="24" r="2" fill="currentColor"/>
+                                <circle cx="24" cy="28" r="2" fill="currentColor"/>
+                                <circle cx="32" cy="16" r="2" fill="currentColor"/>
+                                <circle cx="40" cy="12" r="2" fill="currentColor"/>
+                            </svg>
+                        </div>
+                        <h3 class="feature-card__title">Analíticas en Tiempo Real</h3>
+                        <p class="feature-card__description">
+                            Dashboards con métricas de uso, costos y rendimiento actualizados al instante. 
+                            Alertas inteligentes y reportes automatizados.
+                        </p>
+                    </div>
+
+                    <div class="feature-card">
+                        <div class="feature-card__icon">
+                            <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="24" cy="12" r="8" stroke="currentColor" stroke-width="2"/>
+                                <circle cx="12" cy="36" r="8" stroke="currentColor" stroke-width="2"/>
+                                <circle cx="36" cy="36" r="8" stroke="currentColor" stroke-width="2"/>
+                                <path d="M24 20v8M18 32l-2-4M30 32l2-4" stroke="currentColor" stroke-width="2"/>
+                            </svg>
+                        </div>
+                        <h3 class="feature-card__title">Multi-Proveedor</h3>
+                        <p class="feature-card__description">
+                            Integración con AWS, GCP, Azure, Lambda Labs y más. 
+                            Cambia entre proveedores sin fricción según disponibilidad y precio.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Pricing Section -->
+        <section class="pricing" id="pricing">
+            <div class="container">
+                <div class="section-header">
+                    <h2 class="section-title">Planes y Precios</h2>
+                    <p class="section-subtitle">Elige el plan que mejor se adapte a tus necesidades</p>
+                </div>
+                
+                <div class="pricing__grid">
+                    <!-- Trial -->
+                    <div class="pricing-card">
+                        <div class="pricing-card__header">
+                            <h3 class="pricing-card__name">Trial</h3>
+                            <div class="pricing-card__price">
+                                <span class="pricing-card__currency">$</span>
+                                <span class="pricing-card__amount">0</span>
+                                <span class="pricing-card__period">/mes</span>
+                            </div>
+                            <p class="pricing-card__tokens">1,000 tokens</p>
+                        </div>
+                        <ul class="pricing-card__features">
+                            <li class="pricing-card__feature">
+                                <svg class="pricing-card__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                Acceso básico
+                            </li>
+                            <li class="pricing-card__feature">
+                                <svg class="pricing-card__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                1 Agente IA
+                            </li>
+                            <li class="pricing-card__feature">
+                                <svg class="pricing-card__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                Dashboard básico
+                            </li>
+                        </ul>
+                        <button type="button" class="btn btn--outline btn--full" data-plan="trial" onclick="openEnrollmentModal('trial')">Comenzar Gratis</button>
+                    </div>
+
+                    <!-- Basic -->
+                    <div class="pricing-card">
+                        <div class="pricing-card__header">
+                            <h3 class="pricing-card__name">Basic</h3>
+                            <div class="pricing-card__price">
+                                <span class="pricing-card__currency">$</span>
+                                <span class="pricing-card__amount">20</span>
+                                <span class="pricing-card__period">/mes</span>
+                            </div>
+                            <p class="pricing-card__tokens">5,000 tokens</p>
+                        </div>
+                        <ul class="pricing-card__features">
+                            <li class="pricing-card__feature">
+                                <svg class="pricing-card__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                Acceso completo
+                            </li>
+                            <li class="pricing-card__feature">
+                                <svg class="pricing-card__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                2 Agentes IA
+                            </li>
+                            <li class="pricing-card__feature">
+                                <svg class="pricing-card__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                Soporte email
+                            </li>
+                        </ul>
+                        <button type="button" class="btn btn--outline btn--full" data-plan="basic" onclick="openEnrollmentModal('basic')">Seleccionar</button>
+                    </div>
+
+                    <!-- Pro (Popular) -->
+                    <div class="pricing-card pricing-card--popular">
+                        <div class="pricing-card__badge">Popular</div>
+                        <div class="pricing-card__header">
+                            <h3 class="pricing-card__name">Pro</h3>
+                            <div class="pricing-card__price">
+                                <span class="pricing-card__currency">$</span>
+                                <span class="pricing-card__amount">40</span>
+                                <span class="pricing-card__period">/mes</span>
+                            </div>
+                            <p class="pricing-card__tokens">10,000 tokens</p>
+                        </div>
+                        <ul class="pricing-card__features">
+                            <li class="pricing-card__feature">
+                                <svg class="pricing-card__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                GPUs premium
+                            </li>
+                            <li class="pricing-card__feature">
+                                <svg class="pricing-card__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                5 Agentes IA
+                            </li>
+                            <li class="pricing-card__feature">
+                                <svg class="pricing-card__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                Soporte prioritario
+                            </li>
+                            <li class="pricing-card__feature">
+                                <svg class="pricing-card__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                API access
+                            </li>
+                        </ul>
+                        <button type="button" class="btn btn--green btn--full" data-plan="pro" onclick="openEnrollmentModal('pro')">Seleccionar</button>
+                    </div>
+
+                    <!-- Corp -->
+                    <div class="pricing-card">
+                        <div class="pricing-card__header">
+                            <h3 class="pricing-card__name">Corp</h3>
+                            <div class="pricing-card__price">
+                                <span class="pricing-card__currency">$</span>
+                                <span class="pricing-card__amount">99</span>
+                                <span class="pricing-card__period">/mes</span>
+                            </div>
+                            <p class="pricing-card__tokens">50,000 tokens</p>
+                        </div>
+                        <ul class="pricing-card__features">
+                            <li class="pricing-card__feature">
+                                <svg class="pricing-card__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                GPUs dedicadas
+                            </li>
+                            <li class="pricing-card__feature">
+                                <svg class="pricing-card__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                10 Agentes IA
+                            </li>
+                            <li class="pricing-card__feature">
+                                <svg class="pricing-card__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                Soporte 24/7
+                            </li>
+                            <li class="pricing-card__feature">
+                                <svg class="pricing-card__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                SLA 99.9%
+                            </li>
+                        </ul>
+                        <button type="button" class="btn btn--outline btn--full" data-plan="corp" onclick="openEnrollmentModal('corp')">Seleccionar</button>
+                    </div>
+
+                    <!-- Enterprise -->
+                    <div class="pricing-card">
+                        <div class="pricing-card__header">
+                            <h3 class="pricing-card__name">Enterprise</h3>
+                            <div class="pricing-card__price">
+                                <span class="pricing-card__currency">$</span>
+                                <span class="pricing-card__amount">299</span>
+                                <span class="pricing-card__period">/mes</span>
+                            </div>
+                            <p class="pricing-card__tokens">200,000 tokens</p>
+                        </div>
+                        <ul class="pricing-card__features">
+                            <li class="pricing-card__feature">
+                                <svg class="pricing-card__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                Infraestructura dedicada
+                            </li>
+                            <li class="pricing-card__feature">
+                                <svg class="pricing-card__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                Agentes ilimitados
+                            </li>
+                            <li class="pricing-card__feature">
+                                <svg class="pricing-card__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                Account manager
+                            </li>
+                        </ul>
+                        <button type="button" class="btn btn--outline btn--full" data-plan="enterprise" onclick="openEnrollmentModal('enterprise')">Seleccionar</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- How It Works -->
+        <section class="how-it-works" id="how-it-works">
+            <div class="container">
+                <div class="section-header">
+                    <h2 class="section-title">Cómo Funciona</h2>
+                    <p class="section-subtitle">Comienza a usar GPUBROKER en 4 simples pasos</p>
+                </div>
+                
+                <div class="steps">
+                    <div class="step">
+                        <div class="step__number">1</div>
+                        <div class="step__icon">
+                            <svg viewBox="0 0 48 48" fill="none"><rect x="8" y="8" width="32" height="32" rx="4" stroke="currentColor" stroke-width="2"/><path d="M16 24l6 6 10-12" stroke="currentColor" stroke-width="2"/></svg>
+                        </div>
+                        <h3 class="step__title">Elige tu Plan</h3>
+                        <p class="step__description">Selecciona el plan que mejor se adapte a tus necesidades.</p>
+                    </div>
+                    
+                    <div class="step__connector"></div>
+                    
+                    <div class="step">
+                        <div class="step__number">2</div>
+                        <div class="step__icon">
+                            <svg viewBox="0 0 48 48" fill="none"><rect x="4" y="12" width="40" height="24" rx="4" stroke="currentColor" stroke-width="2"/><path d="M4 20h40" stroke="currentColor" stroke-width="2"/></svg>
+                        </div>
+                        <h3 class="step__title">Paga con PayPal</h3>
+                        <p class="step__description">Realiza el pago de forma segura a través de PayPal.</p>
+                    </div>
+                    
+                    <div class="step__connector"></div>
+                    
+                    <div class="step">
+                        <div class="step__number">3</div>
+                        <div class="step__icon">
+                            <svg viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="16" stroke="currentColor" stroke-width="2"/><path d="M24 16v8l6 4" stroke="currentColor" stroke-width="2"/></svg>
+                        </div>
+                        <h3 class="step__title">Activa tu Pod</h3>
+                        <p class="step__description">Recibe tu API key y activa tu Pod personal.</p>
+                    </div>
+                    
+                    <div class="step__connector"></div>
+                    
+                    <div class="step">
+                        <div class="step__number">4</div>
+                        <div class="step__icon">
+                            <svg viewBox="0 0 48 48" fill="none"><path d="M8 24l12 12 20-20" stroke="currentColor" stroke-width="3"/></svg>
+                        </div>
+                        <h3 class="step__title">Comienza a Usar</h3>
+                        <p class="step__description">Accede a tu dashboard y empieza a optimizar.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA -->
+        <section class="cta">
+            <div class="container">
+                <div class="cta__content">
+                    <h2 class="cta__title">¿Listo para empezar?</h2>
+                    <p class="cta__subtitle">Únete a empresas que ya optimizan su infraestructura GPU con GPUBROKER.</p>
+                    <button type="button" class="btn btn--green btn--lg" data-plan="trial" onclick="openEnrollmentModal('trial')">
+                        Comenzar Gratis
+                        <svg class="btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    </button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer__grid">
+                <div class="footer__col">
+                    <a href="#" class="footer__logo">
+                        <svg class="footer__logo-icon" viewBox="0 0 32 32" fill="none">
+                            <rect width="32" height="32" rx="6" fill="#22C55E"/>
+                            <rect x="6" y="8" width="20" height="3" rx="1" fill="white"/>
+                            <rect x="6" y="13" width="20" height="3" rx="1" fill="white"/>
+                            <rect x="6" y="18" width="20" height="3" rx="1" fill="white"/>
+                        </svg>
+                        <span class="footer__logo-text">GPU<span>BROKER</span></span>
+                    </a>
+                    <p class="footer__description">Plataforma de GPU Brokerage con Agentes IA.</p>
+                    <p class="footer__developer">
+                        Desarrollado por <a href="https://www.somatech.dev" target="_blank" rel="noopener">SOMATECH</a>
+                    </p>
+                </div>
+                
+                <div class="footer__col">
+                    <h4 class="footer__heading">Enlaces</h4>
+                    <nav class="footer__nav">
+                        <a href="#features" class="footer__link">Características</a>
+                        <a href="#pricing" class="footer__link">Planes</a>
+                        <a href="#how-it-works" class="footer__link">Cómo Funciona</a>
+                    </nav>
+                </div>
+                
+                <div class="footer__col">
+                    <h4 class="footer__heading">Legal</h4>
+                    <nav class="footer__nav">
+                        <a href="legal/terms-of-service.html" class="footer__link">Términos de Servicio</a>
+                        <a href="legal/privacy-policy.html" class="footer__link">Política de Privacidad</a>
+                        <a href="legal/cookie-policy.html" class="footer__link">Política de Cookies</a>
+                    </nav>
+                </div>
+                
+                <div class="footer__col">
+                    <h4 class="footer__heading">Contacto</h4>
+                    <nav class="footer__nav">
+                        <a href="mailto:soporte@gpubroker.site" class="footer__link">soporte@gpubroker.site</a>
+                        <a href="https://www.somatech.dev" target="_blank" rel="noopener" class="footer__link">www.somatech.dev</a>
+                    </nav>
+                </div>
+            </div>
+            
+            <div class="footer__bottom">
+                <p class="footer__copyright">© <span id="currentYear">2025</span> GPUBROKER. Todos los derechos reservados.</p>
+                <p class="footer__jurisdiction">Jurisdicción: República del Ecuador · Tribunales de Quito</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Cookie Consent Banner -->
+    <div class="cookie-banner" id="cookieBanner">
+        <div class="cookie-banner__content">
+            <p class="cookie-banner__text">
+                Utilizamos cookies para mejorar tu experiencia. Al continuar navegando, aceptas nuestra 
+                <a href="legal/cookie-policy.html">Política de Cookies</a> y 
+                <a href="legal/privacy-policy.html">Política de Privacidad</a>.
+            </p>
+            <div class="cookie-banner__actions">
+                <button class="cookie-banner__btn cookie-banner__btn--accept" id="acceptCookies">Aceptar</button>
+                <button class="cookie-banner__btn cookie-banner__btn--settings" id="cookieSettings">Configurar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enrollment Modal -->
+    <div class="enrollment-modal" id="enrollmentModal">
+        <div class="enrollment-modal__backdrop" id="modalBackdrop"></div>
+        <div class="enrollment-modal__container">
+            <!-- Modal Header -->
+            <header class="enrollment-modal__header">
+                <div class="enrollment-modal__logo">
+                    <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="36" height="36" rx="8" fill="#0A0A0A"/>
+                        <rect x="8" y="10" width="20" height="4" rx="1" fill="white"/>
+                        <rect x="8" y="16" width="20" height="4" rx="1" fill="white"/>
+                        <rect x="8" y="22" width="20" height="4" rx="1" fill="white"/>
+                        <circle cx="24" cy="12" r="2" fill="#22C55E"/>
+                        <circle cx="24" cy="18" r="2" fill="#22C55E"/>
+                        <circle cx="24" cy="24" r="2" fill="#22C55E"/>
+                    </svg>
+                    <span>GPUBROKER</span>
+                </div>
+                <button class="enrollment-modal__close" id="modalClose" aria-label="Cerrar">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                </button>
+            </header>
+            
+            <!-- Modal Body -->
+            <div class="enrollment-modal__body">
+                <div class="enrollment-modal__content" id="modalContent">
+                    <!-- Step 1: Loading / Geo Detection -->
+                    <div class="modal-step" id="stepGeo">
+                        <div class="modal-step__header">
+                            <h2>Iniciando Registro</h2>
+                            <p class="modal-step__subtitle">Preparando tu experiencia personalizada</p>
+                        </div>
+                        <div class="modal-step__body">
+                            <div class="loading-spinner">
+                                <div class="spinner"></div>
+                                <p>Detectando ubicación...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Tax ID Validation (Ecuador only) -->
+                    <div class="modal-step" id="stepTaxId" style="display: none;">
+                        <div class="modal-step__header">
+                            <h2>Verifica tu Identidad</h2>
+                            <p class="modal-step__subtitle" id="taxIdSubtitle">Ingresa tu RUC o Cédula para continuar</p>
+                        </div>
+                        <div class="modal-step__body">
+                            <div class="form-group">
+                                <label for="modalIdentifier" id="modalTaxIdLabel">RUC (13 dígitos) o Cédula (10 dígitos)</label>
+                                <input type="text" id="modalIdentifier" placeholder="1790869571001" maxlength="13">
+                                <div class="validation-status" id="modalValidationStatus"></div>
+                            </div>
+                            <button type="button" class="btn" id="modalValidateBtn">
+                                Verificar Identidad
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Step 3: Plan Summary + Payment Form -->
+                    <div class="modal-step" id="stepPayment" style="display: none;">
+                        <div class="modal-step__header">
+                            <h2>Finaliza tu Suscripción</h2>
+                        </div>
+                        <div class="modal-step__body">
+                            <!-- Plan Summary -->
+                            <div class="plan-summary-card">
+                                <div class="plan-summary-card__header">
+                                    <span class="plan-summary-card__name" id="modalPlanName">Profesional</span>
+                                    <span class="plan-summary-card__price" id="modalPlanPrice">$40 USD/mes</span>
+                                </div>
+                                <ul class="plan-summary-card__features">
+                                    <li>GPUBROKER Agent AI ilimitado</li>
+                                    <li id="modalPlanTokens">10,000 tokens mensuales</li>
+                                    <li>Acceso a 20+ proveedores GPU</li>
+                                    <li>Optimización automática de costos</li>
+                                </ul>
+                                <div class="plan-summary-card__country" id="modalCountryInfo"></div>
+                            </div>
+
+                            <!-- User Info Form -->
+                            <form id="modalUserInfoForm" class="checkout-form">
+                                <div class="form-group">
+                                    <label for="modalEmail">Email Corporativo</label>
+                                    <input type="email" id="modalEmail" required placeholder="tu@empresa.com">
+                                </div>
+                                <div class="form-group">
+                                    <label for="modalName">Nombre Completo</label>
+                                    <input type="text" id="modalName" required placeholder="Juan Pérez">
+                                </div>
+                                <div class="terms-checkbox">
+                                    <input type="checkbox" id="modalTerms" required>
+                                    <label for="modalTerms">
+                                        Acepto los <a href="legal/terms-of-service.html" target="_blank">Términos de Servicio</a>
+                                    </label>
+                                </div>
+                            </form>
+
+                            <!-- PayPal Payment Section -->
+                            <div class="paypal-section">
+                                <div class="paypal-divider">
+                                    <span>Pagar con</span>
+                                </div>
+                                <div id="paypal-button-container"></div>
+                                <div id="paypalError" class="paypal-error" style="display: none;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 4: Processing Payment -->
+                    <div class="modal-step" id="stepProcessing" style="display: none;">
+                        <div class="modal-step__header">
+                            <h2>Procesando Pago</h2>
+                        </div>
+                        <div class="modal-step__body">
+                            <div class="loading-spinner">
+                                <div class="spinner"></div>
+                                <p>Procesando tu pago de forma segura...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 5: Provisioning POD -->
+                    <div class="modal-step" id="stepProvisioning" style="display: none;">
+                        <div class="modal-step__header">
+                            <h2>Activando tu POD</h2>
+                            <p class="modal-step__subtitle">Tu GPUBROKER POD se está desplegando en AWS</p>
+                        </div>
+                        <div class="modal-step__body">
+                            <div class="provisioning-progress">
+                                <div class="provisioning-step completed" id="provStep1">
+                                    <div class="provisioning-step__icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                                    </div>
+                                    <span>Pago confirmado</span>
+                                </div>
+                                <div class="provisioning-step active" id="provStep2">
+                                    <div class="provisioning-step__icon">
+                                        <div class="mini-spinner"></div>
+                                    </div>
+                                    <span>Creando cuenta</span>
+                                </div>
+                                <div class="provisioning-step" id="provStep3">
+                                    <div class="provisioning-step__icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
+                                    </div>
+                                    <span>Desplegando POD en AWS</span>
+                                </div>
+                                <div class="provisioning-step" id="provStep4">
+                                    <div class="provisioning-step__icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
+                                    </div>
+                                    <span>Configurando agentes IA</span>
+                                </div>
+                            </div>
+                            <p class="provisioning-note">Esto puede tomar 1-2 minutos...</p>
+                        </div>
+                    </div>
+
+                    <!-- Step 6: POD Ready -->
+                    <div class="modal-step" id="stepReady" style="display: none;">
+                        <div class="modal-step__header">
+                            <div class="success-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                    <polyline points="22 4 12 14.01 9 11.01"/>
+                                </svg>
+                            </div>
+                            <h2>¡Tu POD está Listo!</h2>
+                            <p class="modal-step__subtitle">Tu GPUBROKER POD ha sido desplegado exitosamente</p>
+                        </div>
+                        <div class="modal-step__body">
+                            <div class="pod-info-card">
+                                <div class="pod-info-card__row">
+                                    <span class="pod-info-card__label">API Key</span>
+                                    <code class="pod-info-card__value" id="modalApiKey">gpb_xxxx</code>
+                                </div>
+                                <div class="pod-info-card__row">
+                                    <span class="pod-info-card__label">POD URL</span>
+                                    <code class="pod-info-card__value" id="modalPodUrl">https://pod-xxx.gpubroker.site</code>
+                                </div>
+                                <div class="pod-info-card__row">
+                                    <span class="pod-info-card__label">Plan</span>
+                                    <span class="pod-info-card__value" id="modalFinalPlan">Profesional</span>
+                                </div>
+                            </div>
+                            <p class="email-notice">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                                Hemos enviado los detalles a tu email
+                            </p>
+                            <a href="#" class="btn" id="modalGoToDashboard">
+                                Ir al Dashboard
+                                <svg class="btn__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Error State -->
+                    <div class="modal-step" id="stepError" style="display: none;">
+                        <div class="modal-step__header">
+                            <div class="error-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <line x1="15" y1="9" x2="9" y2="15"/>
+                                    <line x1="9" y1="9" x2="15" y2="15"/>
+                                </svg>
+                            </div>
+                            <h2>Error</h2>
+                            <p class="modal-step__subtitle" id="modalErrorMessage">Ha ocurrido un error</p>
+                        </div>
+                        <div class="modal-step__body">
+                            <button type="button" class="btn btn--outline" id="modalRetryBtn">
+                                Intentar de nuevo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/main.js"></script>
+</body>
+</html>

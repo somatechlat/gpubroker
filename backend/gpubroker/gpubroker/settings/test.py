@@ -1,8 +1,8 @@
 """
 Django test settings for GPUBROKER project.
 
-Uses PostgreSQL database for testing to ensure full compatibility
-with production features like ArrayField.
+Uses PostgreSQL for testing to ensure full compatibility with production
+features like ArrayField. Connects to local test database on port 28001.
 """
 import os
 from .base import *  # noqa: F401, F403
@@ -11,15 +11,23 @@ from .base import *  # noqa: F401, F403
 DEBUG = False
 SECRET_KEY = 'test-secret-key-not-for-production'
 
-# Use PostgreSQL for tests (same as production)
+# Force all models to be managed for testing (creates tables via migrations)
+# This is critical because production models use managed=False
+TESTING = True
+
+# Use PostgreSQL for tests (real infrastructure per Vibe Coding Rules)
+# Local test database on port 28001
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': os.getenv('TEST_DATABASE_NAME', 'gpubroker_test'),
-        'USER': os.getenv('DATABASE_USER', 'postgres'),
-        'PASSWORD': os.getenv('DATABASE_PASSWORD', 'postgres'),
+        'USER': os.getenv('DATABASE_USER', 'gpubroker'),
+        'PASSWORD': os.getenv('DATABASE_PASSWORD', 'gpubroker_dev_password'),
         'HOST': os.getenv('DATABASE_HOST', 'localhost'),
-        'PORT': os.getenv('DATABASE_PORT', '5432'),
+        'PORT': os.getenv('DATABASE_PORT', '28001'),
+        'TEST': {
+            'NAME': 'gpubroker_test',
+        },
     }
 }
 
@@ -44,43 +52,11 @@ PASSWORD_HASHERS = [
 ]
 
 # JWT test keys (RSA 2048-bit for testing only)
-JWT_PRIVATE_KEY = """-----BEGIN RSA PRIVATE KEY-----
-MIIEowIBAAKCAQEA0Z3VS5JJcds3xfn/ygWyF8PbnGy0AHB7MvXNkFCTqXnPOS0V
-OMni9gfp7jqU6ygGj1YLMSMWICHtchLpq1dWdqzYbVPqllCTNXYlVwJjN5E8gCaw
-rU9bFTTJlGSBFwlZDXVAorJUwlDVcAM8u6PkLPnPqGNO+YLfZEkFnkzKdOjWjyKn
-FbIgNmBURPpRqaKJEHBSP7xKxT8Ixi4lNwJDt7fjqFGPqdaTdQiFcGYXlSP8YeYB
-LZD3fMxWRPU6AgjtPiJNLFK1FZDfWMnmHfDgCb2e3j4x2mcNBJdFYwQKlqHPMMFj
-LaxLfwWlHsOxmjMPz8z8Pj2mFaUMCz6KM+ALtwIDAQABAoIBAFGpNeUEhTBUYXlb
-E3NBreI0vJmVOBIkWqdHxMiiNgJhPjPE6uyKH/dEe4A5F/PrBjkqpWgkma+Lrlqx
-Va6bpIEqSOgctvLq2tnVDphMZb0qsRtvqTnF8gsPgWAn6FCQW0T1ITHSE7PxGjkp
-5LinzNhmYCqzNqWJzkWvMcovilc/ah+WC/6BPQN/AN7Xp3Y1cxOk8gZfwBPT/bpQ
-Ia7eL9fAm1DQXN8Fzsea0kxbT/7yQDqsj0VJlfKo4hn5pgHqXSKj8heRMdCe7t8E
-PfVflYn/s7qqZGILMYvqr9pKqc7h3xWfOSBLI6pR/2U0QkYXqZDgJb+qLap440yz
-yqWAQYECgYEA7z3vSKrCzaYDBFGr1V5S0hT1j9j0YCzCsnmCPkLmPRFMt85v+ymF
-zlGbQYG3EINhMbJ4RvcWr5GBNh4A8H7tm9hJqfT1GfCsRmHxpbklBxHIYSCjHfCr
-5ij5LneKRaYKzbQUWdPMmZgfAeVJh1vPTrihqvSsBl9Mv0j5xvYNFycCgYEA37+X
-mBCLmfN50HIxUgODqXwK8jJbMYRbxUEVwNDlLqpnPvPqJHn0M5L5z3GrRf1bHjHC
-0CS5WCkpR6ADPFlAJloXWPgLgKCfYOyMIjlP4VCG7bFH+Wd2LkiNxwCbVJ5EKumP
-e8LIvPb4JGrNtPpzDXmE8ySLzPmCdCLPSRFcGMECgYEAqkdMvPaUrGpKmFKJd4eR
-xdCYk0FFDP/OcTfPNynBMgdKLfKM8xqv7P545JEfns0MPG0CYmDLpaNjqz5yPpvN
-BoLfpWpN6NbPigPQ9Xi7Z8EGSQF1h8KlRtjxK/dq1rCnGws0fQlo79CRifLiCS8D
-AVmLePHENwrvAFwfVnCn0ysCgYAJu+BoNlRfgfT1fDpNog3ffy5fXrpSgMU5xraL
-nhBPrNIgPpFTUFGHpNaqdSIdzjhHN+f5EXkEjFJhEB21pwI/ctpgBuM1XpMHlDTL
-lFsz7br5gQ1xgJAFz8BL3xPdKrwBxNdLYqFdpRMcvFdxPLzp8lkfRcD5z5X8xk5I
-3E6AAQKBgC5ChK0De6lvJkXXqqav0l4W7tYpnDvqfTrJsrbbJ0Vn5OKlGPEinN5D
-LP9G7WF8q0z4H+Yp3xGdK/FHqz0lKL5Ash4MXCQ2jMXCVjBhPHJqKVuAFqo6/JRk
-rYYqXdMBevBV+zP+M/bBPcLPwSj6CqfMgHsohwfnswPprgx5uGUi
------END RSA PRIVATE KEY-----"""
+# Generated fresh using cryptography library
+# Can be overridden with environment variables for security
+JWT_PRIVATE_KEY = os.getenv('TEST_JWT_PRIVATE_KEY', '-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA0TrmmA9OY5ZsCjxoJ0YhFC4K7lYnhtw+RvFqqMnYJN+kGqTl\nWzrCwrtPqVE3ep8Mn30rbrA26MX92cyivbWxe7TNzJa63a9Cux88NUseSd01Mm0o\n0s/KbEG/UazyTtMMITukkxX8VFpBIbEhL9JK8kOMcVKg4SjuTGQQY/DMA8FZd6LM\nPj26lsiMsL+Vm9kxRfzEJUc7N5tyHWLADpoUue1yw1lfyo4NTOIqwWQhITlIP+YA\n+ARkyH1EBbNXOB7oRJkKxqDKE2/k+AaPzBjTGh+HH1IGvSeDnpRkwcal7XKFu0l7\nxEwPfRbPQUtFj2bzcGq5LCB/TNqPgX4qSLijSwIDAQABAoIBAARaPf3KeQ5SohYR\nwkuUMTqi5+X5Xi0iBnGiCAlRhEY6w3EtHlBS3UZWcIZ3LWOcTL5B86tZIxXzOHVV\nb8qT2F4DGYeOAyklbN/zpbmowbfg+tWntlexrDuq9SM/08fsAAPuTQgk8ZuCR88+\n82UenMyEDIyMSX3QRNTLUsP2zb0DjlQAlsgT6wx9v249JHt03kIEs27tfTxiEKhU\nab8xFB6WBlQbXaZSabRyCwun79JymWHyIFTExI/qzCBnT6N6LsgZKvQ90k07IkFq\nbMzYON15PooPreMkRMWsh+DTUT/kzVOb/YiaMLJDoAfewxVrVlVqd0r6p85SdHWZ\nt7LUdCECgYEA//mwctrElKGtuFB3hWr2t5qxMn/TvPkCLlKhOT6GNORWfVSOPeyN\nenTc5fdaVlySfgJMEyE31/RYlkDvsq164DKI1NtxhYPuQHQ5H/yXjaE9hEcVuO4k\n6cq9FMlJiwCoYZfmNCBKAEB3q+RnFQ0lGi66piZ0ZHTzcwJPNgD3duMCgYEA0UAP\nHo1nSS6qLeJ9YZKmUNFr2BGvzQJEMfEchUJ3JiAL9Wh3bimZ6w/mUZ1J29iaDZy1\nKsKwQldUnaUSwC8qTf7LaZrr8T2+E9MqiFvEzLo1QXELHdWdmBXxj08kNfzNquIr\nm+cof1DXSkO0sOm0cBYZWHpaVn9ZYdaHNwaBZnkCgYEAjNr6JImLiPpa3MSysGEG\nuEvQXCiI/EDN2W2wuA5WzX4ktby0tRCZXZw2/fiZ5lH0bpCXCiPKVfRoVu4OuHTL\n29kTAIZstnq9vQv3b0mQn+ftMP/ozSWGfHwKhgiphmrrPSDYFTD7Z54R/C2oJ6Zf\nF0RFgy4/+BN+73eC3QW1Jt8CgYBnGBma4u4tZzlfTAScKyWYEeYBWY11AxXYSUPV\nAA82EHnz2hllhEeaQYYnVchK8afM5xV3UN6IgQBmfysC1voP3WYYzMRMYjAhElwV\nPKl0eJW+fVSNyW5QvRb7lXFwy/IErFPyBuyz9X9sznja5PoKc0jfh8C0dx/xjUGn\nQaRFeQKBgEfQtuXDVnc2QJUveYzxk73rdW9XUFxn/DlHVjW9fyClGMkAcWhXChO3\neqjsQF7YcUPk7hE/bH0tMPwZ7qYTgIAK4jIvNK5Q+gbE8qt4ZXPhp7Rt9NIIQwA4\nr4O7ovsL0c4+VTlRVM86n3tHdWQjEuolmUoF8ddUBFCi+/EPANi+\n-----END RSA PRIVATE KEY-----\n')
 
-JWT_PUBLIC_KEY = """-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0Z3VS5JJcds3xfn/ygWy
-F8PbnGy0AHB7MvXNkFCTqXnPOS0VOMni9gfp7jqU6ygGj1YLMSMWICHtchLpq1dW
-dqzYbVPqllCTNXYlVwJjN5E8gCawrU9bFTTJlGSBFwlZDXVAorJUwlDVcAM8u6Pk
-LPnPqGNO+YLfZEkFnkzKdOjWjyKnFbIgNmBURPpRqaKJEHBSP7xKxT8Ixi4lNwJD
-t7fjqFGPqdaTdQiFcGYXlSP8YeYBLZD3fMxWRPU6AgjtPiJNLFK1FZDfWMnmHfDg
-Cb2e3j4x2mcNBJdFYwQKlqHPMMFjLaxLfwWlHsOxmjMPz8z8Pj2mFaUMCz6KM+AL
-twIDAQAB
------END PUBLIC KEY-----"""
+JWT_PUBLIC_KEY = os.getenv('TEST_JWT_PUBLIC_KEY', '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0TrmmA9OY5ZsCjxoJ0Yh\nFC4K7lYnhtw+RvFqqMnYJN+kGqTlWzrCwrtPqVE3ep8Mn30rbrA26MX92cyivbWx\ne7TNzJa63a9Cux88NUseSd01Mm0o0s/KbEG/UazyTtMMITukkxX8VFpBIbEhL9JK\n8kOMcVKg4SjuTGQQY/DMA8FZd6LMPj26lsiMsL+Vm9kxRfzEJUc7N5tyHWLADpoU\nue1yw1lfyo4NTOIqwWQhITlIP+YA+ARkyH1EBbNXOB7oRJkKxqDKE2/k+AaPzBjT\nGh+HH1IGvSeDnpRkwcal7XKFu0l7xEwPfRbPQUtFj2bzcGq5LCB/TNqPgX4qSLij\nSwIDAQAB\n-----END PUBLIC KEY-----\n')
 
 # Disable rate limiting for tests
 RATELIMIT_ENABLE = False
@@ -99,3 +75,7 @@ LOGGING = {
         'level': 'CRITICAL',
     },
 }
+
+
+# Custom test runner that enables managed=True for all models
+TEST_RUNNER = 'gpubroker.test_runner.ManagedModelTestRunner'

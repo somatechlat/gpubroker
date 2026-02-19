@@ -1,0 +1,68 @@
+# OLD Architecture Imports Analysis
+# Generated: 2026-01-08
+# Status: REMOVE ALL - NO BACKUP NEEDED
+
+## CATEGORY 1: Django Configuration (CRITICAL - UPDATE FIRST)
+backend/gpubroker/gpubroker/asgi.py
+  - from apps.websocket_gateway.routing import websocket_urlpatterns
+  → REPLACE WITH: from gpubrokerpod.gpubrokerapp.apps.websocket_gateway.routing import websocket_urlpatterns
+
+## CATEGORY 2: Test Files (UPDATE AFTER SETTINGS)
+backend/gpubroker/tests/test_providers.py
+  - from apps.providers.adapters.registry import ProviderRegistry
+  - from apps.providers.adapters.base import BaseProviderAdapter, ProviderOffer
+  - from apps.providers.models import Provider, GPUOffer
+  - from apps.providers.services import fetch_offers_from_adapters
+  → DELETE FILE (tests OLD architecture that will be removed)
+
+backend/gpubroker/tests/test_providers_simple.py
+  - from apps.providers.adapters.registry import ProviderRegistry
+  - from apps.providers.adapters.base import BaseProviderAdapter, ProviderOffer
+  - from apps.providers.models import Provider, GPUOffer
+  - from apps.providers.services import fetch_offers_from_adapters
+  → DELETE FILE (tests OLD architecture that will be removed)
+
+backend/gpubroker/tests/test_provider_data.py
+  - from apps.providers.adapters.registry import ProviderRegistry
+  - from apps.providers.adapters.base import ProviderOffer
+  → DELETE FILE (tests OLD architecture that will be removed)
+
+backend/gpubroker/tests/test_live_analysis.py
+  - from apps.providers.adapters.registry import ProviderRegistry
+  → DELETE FILE (tests OLD architecture that will be removed)
+
+backend/gpubroker/tests/test_final_integration.py
+  - from apps.providers.adapters.registry import ProviderRegistry
+  → DELETE FILE (tests OLD architecture that will be removed)
+
+backend/gpubroker/tests/test_real_data.py
+  - from apps.providers.adapters.registry import ProviderRegistry
+  - from apps.providers.adapters.base import ProviderOffer
+  → DELETE FILE (tests OLD architecture that will be removed)
+
+## CATEGORY 3: OLD Architecture Internal Files (WILL BE DELETED WITH DIRECTORY)
+backend/gpubroker/apps/kpi/tests.py
+backend/gpubroker/apps/kpi/services.py
+backend/gpubroker/apps/auth_app/tests.py
+backend/gpubroker/apps/auth_app/services/jwt_service.py
+backend/gpubroker/apps/auth_app/api/auth.py
+backend/gpubroker/apps/auth_app/auth.py
+backend/gpubroker/apps/ai_assistant/tests.py
+backend/gpubroker/apps/providers/tests.py
+backend/gpubroker/apps/providers/api.py
+backend/gpubroker/apps/providers/services.py
+backend/gpubroker/apps/security/monitoring.py
+  → ALL DELETED when backend/gpubroker/apps/ directory is removed
+
+## SUMMARY
+- Total OLD imports found: 8 files outside OLD architecture
+- Django config files: 1 (asgi.py) - UPDATE
+- Test files: 6 - DELETE (test OLD architecture)
+- OLD architecture internal: ~11 files - DELETE WITH DIRECTORY
+
+## EXECUTION PLAN
+1. Update Django settings (base.py) - remove OLD apps, add POD SaaS apps
+2. Update ASGI config (asgi.py) - change websocket import
+3. Delete test files that test OLD architecture
+4. Remove entire backend/gpubroker/apps/ directory
+5. Verify no OLD imports remain

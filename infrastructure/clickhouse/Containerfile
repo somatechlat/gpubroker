@@ -1,0 +1,11 @@
+# syntax=docker/dockerfile:1
+# ClickHouse 23.8 LTS image built from official release tarballs.
+# This avoids Docker Hub pulls and runs fully inside Minikube/containerd.
+FROM scratch
+
+ADD --unpack=true https://github.com/ClickHouse/ClickHouse/releases/download/v23.8.16.40-lts/clickhouse-server-23.8.16.40-amd64.tgz /
+ADD --unpack=true https://github.com/ClickHouse/ClickHouse/releases/download/v23.8.16.40-lts/clickhouse-common-static-23.8.16.40-amd64.tgz /
+
+EXPOSE 8123 9000
+
+ENTRYPOINT ["/usr/bin/clickhouse", "server", "--config-file=/etc/clickhouse-server/config.xml"]

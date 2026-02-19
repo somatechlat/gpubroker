@@ -1,0 +1,23 @@
+definition user {}
+
+definition platform {
+    relation superuser: user
+    permission is_superuser = superuser
+}
+
+definition tenant {
+    relation admin: user
+    relation member: user
+    
+    permission is_admin = admin
+    permission is_member = member + admin
+}
+
+definition resource {
+    relation owner: user
+    relation tenant: tenant
+    
+    permission view = owner + tenant->is_admin + tenant->is_member
+    permission edit = owner + tenant->is_admin
+    permission delete = owner + tenant->is_admin
+}

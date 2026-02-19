@@ -1,0 +1,99 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activar GPUBROKER POD</title>
+    <link rel="stylesheet" href="{% static 'gpubrokeradmin/css/admin.css' %}">
+</head>
+<body>
+    <div class="admin-container">
+        <header class="admin-header">
+            <h1>🔐 Activa tu GPUBROKER POD</h1>
+            <p>Ingresa tu API Key para desplegar tu agente</p>
+        </header>
+
+        <main class="activate-content">
+            <section class="activate-form card">
+                <div class="key-icon">🔑</div>
+
+                <form id="activateForm">
+                    <div class="form-group">
+                        <label for="apiKey">Tu API Key</label>
+                        <input type="text" id="apiKey" name="apiKey" required
+                            placeholder="gpb_xxxxxxxxxxxxxxxxxxxxxxxx" value="{{ prefill_key }}">
+                        <small>Revisa tu email para encontrar tu API Key</small>
+                    </div>
+
+                    <div class="terms">
+                        <input type="checkbox" id="terms" required>
+                        <label for="terms">
+                            Acepto que se despliegue mi GPUBROKER POD en la nube AWS
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn-primary" id="activateBtn">
+                        ⚡ Desplegar GPUBROKER POD
+                    </button>
+                </form>
+
+                <div class="help-text">
+                    <p>¿No recibiste el email?</p>
+                    <a href="/checkout">Volver a comprar</a>
+                </div>
+            </section>
+        </main>
+
+        <footer class="admin-footer" style="text-align: center; padding: 24px; color: #737373; font-size: 0.75rem;">
+            <p>© 2025 GPUBROKER. Todos los derechos reservados.</p>
+            <p style="margin-top: 4px;">Desarrollado por <a href="https://www.somatech.dev" target="_blank" rel="noopener" style="color: #22c55e;">SOMATECH</a></p>
+        </footer>
+    </div>
+
+    <script>
+        // Pre-fill from URL or session
+        const urlParams = new URLSearchParams(window.location.search);
+        const keyFromUrl = urlParams.get('key');
+        const keyFromSession = sessionStorage.getItem('api_key');
+        
+        if (keyFromUrl) {
+            document.getElementById('apiKey').value = keyFromUrl;
+        } else if (keyFromSession) {
+            document.getElementById('apiKey').value = keyFromSession;
+        }
+
+        document.getElementById('activateForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const activateBtn = document.getElementById('activateBtn');
+            activateBtn.disabled = true;
+            activateBtn.textContent = 'Iniciando deploy...';
+
+            const apiKey = document.getElementById('apiKey').value;
+
+            try {
+                const response = await fetch('/api/v2/subscription/activate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ api_key: apiKey })
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    sessionStorage.setItem('api_key', apiKey);
+                    sessionStorage.setItem('pod_id', result.pod_id);
+                    window.location.href = '/provisioning?key=' + apiKey;
+                } else {
+                    alert('Error: ' + (result.error || 'API Key inválida'));
+                    activateBtn.disabled = false;
+                    activateBtn.textContent = '⚡ Desplegar GPUBROKER POD';
+                }
+            } catch (err) {
+                alert('Error de conexión');
+                activateBtn.disabled = false;
+                activateBtn.textContent = '⚡ Desplegar GPUBROKER POD';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+# GPUBROKER Django Application Containerfile
+# Multi-stage build for optimized production image
+
+# Stage 1: Builder
+FROM python:3.12-slim AS builder
+
+WORKDIR /app
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create virtual environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+
+# Stage 2: Production
+FROM python:3.12-slim AS production
+
+WORKDIR /app
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --create-home --shell /bin/bash appuser
+
+# Copy virtual environment from builder
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Copy application code (respects .dockerignore)
+COPY --chown=appuser:appuser . .
+
+# Set environment variables - database-backed configuration
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    DJANGO_SETTINGS_MODULE=gpubroker.settings.database_backed
+
+# Collect static files using sandbox settings (no external dependencies required)
+RUN python manage.py collectstatic --noinput --clear 2>/dev/null || echo "Static collection deferred to runtime"
+
+# Create media directory
+RUN mkdir -p /app/media /app/staticfiles && chown -R appuser:appuser /app/media /app/staticfiles
+
+# Make scripts executable
+RUN chmod +x /app/container-entrypoint.sh /app/init-django-config.sh
+
+# Clean up unnecessary files to reduce image size
+RUN find /app -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true && \
+    find /app -type f -name '*.pyc' -delete && \
+    find /app -type f -name '*.pyo' -delete && \
+    find /app -type d -name '.pytest_cache' -exec rm -rf {} + 2>/dev/null || true && \
+    find /app -type d -name '.hypothesis' -exec rm -rf {} + 2>/dev/null || true
+
+# Switch to non-root user
+USER appuser
+
+# Expose port
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD python /app/health_check.py || exit 1
+
+ENTRYPOINT ["/app/container-entrypoint.sh"]
+
+# Default command: run with Daphne (ASGI server)
+CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "gpubroker.asgi:application"]

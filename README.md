@@ -1,181 +1,294 @@
-⚠️ **WARNING: REAL IMPLEMENTATION ONLY** ⚠️
+# GPUBROKER
 
-> **We do NOT mock, bypass, or invent data. We use ONLY real servers, real APIs, and real data. This codebase follows principles of truth, simplicity, and elegance in every line of code.**
+AI-Powered GPU Marketplace & Control Tower SaaS
+
+A unified platform that aggregates GPU offers from multiple providers with real-time pricing, AI-powered recommendations, and intelligent cost optimization.
 
 ---
 
-# 🚀 GPUBROKER
+## Architecture
 
-**AI-Powered GPU Marketplace & Control Tower SaaS**
+GPUBROKER is built on Django 5 + Django Ninja as the unified backend framework:
 
-A unified dashboard that aggregates GPU offers from 23+ providers with real-time pricing, AI-powered recommendations, and intelligent cost optimization.
+- **Backend**: Django 5 monolith with Django Ninja API (`/api/v2/`)
+- **Database**: PostgreSQL 15 with Django ORM
+- **Cache**: Redis 7 for sessions, caching, and real-time price feeds
+- **WebSocket**: Django Channels for real-time updates
+- **Observability**: Prometheus + Grafana
 
-## ⚡ Quick Start
+### Project Structure
+
+```
+gpubroker/
+├── backend/
+│   └── gpubroker/
+│       ├── config/              # Django settings, URLs, ASGI
+│       ├── gpubrokeradmin/      # Admin dashboard & enrollment flow
+│       ├── gpubrokerlandingpage/# Landing page static files
+│       ├── gpubrokerpod/        # GPU Agent POD management
+│       └── shared/              # Shared utilities, middleware
+├── docs/                        # Documentation
+│   ├── development/             # Coding rules, violations log
+│   ├── infrastructure/          # Deployment, roadmap
+│   ├── srs/                     # Software Requirements Specs
+│   ├── ui-ux/                   # UI/UX specifications
+│   └── user-journeys/           # User journey documentation
+├── frontend/                    # Lit 3 + Vite frontend
+├── infrastructure/              # Vault, scripts
+```
+
+---
+
+## Quick Start
+
+### Option 1: Docker Compose (Recommended for Quick Testing)
+
+**Prerequisites**: Docker & Docker Compose
 
 ```bash
 # 1. Clone and setup
-git clone https://github.com/your-org/gpubroker.git
+git clone https://github.com/somatechlat/gpubroker.git
+cd gpubroker
+
+# 2. Setup Docker environment
+cd docker
+./start.sh
+```
+
+The `start.sh` script will:
+- Create `.env` file from template
+- Validate all required secrets
+- Build and start all services
+- Wait for health checks
+- Provide access URLs
+
+**Access Points**:
+- Main Dashboard: http://localhost:10355
+- API: http://localhost:10355/api/v2
+- Airflow: http://localhost:10355/airflow
+- Grafana: http://localhost:10355/grafana
+
+See [infrastructure/docker/README.md](infrastructure/docker/README.md) for full details.
+
+### Option 2: Kubernetes + Tilt (Production-like Development)
+
+**Prerequisites**:
+- Minikube (vfkit driver)
+- Tilt
+- kubectl
+- Python 3.11+
+- Node.js 18+ (for frontend)
+
+```bash
+# 1. Clone and setup
+git clone https://github.com/somatechlat/gpubroker.git
 cd gpubroker
 
 # 2. Configure environment
 cp .env.example .env
-# Edit .env with your secrets:
-#   POSTGRES_PASSWORD, REDIS_PASSWORD, CLICKHOUSE_PASSWORD
-#   DATABASE_URL, REDIS_URL
-#   JWT_PRIVATE_KEY (PEM), JWT_PUBLIC_KEY (PEM)
-#   DJANGO_SECRET_KEY
-#   SOMA_AGENT_BASE (AI Assistant upstream URL)
+# Edit .env with your secrets
 
-# 3. Start the stack
-docker-compose up -d
+# 3. Start Minikube (isolated profile)
+minikube start -p gpubroker --driver=vfkit --container-runtime=containerd --disk=10g --memory=8g --cpus=4 --addons=ingress
+kubectl config use-context gpubroker
 
-# 4. Run migrations
-docker-compose exec django python manage.py migrate
+# 4. Export required secrets (see docs/infrastructure/deployment-setup.md)
+export POSTGRES_PASSWORD=...
+export CLICKHOUSE_PASSWORD=...
+export DJANGO_SECRET_KEY=...
+export JWT_PRIVATE_KEY=...
+export JWT_PUBLIC_KEY=...
+export GRAFANA_PASSWORD=...
+export SPICEDB_KEY=...
+export AIRFLOW__CORE__FERNET_KEY=...
+export AIRFLOW_ADMIN_PASSWORD=...
+export VAULT_TOKEN=...
+
+# 5. Start Tilt
+tilt up
 ```
 
-🎉 **That's it!** Open http://localhost to see the dashboard.
+### Access Points
 
-## 🏗️ Architecture Overview
+| Service | URL | Description |
+|---------|-----|-------------|
+| Landing Page | http://localhost:10355/ | Public landing page |
+| Admin Dashboard | http://localhost:10355/admin/ | Admin login & dashboard |
+| API Docs | http://localhost:10355/api/v2/docs | OpenAPI documentation |
+| Enrollment | http://localhost:10355/checkout | Subscription checkout |
 
-### **Django 5 Unified Backend**
+### Default Admin Credentials
 
-All services are unified in a single Django 5 application with Django Ninja for REST APIs:
+- **Email**: `admin@gpubroker.io`
+- **Password**: `admin123`
 
-- **🔐 Auth** — JWT authentication, user management, audit logs
-- **🔌 Providers** — GPU marketplace, provider adapters, offer aggregation
-- **📊 KPI** — Cost-per-token, market insights, analytics
-- **🧠 Math Core** — TOPSIS algorithm, workload estimation, benchmarks
-- **🤖 AI Assistant** — Natural language queries, SomaAgent integration
-- **🔔 WebSocket** — Django Channels for real-time price updates
+---
 
-### **API Endpoints**
+## API Endpoints
 
 All endpoints available at `/api/v2/`:
 
 | Endpoint | Description |
 |----------|-------------|
-| `/api/v2/auth/` | Authentication (register, login, refresh, me) |
-| `/api/v2/providers/` | GPU marketplace (list, filter, config) |
-| `/api/v2/kpi/` | KPI metrics (overview, gpu, provider, insights) |
-| `/api/v2/math/` | Calculations (cost-per-token, TOPSIS, workload) |
-| `/api/v2/ai/` | AI assistant (chat, parse-workload) |
-| `/ws/` | WebSocket (price updates, notifications) |
+| `/api/v2/admin/public/admin/login` | Admin authentication |
+| `/api/v2/subscription/plans` | Available subscription plans |
+| `/api/v2/subscription/checkout` | Create PayPal order |
+| `/api/v2/subscription/capture` | Capture PayPal payment |
+| `/api/v2/subscription/activate` | Activate POD deployment |
+| `/api/v2/providers/` | GPU marketplace (list, filter) |
+| `/api/v2/kpi/` | KPI metrics |
+| `/api/v2/math/` | TOPSIS calculations |
 
-### **Data Layer**
-- **🐘 PostgreSQL 15** — User data, providers, offers, audit logs
-- **🏠 ClickHouse** — Analytics, KPI calculations, time-series data
-- **🔴 Redis 7** — Caching, sessions, real-time price feeds
+---
 
-### **Observability**
-- **📈 Prometheus** — Metrics collection via django-prometheus
-- **📊 Grafana** — Dashboards and visualization
+## Key Features
 
-## 🎯 Key Features
+### GPUBROKER POD SaaS
+- **Subscription Plans**: Starter ($49/mo), Professional ($149/mo), Enterprise ($499/mo)
+- **PayPal Integration**: Sandbox and production payment processing
+- **Automated Deployment**: AWS infrastructure provisioning
+- **Admin Dashboard**: Customer management, billing, costs tracking
 
-### **Provider Adapters**
-Adapters implemented for RunPod, Vast.ai, Lambda Labs, Paperspace, AWS SageMaker, Azure ML, Google Vertex AI, Groq, Replicate, CoreWeave, IBM Watson, Oracle OCI, Alibaba, Tencent, DeepInfra, Cerebras, ScaleAI, Spell, Kaggle, Run:AI, NVIDIA DGX.
+### Provider Adapters (Implemented)
+- RunPod
+- Vast.ai
 
-### **AI-Powered Intelligence**
-- **Cost-per-Token KPIs** — Real calculations for LLM workloads
-- **Risk-Adjusted Pricing** — Provider reliability scoring
-- **GPUAgenticHelper** — Natural language queries and recommendations
-- **Project Wizard** — Description → Infrastructure → Terraform
+### AI-Powered Intelligence
+- Cost-per-Token / Cost-per-GFLOP KPIs
+- TOPSIS + Ensemble Ranking algorithms
+- Workload estimation and templates
 
-### **Real-Time Features**
-- **Live Price Updates** — WebSocket feeds via Django Channels
-- **Market Trend Analysis** — Historical data and predictions
-- **Compliance Tracking** — GDPR, SOC-2, data residency
-- **Performance Benchmarks** — Real GPU GFLOPS and token rates
+### Real-Time Features
+- Live price updates via WebSocket
+- Django Channels for real-time communication
+- Redis Pub/Sub for price broadcasts
 
-## 📊 Service Status
+---
 
-| Component | Status | Technology |
-|-----------|--------|------------|
-| 🔐 Auth | ✅ Complete | Django + JWT (RS256) |
-| 🔌 Providers | ✅ Complete | Django Ninja + Adapters |
-| 📊 KPI | ✅ Complete | Django ORM + Aggregations |
-| 🧠 Math Core | ✅ Complete | NumPy + TOPSIS |
-| 🤖 AI Assistant | ✅ Complete | httpx + SomaAgent |
-| 🔔 WebSocket | ✅ Complete | Django Channels |
-| 🌐 Frontend | ✅ Complete | Next.js 14 |
+## Development
 
-## 🛠️ Development Commands
+### Running Tests
 
 ```bash
-# View logs
-docker-compose logs -f django
+# Unit tests
+cd backend/gpubroker
+pytest tests/unit/ -v
 
-# Check health
-curl http://localhost/health
+# E2E tests (requires running server)
+pytest tests/e2e/ -v --headed
 
-# Run tests
-docker-compose exec django pytest -v
+# All tests
+pytest -v
+```
 
-# Django shell
-docker-compose exec django python manage.py shell
+### Code Quality
+
+```bash
+# Linting
+ruff check backend/
+
+# Type checking
+mypy backend/gpubroker/
+```
+
+### Django Commands
+
+```bash
+# Create migrations
+python manage.py makemigrations
+
+# Apply migrations
+python manage.py migrate
 
 # Create superuser
-docker-compose exec django python manage.py createsuperuser
+python manage.py createsuperuser
 
-# Access admin
-open http://localhost/admin/
+# Django shell
+python manage.py shell
 ```
 
-## 📈 API Examples
+---
 
-```bash
-# Get live GPU offers
-curl http://localhost/api/v2/providers/
-
-# Filter by GPU type
-curl "http://localhost/api/v2/providers/?gpu=RTX+4090&max_price=2.0"
-
-# Get cost-per-token KPIs
-curl http://localhost/api/v2/kpi/gpu/A100
-
-# Get market insights
-curl http://localhost/api/v2/kpi/insights/market
-
-# Calculate TOPSIS ranking
-curl -X POST http://localhost/api/v2/math/topsis \
-  -H "Content-Type: application/json" \
-  -d '{"decision_matrix": [[1.5,24,82.6],[3.5,80,19.5]], "weights": [0.4,0.3,0.3], "criteria_types": ["cost","benefit","benefit"]}'
-```
-
-## 🔑 Environment Variables
+## Environment Variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `DATABASE_URL` | Yes | PostgreSQL connection URL |
 | `REDIS_URL` | Yes | Redis connection URL |
 | `DJANGO_SECRET_KEY` | Yes | Django secret key |
-| `JWT_PRIVATE_KEY` | Yes | RS256 private key (PEM) |
-| `JWT_PUBLIC_KEY` | Yes | RS256 public key (PEM) |
-| `VAULT_ADDR` | No | HashiCorp Vault address |
-| `SOMA_AGENT_BASE` | No | SomaAgent URL for AI |
-
-## 📚 Documentation
-
-- **[Backend README](./backend/README.md)** — Django project details
-- **[API Docs](http://localhost/api/v2/docs)** — Interactive OpenAPI
-- **[Database Schema](./database/init/01-init.sql)** — Data model
-- **[Roadmap](./ROADMAP.md)** — Development plan
-
-## 🎯 Business Model
-
-- **Revenue**: Subscription SaaS (Free/Pro/Enterprise)
-- **No Direct Billing**: All GPU costs stay with providers
-- **Customer Integration**: Uses customer's existing API keys
-- **Value**: 25% average cost savings through AI optimization
-
-## 🔒 Security & Compliance
-
-- **Authentication**: JWT (RS256), MFA support
-- **Data Protection**: Argon2id hashing, encrypted API keys
-- **Compliance**: GDPR, SOC-2, audit trails
-- **Infrastructure**: TLS, rate limiting, CSRF protection
+| `PAYPAL_CLIENT_ID` | Yes | PayPal API client ID |
+| `PAYPAL_CLIENT_SECRET` | Yes | PayPal API secret |
+| `PAYPAL_MODE` | Yes | `sandbox` or `live` |
 
 ---
 
-**Built with Truth, Simplicity & Elegance** 🏗️  
+## Documentation
+
+| Document | Location | Description |
+|----------|----------|-------------|
+| Roadmap | [docs/infrastructure/roadmap.md](docs/infrastructure/roadmap.md) | Development roadmap |
+| Deployment | [docs/infrastructure/deployment-setup.md](docs/infrastructure/deployment-setup.md) | Deployment guide |
+| Coding Rules | [docs/development/vibe-coding-rules.md](docs/development/vibe-coding-rules.md) | Development standards |
+| UI/UX Specs | [docs/ui-ux/specifications.md](docs/ui-ux/specifications.md) | Interface specifications |
+| User Journeys | [docs/user-journeys/](docs/user-journeys/) | User flow documentation |
+| Agent Continuity | [docs/AGENT_CONTINUITY.md](docs/AGENT_CONTINUITY.md) | Knowledge transfer for agents |
+
+---
+
+## Tech Stack
+
+- **Backend**: Django 5, Django Ninja, Django Channels
+- **Database**: PostgreSQL 15, Redis 7
+- **Frontend**: Lit 3, TypeScript, Tailwind CSS
+- **Payments**: PayPal SDK
+- **Infrastructure**: Kubernetes (Minikube + Tilt), Docker Compose, AWS
+- **Testing**: Pytest, Playwright
+- **Observability**: Prometheus, Grafana
+- **Streaming**: Apache Kafka, Apache Flink
+- **Orchestration**: Apache Airflow
+
+## Docker Compose Architecture
+
+The `infrastructure/docker/` directory provides a complete single-file Docker Compose setup:
+
+**Services (17 total)**:
+- **Core**: PostgreSQL, Redis
+- **Streaming**: Kafka, Zookeeper
+- **Analytics**: ClickHouse, Prometheus, Grafana
+- **Backend**: Django API, WebSocket Gateway
+- **Frontend**: Lit UI
+- **Infrastructure**: Vault, SpiceDB
+- **Orchestration**: Airflow (webserver + scheduler), Flink (jobmanager + taskmanager)
+- **Proxy**: Nginx (port 10355)
+
+**Memory Usage**: ~8GB (within 10GB constraint)
+
+**Quick Start**:
+```bash
+cd docker
+./start.sh
+```
+
+See [infrastructure/docker/README.md](infrastructure/docker/README.md) for complete documentation.
+
+---
+
+## Security
+
+- **Authentication**: JWT (RS256), session-based for admin
+- **Password Hashing**: Argon2id
+- **API Security**: Rate limiting, CSRF protection
+- **Secrets Management**: Environment variables, Vault (planned)
+
+---
+
+## License
+
+Proprietary - SOMATECH
+
+---
+
+*Built with Django 5 + Django Ninja*
 *No mocks. No fake data. Only real APIs and real results.*
+
+

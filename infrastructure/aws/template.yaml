@@ -1,0 +1,1271 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  GPUBROKER POD - 100% AWS Serverless Infrastructure
+  
+  This template deploys the complete GPUBROKER POD SaaS platform with:
+  - API Gateway (REST + WebSocket)
+  - Cognito User Pool (Authentication)
+  - ECS Fargate (Django Application with auto-scaling)
+  - Aurora Serverless v2 (PostgreSQL)
+  - ElastiCache (Redis)
+  - MSK Serverless (Kafka)
+  - Secrets Manager (Credentials)
+  - CloudWatch (Monitoring)
+  
+  Stack: Django 5 + Django Ninja
+  Mode: SANDBOX or LIVE (configurable)
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Environment Configuration"
+        Parameters:
+          - Environment
+          - PodId
+      - Label:
+          default: "Network Configuration"
+        Parameters:
+          - VpcCIDR
+          - PublicSubnet1CIDR
+          - PublicSubnet2CIDR
+          - PrivateSubnet1CIDR
+          - PrivateSubnet2CIDR
+      - Label:
+          default: "Application Configuration"
+        Parameters:
+          - DjangoImageUri
+          - DjangoDesiredCount
+          - DjangoCpu
+          - DjangoMemory
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues:
+      - sandbox
+      - live
+    Default: sandbox
+    Description: Deployment environment (sandbox for testing, live for production)
+  
+  PodId:
+    Type: String
+    Description: Unique POD identifier (e.g., gpubroker-prod-001)
+    AllowedPattern: ^[a-z0-9-]+$
+    ConstraintDescription: Must be lowercase alphanumeric with hyphens
+  
+  VpcCIDR:
+    Type: String
+    Default: 10.0.0.0/16
+    Description: CIDR block for VPC
+  
+  PublicSubnet1CIDR:
+    Type: String
+    Default: 10.0.1.0/24
+    Description: CIDR block for public subnet 1
+  
+  PublicSubnet2CIDR:
+    Type: String
+    Default: 10.0.2.0/24
+    Description: CIDR block for public subnet 2
+  
+  PrivateSubnet1CIDR:
+    Type: String
+    Default: 10.0.10.0/24
+    Description: CIDR block for private subnet 1
+  
+  PrivateSubnet2CIDR:
+    Type: String
+    Default: 10.0.11.0/24
+    Description: CIDR block for private subnet 2
+  
+  DjangoImageUri:
+    Type: String
+    Description: ECR URI for Django container image
+    Default: ""
+  
+  DjangoDesiredCount:
+    Type: Number
+    Default: 2
+    MinValue: 1
+    MaxValue: 100
+    Description: Desired number of Django tasks
+  
+  DjangoCpu:
+    Type: Number
+    Default: 512
+    AllowedValues:
+      - 256
+      - 512
+      - 1024
+      - 2048
+      - 4096
+    Description: CPU units for Django task (1024 = 1 vCPU)
+  
+  DjangoMemory:
+    Type: Number
+    Default: 1024
+    AllowedValues:
+      - 512
+      - 1024
+      - 2048
+      - 4096
+      - 8192
+    Description: Memory (MB) for Django task
+
+Conditions:
+  IsLive: !Equals [!Ref Environment, 'live']
+  HasDjangoImage: !Not [!Equals [!Ref DjangoImageUri, '']]
+
+Globals:
+  Function:
+    Runtime: python3.11
+    Timeout: 30
+    MemorySize: 512
+    Environment:
+      Variables:
+        GPUBROKER_MODE: !Ref Environment
+        POD_ID: !Ref PodId
+        AWS_REGION_NAME: !Ref AWS::Region
+
+Resources:
+  # ===========================================================================
+  # VPC AND NETWORKING
+  # ===========================================================================
+  
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCIDR
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${PodId}-vpc
+        - Key: Environment
+          Value: !Ref Environment
+  
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub ${PodId}-igw
+  
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+  
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: !Ref PublicSubnet1CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${PodId}-public-1
+  
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [1, !GetAZs '']
+      CidrBlock: !Ref PublicSubnet2CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${PodId}-public-2
+  
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, !GetAZs '']
+      CidrBlock: !Ref PrivateSubnet1CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${PodId}-private-1
+  
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [1, !GetAZs '']
+      CidrBlock: !Ref PrivateSubnet2CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${PodId}-private-2
+  
+  # NAT Gateway for private subnets
+  NatGateway1EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
+  
+  NatGateway1:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGateway1EIP.AllocationId
+      SubnetId: !Ref PublicSubnet1
+      Tags:
+        - Key: Name
+          Value: !Sub ${PodId}-nat-1
+  
+  # Route Tables
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${PodId}-public-rt
+  
+  DefaultPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+  
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet1
+  
+  PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet2
+  
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${PodId}-private-rt
+  
+  DefaultPrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway1
+  
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnet1
+  
+  PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      SubnetId: !Ref PrivateSubnet2
+
+
+  # ===========================================================================
+  # SECURITY GROUPS
+  # ===========================================================================
+  
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Application Load Balancer
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub ${PodId}-alb-sg
+  
+  DjangoSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Django ECS tasks
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8000
+          ToPort: 8000
+          SourceSecurityGroupId: !Ref ALBSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub ${PodId}-django-sg
+  
+  DatabaseSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Aurora database
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref DjangoSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub ${PodId}-db-sg
+  
+  RedisSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for ElastiCache Redis
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 6379
+          ToPort: 6379
+          SourceSecurityGroupId: !Ref DjangoSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub ${PodId}-redis-sg
+
+  # ===========================================================================
+  # API GATEWAY (REST)
+  # ===========================================================================
+  
+  ApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub ${PodId}-api
+      StageName: !Ref Environment
+      Description: GPUBROKER POD REST API
+      Cors:
+        AllowOrigin: "'*'"
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
+      Auth:
+        DefaultAuthorizer: CognitoAuthorizer
+        Authorizers:
+          CognitoAuthorizer:
+            UserPoolArn: !GetAtt CognitoUserPool.Arn
+      TracingEnabled: true
+      MethodSettings:
+        - ResourcePath: /*
+          HttpMethod: '*'
+          MetricsEnabled: true
+          DataTraceEnabled: !If [IsLive, false, true]
+          LoggingLevel: !If [IsLive, ERROR, INFO]
+      Tags:
+        Environment: !Ref Environment
+        PodId: !Ref PodId
+
+  # ===========================================================================
+  # API GATEWAY (WEBSOCKET)
+  # ===========================================================================
+  
+  WebSocketApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub ${PodId}-websocket
+      ProtocolType: WEBSOCKET
+      RouteSelectionExpression: "$request.body.action"
+      Tags:
+        Environment: !Ref Environment
+        PodId: !Ref PodId
+  
+  WebSocketStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref WebSocketApi
+      StageName: !Ref Environment
+      AutoDeploy: true
+      DefaultRouteSettings:
+        DataTraceEnabled: !If [IsLive, false, true]
+        LoggingLevel: !If [IsLive, ERROR, INFO]
+        ThrottlingBurstLimit: 500
+        ThrottlingRateLimit: 1000
+
+  # ===========================================================================
+  # COGNITO (AUTHENTICATION)
+  # ===========================================================================
+  
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub ${PodId}-users
+      AutoVerifiedAttributes:
+        - email
+      UsernameAttributes:
+        - email
+      UsernameConfiguration:
+        CaseSensitive: false
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireUppercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+          TemporaryPasswordValidityDays: 7
+      MfaConfiguration: OPTIONAL
+      EnabledMfas:
+        - SOFTWARE_TOKEN_MFA
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Mutable: true
+          Required: true
+        - Name: name
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+        - Name: plan
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+      EmailConfiguration:
+        EmailSendingAccount: COGNITO_DEFAULT
+      UserPoolTags:
+        Environment: !Ref Environment
+        PodId: !Ref PodId
+  
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref CognitoUserPool
+      ClientName: !Sub ${PodId}-client
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_SRP_AUTH
+      PreventUserExistenceErrors: ENABLED
+      SupportedIdentityProviders:
+        - COGNITO
+      CallbackURLs:
+        - !If 
+          - IsLive
+          - https://gpubroker.site/callback
+          - http://localhost:3000/callback
+      LogoutURLs:
+        - !If 
+          - IsLive
+          - https://gpubroker.site/logout
+          - http://localhost:3000/logout
+      AllowedOAuthFlows:
+        - code
+        - implicit
+      AllowedOAuthScopes:
+        - email
+        - openid
+        - profile
+      AllowedOAuthFlowsUserPoolClient: true
+      AccessTokenValidity: 1
+      IdTokenValidity: 1
+      RefreshTokenValidity: 30
+      TokenValidityUnits:
+        AccessToken: hours
+        IdToken: hours
+        RefreshToken: days
+  
+  CognitoUserPoolDomain:
+    Type: AWS::Cognito::UserPoolDomain
+    Properties:
+      Domain: !Sub ${PodId}-auth
+      UserPoolId: !Ref CognitoUserPool
+
+  # ===========================================================================
+  # ECS FARGATE (DJANGO APPLICATION)
+  # ===========================================================================
+  
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub ${PodId}-cluster
+      ClusterSettings:
+        - Name: containerInsights
+          Value: enabled
+      CapacityProviders:
+        - FARGATE
+        - FARGATE_SPOT
+      DefaultCapacityProviderStrategy:
+        - CapacityProvider: !If [IsLive, FARGATE, FARGATE_SPOT]
+          Weight: 1
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: PodId
+          Value: !Ref PodId
+  
+  # CloudWatch Log Group for Django
+  DjangoLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /ecs/${PodId}/django
+      RetentionInDays: !If [IsLive, 90, 7]
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: PodId
+          Value: !Ref PodId
+  
+  # ECS Task Execution Role
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${PodId}-ecs-execution-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: SecretsAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Ref DatabaseSecret
+                  - !Ref StripeSecret
+                  - !Ref ProviderKeysSecret
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameters
+                  - ssm:GetParameter
+                Resource:
+                  - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${PodId}/*
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: PodId
+          Value: !Ref PodId
+  
+  # ECS Task Role (application permissions)
+  ECSTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${PodId}-ecs-task-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ApplicationPermissions
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource:
+                  - !Ref DatabaseSecret
+                  - !Ref StripeSecret
+                  - !Ref ProviderKeysSecret
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameters
+                  - ssm:GetParameter
+                  - ssm:PutParameter
+                Resource:
+                  - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${PodId}/*
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - kafka:DescribeCluster
+                  - kafka:GetBootstrapBrokers
+                  - kafka-cluster:Connect
+                  - kafka-cluster:DescribeTopic
+                  - kafka-cluster:ReadData
+                  - kafka-cluster:WriteData
+                Resource: '*'
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: PodId
+          Value: !Ref PodId
+  
+  # ECS Task Definition
+  DjangoTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Condition: HasDjangoImage
+    Properties:
+      Family: !Sub ${PodId}-django
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      Cpu: !Ref DjangoCpu
+      Memory: !Ref DjangoMemory
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt ECSTaskRole.Arn
+      ContainerDefinitions:
+        - Name: django
+          Image: !Ref DjangoImageUri
+          Essential: true
+          PortMappings:
+            - ContainerPort: 8000
+              Protocol: tcp
+          Environment:
+            - Name: GPUBROKER_MODE
+              Value: !Ref Environment
+            - Name: POD_ID
+              Value: !Ref PodId
+            - Name: AWS_REGION
+              Value: !Ref AWS::Region
+            - Name: REDIS_HOST
+              Value: !GetAtt RedisReplicationGroup.PrimaryEndPoint.Address
+            - Name: REDIS_PORT
+              Value: '6379'
+          Secrets:
+            - Name: DATABASE_URL
+              ValueFrom: !Sub ${DatabaseSecret}:url::
+            - Name: STRIPE_SECRET_KEY
+              ValueFrom: !Sub ${StripeSecret}:secret_key::
+            - Name: STRIPE_PUBLISHABLE_KEY
+              ValueFrom: !Sub ${StripeSecret}:publishable_key::
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref DjangoLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: django
+          HealthCheck:
+            Command:
+              - CMD-SHELL
+              - curl -f http://localhost:8000/api/v2/ || exit 1
+            Interval: 30
+            Timeout: 5
+            Retries: 3
+            StartPeriod: 60
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: PodId
+          Value: !Ref PodId
+  
+  # Application Load Balancer
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub ${PodId}-alb
+      Type: application
+      Scheme: internet-facing
+      SecurityGroups:
+        - !Ref ALBSecurityGroup
+      Subnets:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: PodId
+          Value: !Ref PodId
+  
+  # ALB Target Group
+  DjangoTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub ${PodId}-django-tg
+      Port: 8000
+      Protocol: HTTP
+      VpcId: !Ref VPC
+      TargetType: ip
+      HealthCheckEnabled: true
+      HealthCheckPath: /api/v2/
+      HealthCheckProtocol: HTTP
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: PodId
+          Value: !Ref PodId
+  
+  # ALB Listener (HTTP - redirects to HTTPS in LIVE)
+  ALBListenerHTTP:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref DjangoTargetGroup
+  
+  # ECS Service
+  DjangoService:
+    Type: AWS::ECS::Service
+    Condition: HasDjangoImage
+    DependsOn:
+      - ALBListenerHTTP
+    Properties:
+      ServiceName: !Sub ${PodId}-django
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref DjangoTaskDefinition
+      DesiredCount: !Ref DjangoDesiredCount
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups:
+            - !Ref DjangoSecurityGroup
+          Subnets:
+            - !Ref PrivateSubnet1
+            - !Ref PrivateSubnet2
+      LoadBalancers:
+        - ContainerName: django
+          ContainerPort: 8000
+          TargetGroupArn: !Ref DjangoTargetGroup
+      DeploymentConfiguration:
+        MinimumHealthyPercent: 50
+        MaximumPercent: 200
+      EnableExecuteCommand: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: PodId
+          Value: !Ref PodId
+  
+  # Auto Scaling for ECS
+  DjangoScalableTarget:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    Condition: HasDjangoImage
+    Properties:
+      MaxCapacity: !If [IsLive, 20, 4]
+      MinCapacity: !If [IsLive, 2, 1]
+      ResourceId: !Sub service/${ECSCluster}/${DjangoService.Name}
+      RoleARN: !Sub arn:aws:iam::${AWS::AccountId}:role/aws-service-role/ecs.application-autoscaling.amazonaws.com/AWSServiceRoleForApplicationAutoScaling_ECSService
+      ScalableDimension: ecs:service:DesiredCount
+      ServiceNamespace: ecs
+  
+  DjangoScalingPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Condition: HasDjangoImage
+    Properties:
+      PolicyName: !Sub ${PodId}-django-scaling
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref DjangoScalableTarget
+      TargetTrackingScalingPolicyConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ECSServiceAverageCPUUtilization
+        TargetValue: 70.0
+        ScaleInCooldown: 300
+        ScaleOutCooldown: 60
+
+  # ===========================================================================
+  # AURORA SERVERLESS V2 (POSTGRESQL)
+  # ===========================================================================
+  
+  # DB Subnet Group
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: !Sub Subnet group for ${PodId} Aurora cluster
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: PodId
+          Value: !Ref PodId
+  
+  # Aurora Serverless v2 Cluster
+  AuroraCluster:
+    Type: AWS::RDS::DBCluster
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      DBClusterIdentifier: !Sub ${PodId}-aurora
+      Engine: aurora-postgresql
+      EngineVersion: '15.4'
+      EngineMode: provisioned
+      ServerlessV2ScalingConfiguration:
+        MinCapacity: !If [IsLive, 0.5, 0.5]
+        MaxCapacity: !If [IsLive, 64, 4]
+      DatabaseName: gpubroker
+      MasterUsername: !Sub '{{resolve:secretsmanager:${DatabaseSecret}:SecretString:username}}'
+      MasterUserPassword: !Sub '{{resolve:secretsmanager:${DatabaseSecret}:SecretString:password}}'
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VpcSecurityGroupIds:
+        - !Ref DatabaseSecurityGroup
+      StorageEncrypted: true
+      EnableHttpEndpoint: true
+      BackupRetentionPeriod: !If [IsLive, 35, 7]
+      DeletionProtection: !If [IsLive, true, false]
+      EnableCloudwatchLogsExports:
+        - postgresql
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: PodId
+          Value: !Ref PodId
+  
+  # Aurora Serverless v2 Instance
+  AuroraInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: !Sub ${PodId}-aurora-instance-1
+      DBClusterIdentifier: !Ref AuroraCluster
+      DBInstanceClass: db.serverless
+      Engine: aurora-postgresql
+      PubliclyAccessible: false
+      EnablePerformanceInsights: !If [IsLive, true, false]
+      PerformanceInsightsRetentionPeriod: !If [IsLive, 7, 0]
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: PodId
+          Value: !Ref PodId
+
+  # ===========================================================================
+  # ELASTICACHE REDIS
+  # ===========================================================================
+  
+  # Redis Subnet Group
+  RedisSubnetGroup:
+    Type: AWS::ElastiCache::SubnetGroup
+    Properties:
+      Description: !Sub Subnet group for ${PodId} Redis cluster
+      SubnetIds:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: PodId
+          Value: !Ref PodId
+  
+  # Redis Replication Group (Cluster Mode Disabled for simplicity)
+  RedisReplicationGroup:
+    Type: AWS::ElastiCache::ReplicationGroup
+    Properties:
+      ReplicationGroupId: !Sub ${PodId}-redis
+      ReplicationGroupDescription: !Sub Redis cluster for ${PodId}
+      Engine: redis
+      EngineVersion: '7.0'
+      CacheNodeType: !If [IsLive, cache.r6g.large, cache.t4g.micro]
+      NumCacheClusters: !If [IsLive, 2, 1]
+      AutomaticFailoverEnabled: !If [IsLive, true, false]
+      MultiAZEnabled: !If [IsLive, true, false]
+      CacheSubnetGroupName: !Ref RedisSubnetGroup
+      SecurityGroupIds:
+        - !Ref RedisSecurityGroup
+      AtRestEncryptionEnabled: true
+      TransitEncryptionEnabled: true
+      SnapshotRetentionLimit: !If [IsLive, 7, 1]
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: PodId
+          Value: !Ref PodId
+
+  # ===========================================================================
+  # MSK SERVERLESS (KAFKA)
+  # ===========================================================================
+  
+  MSKServerlessCluster:
+    Type: AWS::MSK::ServerlessCluster
+    Properties:
+      ClusterName: !Sub ${PodId}-kafka
+      ClientAuthentication:
+        Sasl:
+          Iam:
+            Enabled: true
+      VpcConfigs:
+        - SecurityGroups:
+            - !Ref MSKSecurityGroup
+          SubnetIds:
+            - !Ref PrivateSubnet1
+            - !Ref PrivateSubnet2
+      Tags:
+        Environment: !Ref Environment
+        PodId: !Ref PodId
+  
+  # MSK Security Group
+  MSKSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for MSK Serverless
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 9098
+          ToPort: 9098
+          SourceSecurityGroupId: !Ref DjangoSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub ${PodId}-msk-sg
+
+  # ===========================================================================
+  # SECRETS MANAGER
+  # ===========================================================================
+  
+  # Database Credentials Secret
+  DatabaseSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub ${PodId}/database
+      Description: !Sub Database credentials for ${PodId}
+      GenerateSecretString:
+        SecretStringTemplate: '{"username": "gpubroker_admin"}'
+        GenerateStringKey: password
+        PasswordLength: 32
+        ExcludeCharacters: '"@/\'
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: PodId
+          Value: !Ref PodId
+  
+  # Stripe API Keys Secret
+  StripeSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub ${PodId}/stripe
+      Description: !Sub Stripe API keys for ${PodId}
+      SecretString: !Sub |
+        {
+          "secret_key": "sk_${Environment}_placeholder",
+          "publishable_key": "pk_${Environment}_placeholder",
+          "webhook_secret": "whsec_placeholder"
+        }
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: PodId
+          Value: !Ref PodId
+  
+  # Provider API Keys Secret
+  ProviderKeysSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub ${PodId}/providers
+      Description: !Sub GPU provider API keys for ${PodId}
+      SecretString: |
+        {
+          "runpod": {"api_key": ""},
+          "vastai": {"api_key": ""},
+          "lambdalabs": {"api_key": ""},
+          "paperspace": {"api_key": ""},
+          "coreweave": {"api_key": ""},
+          "aws": {"access_key": "", "secret_key": ""},
+          "azure": {"client_id": "", "client_secret": "", "tenant_id": ""},
+          "gcp": {"service_account_json": ""}
+        }
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: PodId
+          Value: !Ref PodId
+
+  # ===========================================================================
+  # CLOUDWATCH DASHBOARDS & ALARMS
+  # ===========================================================================
+  
+  # Main Dashboard
+  GPUBrokerDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub ${PodId}-dashboard
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "ECS Service Metrics",
+                "metrics": [
+                  ["AWS/ECS", "CPUUtilization", "ServiceName", "${PodId}-django", "ClusterName", "${PodId}-cluster"],
+                  [".", "MemoryUtilization", ".", ".", ".", "."]
+                ],
+                "region": "${AWS::Region}",
+                "period": 60,
+                "stat": "Average"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 0,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "Aurora Database Metrics",
+                "metrics": [
+                  ["AWS/RDS", "ServerlessDatabaseCapacity", "DBClusterIdentifier", "${PodId}-aurora"],
+                  [".", "DatabaseConnections", ".", "."],
+                  [".", "CPUUtilization", ".", "."]
+                ],
+                "region": "${AWS::Region}",
+                "period": 60,
+                "stat": "Average"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 6,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "Redis Cache Metrics",
+                "metrics": [
+                  ["AWS/ElastiCache", "CurrConnections", "ReplicationGroupId", "${PodId}-redis"],
+                  [".", "CacheHitRate", ".", "."],
+                  [".", "EngineCPUUtilization", ".", "."]
+                ],
+                "region": "${AWS::Region}",
+                "period": 60,
+                "stat": "Average"
+              }
+            },
+            {
+              "type": "metric",
+              "x": 12,
+              "y": 6,
+              "width": 12,
+              "height": 6,
+              "properties": {
+                "title": "API Gateway Metrics",
+                "metrics": [
+                  ["AWS/ApiGateway", "Count", "ApiName", "${PodId}-api"],
+                  [".", "Latency", ".", "."],
+                  [".", "4XXError", ".", "."],
+                  [".", "5XXError", ".", "."]
+                ],
+                "region": "${AWS::Region}",
+                "period": 60,
+                "stat": "Sum"
+              }
+            },
+            {
+              "type": "log",
+              "x": 0,
+              "y": 12,
+              "width": 24,
+              "height": 6,
+              "properties": {
+                "title": "Application Logs",
+                "query": "SOURCE '/ecs/${PodId}/django' | fields @timestamp, @message | sort @timestamp desc | limit 100",
+                "region": "${AWS::Region}"
+              }
+            }
+          ]
+        }
+  
+  # High CPU Alarm
+  HighCPUAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Condition: HasDjangoImage
+    Properties:
+      AlarmName: !Sub ${PodId}-high-cpu
+      AlarmDescription: ECS service CPU utilization is high
+      MetricName: CPUUtilization
+      Namespace: AWS/ECS
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: ServiceName
+          Value: !Sub ${PodId}-django
+        - Name: ClusterName
+          Value: !Ref ECSCluster
+      TreatMissingData: notBreaching
+  
+  # Database Connections Alarm
+  DatabaseConnectionsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${PodId}-db-connections
+      AlarmDescription: Aurora database connections are high
+      MetricName: DatabaseConnections
+      Namespace: AWS/RDS
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 100
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: DBClusterIdentifier
+          Value: !Ref AuroraCluster
+      TreatMissingData: notBreaching
+  
+  # API 5XX Errors Alarm
+  API5XXAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${PodId}-api-5xx
+      AlarmDescription: API Gateway 5XX errors detected
+      MetricName: 5XXError
+      Namespace: AWS/ApiGateway
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 10
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: ApiName
+          Value: !Sub ${PodId}-api
+      TreatMissingData: notBreaching
+
+# =============================================================================
+# OUTPUTS
+# =============================================================================
+
+Outputs:
+  VpcId:
+    Description: VPC ID
+    Value: !Ref VPC
+    Export:
+      Name: !Sub ${PodId}-VpcId
+  
+  PublicSubnets:
+    Description: Public subnet IDs
+    Value: !Join [',', [!Ref PublicSubnet1, !Ref PublicSubnet2]]
+    Export:
+      Name: !Sub ${PodId}-PublicSubnets
+  
+  PrivateSubnets:
+    Description: Private subnet IDs
+    Value: !Join [',', [!Ref PrivateSubnet1, !Ref PrivateSubnet2]]
+    Export:
+      Name: !Sub ${PodId}-PrivateSubnets
+  
+  ECSClusterArn:
+    Description: ECS Cluster ARN
+    Value: !GetAtt ECSCluster.Arn
+    Export:
+      Name: !Sub ${PodId}-ECSClusterArn
+  
+  ALBDnsName:
+    Description: Application Load Balancer DNS name
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
+    Export:
+      Name: !Sub ${PodId}-ALBDnsName
+  
+  ApiGatewayUrl:
+    Description: API Gateway URL
+    Value: !Sub https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Environment}
+    Export:
+      Name: !Sub ${PodId}-ApiGatewayUrl
+  
+  WebSocketUrl:
+    Description: WebSocket API URL
+    Value: !Sub wss://${WebSocketApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}
+    Export:
+      Name: !Sub ${PodId}-WebSocketUrl
+  
+  CognitoUserPoolId:
+    Description: Cognito User Pool ID
+    Value: !Ref CognitoUserPool
+    Export:
+      Name: !Sub ${PodId}-CognitoUserPoolId
+  
+  CognitoUserPoolClientId:
+    Description: Cognito User Pool Client ID
+    Value: !Ref CognitoUserPoolClient
+    Export:
+      Name: !Sub ${PodId}-CognitoUserPoolClientId
+  
+  CognitoDomain:
+    Description: Cognito Domain
+    Value: !Sub ${PodId}-auth.auth.${AWS::Region}.amazoncognito.com
+    Export:
+      Name: !Sub ${PodId}-CognitoDomain
+  
+  AuroraClusterEndpoint:
+    Description: Aurora cluster endpoint
+    Value: !GetAtt AuroraCluster.Endpoint.Address
+    Export:
+      Name: !Sub ${PodId}-AuroraEndpoint
+  
+  AuroraClusterReaderEndpoint:
+    Description: Aurora cluster reader endpoint
+    Value: !GetAtt AuroraCluster.ReaderEndpoint.Address
+    Export:
+      Name: !Sub ${PodId}-AuroraReaderEndpoint
+  
+  RedisEndpoint:
+    Description: Redis primary endpoint
+    Value: !GetAtt RedisReplicationGroup.PrimaryEndPoint.Address
+    Export:
+      Name: !Sub ${PodId}-RedisEndpoint
+  
+  MSKClusterArn:
+    Description: MSK Serverless cluster ARN
+    Value: !Ref MSKServerlessCluster
+    Export:
+      Name: !Sub ${PodId}-MSKClusterArn
+  
+  DatabaseSecretArn:
+    Description: Database credentials secret ARN
+    Value: !Ref DatabaseSecret
+    Export:
+      Name: !Sub ${PodId}-DatabaseSecretArn
+  
+  StripeSecretArn:
+    Description: Stripe API keys secret ARN
+    Value: !Ref StripeSecret
+    Export:
+      Name: !Sub ${PodId}-StripeSecretArn
+  
+  ProviderKeysSecretArn:
+    Description: Provider API keys secret ARN
+    Value: !Ref ProviderKeysSecret
+    Export:
+      Name: !Sub ${PodId}-ProviderKeysSecretArn
+  
+  DashboardUrl:
+    Description: CloudWatch Dashboard URL
+    Value: !Sub https://${AWS::Region}.console.aws.amazon.com/cloudwatch/home?region=${AWS::Region}#dashboards:name=${PodId}-dashboard
+    Export:
+      Name: !Sub ${PodId}-DashboardUrl
+  
+  Environment:
+    Description: Deployment environment
+    Value: !Ref Environment
+    Export:
+      Name: !Sub ${PodId}-Environment

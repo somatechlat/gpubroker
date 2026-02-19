@@ -1,0 +1,173 @@
+# GPUBROKER - Django 5 Production Stack
+# All services migrated to Django 5 + Django Ninja
+# FastAPI legacy services have been removed
+
+name: gpubroker
+
+services:
+  # ========================================
+  # SECRET MANAGEMENT - HashiCorp Vault
+  # ========================================
+  
+  vault:
+    image: hashicorp/vault:1.15
+    container_name: gpubroker_vault
+    ports:
+      - "${PORT_VAULT:-28005}:8200"
+    environment:
+      VAULT_ADDR: "http://0.0.0.0:8200"
+      VAULT_API_ADDR: "http://0.0.0.0:8200"
+    cap_add:
+      - IPC_LOCK
+    volumes:
+      - vault_data:/vault/data
+      - ./infrastructure/vault/config:/vault/config
+      - ./infrastructure/vault/scripts:/vault/scripts
+    command: server -dev -dev-root-token-id=${VAULT_TOKEN:?set VAULT_TOKEN}
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ========================================
+  # DATABASE LAYER
+  # ========================================
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: gpubroker_postgres
+    environment:
+      POSTGRES_DB: gpubroker
+      POSTGRES_USER: gpubroker
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d
+    ports:
+      - "${PORT_POSTGRES:-28001}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gpubroker"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:23.8
+    container_name: gpubroker_clickhouse
+    environment:
+      CLICKHOUSE_DB: gpubroker_analytics
+      CLICKHOUSE_USER: gpubroker
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?set CLICKHOUSE_PASSWORD}
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    ports:
+      - "${PORT_CLICKHOUSE_HTTP:-28002}:8123"
+      - "${PORT_CLICKHOUSE_NATIVE:-28003}:9000"
+
+  redis:
+    image: redis:7-alpine
+    container_name: gpubroker_redis
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?set REDIS_PASSWORD}"]
+    volumes:
+      - redis_data:/data
+    ports:
+      - "${PORT_REDIS:-28004}:6379"
+
+  # ========================================
+  # DJANGO BACKEND (All Services Unified)
+  # ========================================
+
+  django:
+    build:
+      context: ./backend/gpubroker
+    container_name: gpubroker_django
+    environment:
+      # Django settings module - uses database-backed configuration
+      DJANGO_SETTINGS_MODULE: gpubroker.settings.database_backed
+      
+      # Bootstrap database connection (ONLY for initial connection)
+      BOOTSTRAP_DB_NAME: gpubroker
+      BOOTSTRAP_DB_USER: gpubroker
+      BOOTSTRAP_DB_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      BOOTSTRAP_DB_HOST: postgres
+      BOOTSTRAP_DB_PORT: 5432
+      
+      # Vault connection (for initial secret loading)
+      VAULT_ADDR: ${VAULT_ADDR:-http://vault:8200}
+      VAULT_TOKEN: ${VAULT_TOKEN:?set VAULT_TOKEN}
+      
+      # Runtime configuration (non-sensitive)
+      DEBUG: "False"
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+      
+      # Service endpoints (non-sensitive)
+      KAFKA_BROKERS: kafka:9092
+      CLICKHOUSE_URL: http://clickhouse:8123
+    ports:
+      - "${PORT_DJANGO:-28080}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      vault:
+        condition: service_started
+    volumes:
+      - ../../backend/gpubroker:/app
+      - static_files:/app/staticfiles
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ========================================
+  # NGINX REVERSE PROXY
+  # ========================================
+
+  nginx:
+    image: nginx:alpine
+    container_name: gpubroker_nginx
+    ports:
+      - "${PORT_NGINX:-28010}:80"
+      - "${PORT_NGINX_SSL:-443}:443"
+    volumes:
+      - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - static_files:/var/www/static:ro
+    depends_on:
+      - django
+      - frontend
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ========================================
+  # FRONTEND APPLICATION
+  # ========================================
+
+  frontend:
+    build:
+      context: ../../frontend
+    container_name: gpubroker_frontend
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:28010/api/v2}
+      VITE_WS_URL: ${VITE_WS_URL:-ws://localhost:28010/ws}
+    ports:
+      - "${PORT_FRONTEND:-28030}:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: bun run dev
+
+volumes:
+  vault_data:
+  postgres_data:
+  clickhouse_data:
+  redis_data:
+  static_files:

@@ -1,0 +1,351 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Costs & Profitability - GPUBROKER Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'gpubrokeradmin/css/admin.css' %}">
+    <style>
+        .gauge-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 180px;
+        }
+
+        .gauge {
+            position: relative;
+            width: 160px;
+            height: 80px;
+            overflow: hidden;
+        }
+
+        .gauge::before {
+            content: '';
+            position: absolute;
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            background: conic-gradient(var(--gauge-color, #22c55e) var(--gauge-value, 0%), #e5e7eb var(--gauge-value, 0%));
+            clip-path: polygon(0 0, 100% 0, 100% 50%, 0 50%);
+        }
+
+        .gauge-value {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .gauge-label {
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--color-muted);
+            margin-top: 8px;
+        }
+
+        .cost-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--color-border);
+            font-size: 0.9rem;
+        }
+
+        .cost-row:last-child {
+            border-bottom: none;
+        }
+
+        .trend-up {
+            color: var(--color-error);
+        }
+
+        .trend-down {
+            color: var(--color-success);
+        }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="admin-layout">
+        <!-- Header matching index.html -->
+        <header class="admin-header">
+            <a href="{% url 'gpubrokeradmin:admin_dashboard' %}" class="admin-logo" style="font-weight: 700; letter-spacing: -0.03em;">GPUBROKER</a>
+
+            <!-- Environment Toggle (Sandbox/Live) -->
+            <div class="env-toggle" id="envToggle">
+                <button class="env-btn sandbox" onclick="setEnv('sandbox')">Sandbox</button>
+                <button class="env-btn live active" onclick="setEnv('live')">Live</button>
+            </div>
+
+            <nav class="nav-tabs">
+                <a href="{% url 'gpubrokeradmin:admin_dashboard' %}" class="nav-tab" style="text-decoration: none;">
+                    <span class="material-symbols-rounded">dashboard</span>
+                    <span class="nav-tab-label">Dashboard</span>
+                </a>
+                <a href="{% url 'gpubrokeradmin:admin_dashboard' %}?section=pods" class="nav-tab" style="text-decoration: none;">
+                    <span class="material-symbols-rounded">dns</span>
+                    <span class="nav-tab-label">Pods</span>
+                </a>
+                <a href="{% url 'gpubrokeradmin:admin_customers' %}" class="nav-tab" style="text-decoration: none;">
+                    <span class="material-symbols-rounded">group</span>
+                    <span class="nav-tab-label">Customers</span>
+                </a>
+                <a href="{% url 'gpubrokeradmin:admin_billing' %}" class="nav-tab" style="text-decoration: none;">
+                    <span class="material-symbols-rounded">payments</span>
+                    <span class="nav-tab-label">Billing</span>
+                </a>
+                <a href="{% url 'gpubrokeradmin:admin_costs' %}" class="nav-tab active" style="text-decoration: none;">
+                    <span class="material-symbols-rounded">analytics</span>
+                    <span class="nav-tab-label">Costs</span>
+                </a>
+            </nav>
+
+            <div class="user-menu">
+                <a href="{% url 'gpubrokeradmin:admin_dashboard' %}" class="btn btn-ghost" style="text-decoration: none;">
+                    <span class="material-symbols-rounded">arrow_back</span>
+                    Back
+                </a>
+            </div>
+        </header>
+
+        <main class="admin-main" id="costsContainer">
+            <div style="text-align: center; padding: 4rem;">
+                <span class="material-symbols-rounded"
+                    style="font-size: 3rem; color: var(--color-muted); animation: spin 1s linear infinite;">sync</span>
+                <p style="color: var(--color-muted); margin-top: 1rem;">Loading costs and metrics...</p>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // SECURITY: Immediate auth check - redirect to login if not authenticated
+        (function () {
+            const token = localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
+            if (!token) {
+                window.location.href = '{% url "gpubrokeradmin:admin_login" %}';
+                return;
+            }
+        })();
+
+        const API_BASE = '';
+
+        // Environment state management
+        let currentEnv = localStorage.getItem('admin_env') || 'live';
+
+        function setEnv(env) {
+            currentEnv = env;
+            localStorage.setItem('admin_env', env);
+            updateEnvUI();
+            location.reload();
+        }
+
+        function updateEnvUI() {
+            document.querySelectorAll('.env-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.classList.contains(currentEnv)) btn.classList.add('active');
+            });
+            document.body.classList.remove('env-sandbox', 'env-live');
+            document.body.classList.add(`env-${currentEnv}`);
+        }
+        document.addEventListener('DOMContentLoaded', updateEnvUI);
+
+        function getHeaders() {
+            const token = localStorage.getItem('admin_token') || sessionStorage.getItem('admin_token');
+            if (!token) { window.location.href = '{% url "gpubrokeradmin:admin_login" %}'; return {}; }
+            return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'X-Environment': currentEnv };
+        }
+
+        async function loadCosts() {
+            try {
+                const resp = await fetch(`${API_BASE}/api/v2/admin/costs`, { headers: getHeaders() });
+                if (!resp.ok) throw new Error('Unauthorized');
+                const data = await resp.json();
+                renderCosts(data);
+            } catch (e) {
+                document.getElementById('costsContainer').innerHTML = `
+                    <div class="card" style="text-align: center; padding: 3rem; max-width: 600px; margin: 0 auto;">
+                        <span class="material-symbols-rounded" style="font-size: 3rem; color: var(--color-error);">error</span>
+                        <h2 style="margin: 1rem 0 0.5rem;">Error Loading Costs</h2>
+                        <p style="color: var(--color-muted);">${e.message}</p>
+                        <a href="{% url 'gpubrokeradmin:admin_login' %}" class="btn btn-primary" style="margin-top: 1rem;">Login</a>
+                    </div>
+                `;
+            }
+        }
+
+        function renderCosts(data) {
+            const p = data.profitability || {};
+            const aws = data.aws_costs || {};
+            const ecs = data.ecs_costs || {};
+            const pod = data.per_pod_estimate || {};
+
+            const marginColor = p.margin_percent >= 50 ? '#22c55e' : p.margin_percent >= 20 ? '#eab308' : '#ef4444';
+
+            document.getElementById('costsContainer').innerHTML = `
+                <div style="max-width: 1200px; margin: 0 auto;">
+                    <!-- Header -->
+                    <div class="card" style="background: linear-gradient(135deg, ${p.is_profitable ? '#dcfce7' : '#fee2e2'} 0%, ${p.is_profitable ? '#f0fdf4' : '#fef2f2'} 100%); border-color: ${p.is_profitable ? '#bbf7d0' : '#fecaca'}; padding: 16px 20px; margin-bottom: 16px;">
+                        <div style="display: flex; align-items: center; gap: 16px;">
+                            <div style="width: 48px; height: 48px; border-radius: 50%; background: ${p.is_profitable ? '#22c55e' : '#ef4444'}; color: white; display: flex; align-items: center; justify-content: center;">
+                                <span class="material-symbols-rounded">${p.is_profitable ? 'trending_up' : 'trending_down'}</span>
+                            </div>
+                            <div style="flex: 1;">
+                                <div style="font-size: 1.5rem; font-weight: 700; color: ${p.is_profitable ? '#15803d' : '#dc2626'};">
+                                    ${p.is_profitable ? 'Profitable Business!' : 'Needs Optimization'}
+                                </div>
+                                <div style="color: ${p.is_profitable ? '#15803d' : '#dc2626'};">
+                                    Profit margin: ${p.margin_percent || 0}%
+                                </div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-size: 2rem; font-weight: 700; color: ${p.is_profitable ? '#22c55e' : '#ef4444'};">$${p.profit || 0}</div>
+                                <div style="font-size: 0.8rem; color: var(--color-muted);">Net Profit</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- KPI Grid -->
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px;">
+                        <div class="card" style="padding: 16px; text-align: center;">
+                            <div style="font-size: 0.7rem; color: var(--color-muted); text-transform: uppercase; margin-bottom: 8px;">Total Revenue</div>
+                            <div style="font-size: 1.75rem; font-weight: 700; color: var(--color-success);">$${p.revenue || data.total_revenue || 0}</div>
+                            <div style="font-size: 0.75rem; color: var(--color-muted);">Last month</div>
+                        </div>
+                        <div class="card" style="padding: 16px; text-align: center;">
+                            <div style="font-size: 0.7rem; color: var(--color-muted); text-transform: uppercase; margin-bottom: 8px;">AWS Costs</div>
+                            <div style="font-size: 1.75rem; font-weight: 700; color: var(--color-error);">$${aws.total || 0}</div>
+                            <div style="font-size: 0.75rem; color: var(--color-muted);">30 days</div>
+                        </div>
+                        <div class="card" style="padding: 16px; text-align: center;">
+                            <div style="font-size: 0.7rem; color: var(--color-muted); text-transform: uppercase; margin-bottom: 8px;">Active Pods</div>
+                            <div style="font-size: 1.75rem; font-weight: 700;">${data.active_pods || 0}</div>
+                            <div style="font-size: 0.75rem; color: var(--color-muted);">$${pod.monthly_cost || 0}/pod/month</div>
+                        </div>
+                        <div class="card" style="padding: 16px; text-align: center;">
+                            <div style="font-size: 0.7rem; color: var(--color-muted); text-transform: uppercase; margin-bottom: 8px;">Daily Cost</div>
+                            <div style="font-size: 1.75rem; font-weight: 700;">$${aws.total > 0 ? (aws.total / 30).toFixed(2) : '0.00'}</div>
+                            <div style="font-size: 0.75rem; color: var(--color-muted);">Average</div>
+                        </div>
+                    </div>
+                    
+                    <!-- 3-Column Detail Grid -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                        <!-- AWS Services Breakdown -->
+                        <div class="card" style="padding: 16px;">
+                            <div style="font-size: 0.7rem; font-weight: 600; color: var(--color-muted); text-transform: uppercase; margin-bottom: 12px;">AWS Service Costs</div>
+                            ${Object.entries(aws.by_service || {}).map(([service, cost]) => `
+                                <div class="cost-row">
+                                    <span>${service.replace('Amazon ', '').replace('AWS ', '')}</span>
+                                    <span style="font-weight: 600;">$${cost}</span>
+                                </div>
+                            `).join('') || '<div style="color: var(--color-muted); text-align: center; padding: 1rem;">No data</div>'}
+                        </div>
+                        
+                        <!-- Per Pod Estimate -->
+                        <div class="card" style="padding: 16px;">
+                            <div style="font-size: 0.7rem; font-weight: 600; color: var(--color-muted); text-transform: uppercase; margin-bottom: 12px;">Per Pod Cost (Estimated)</div>
+                            <div class="cost-row">
+                                <span>vCPU (${pod.vcpu || 0.25})</span>
+                                <span style="font-weight: 600;">$${pod.vcpu_cost || 0}</span>
+                            </div>
+                            <div class="cost-row">
+                                <span>Memory (${pod.memory_gb || 0.5}GB)</span>
+                                <span style="font-weight: 600;">$${pod.memory_cost || 0}</span>
+                            </div>
+                            <div class="cost-row" style="background: var(--color-bg); margin: 8px -16px -16px; padding: 12px 16px; border-radius: 0 0 var(--radius-md) var(--radius-md);">
+                                <span style="font-weight: 600;">Total/Month</span>
+                                <span style="font-weight: 700; color: var(--color-error);">$${pod.monthly_cost || 0}</span>
+                            </div>
+                        </div>
+                        
+                        <!-- ECS Costs -->
+                        <div class="card" style="padding: 16px;">
+                            <div style="font-size: 0.7rem; font-weight: 600; color: var(--color-muted); text-transform: uppercase; margin-bottom: 12px;">ECS Fargate Costs</div>
+                            <div class="cost-row">
+                                <span>Compute</span>
+                                <span style="font-weight: 600;">$${ecs.compute || 0}</span>
+                            </div>
+                            <div class="cost-row">
+                                <span>Storage</span>
+                                <span style="font-weight: 600;">$${ecs.storage || 0}</span>
+                            </div>
+                            <div class="cost-row" style="background: var(--color-bg); margin: 8px -16px -16px; padding: 12px 16px; border-radius: 0 0 var(--radius-md) var(--radius-md);">
+                                <span style="font-weight: 600;">Total ECS</span>
+                                <span style="font-weight: 700; color: var(--color-error);">$${ecs.total || 0}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Profit Gauge -->
+                    <div class="card" style="padding: 20px;">
+                        <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 24px; align-items: center;">
+                            <div style="text-align: center;">
+                                <div style="position: relative; width: 180px; height: 100px; margin: 0 auto;">
+                                    <svg viewBox="0 0 180 100" style="width: 100%;">
+                                        <path d="M10 90 A80 80 0 0 1 170 90" fill="none" stroke="#e5e7eb" stroke-width="12" stroke-linecap="round"/>
+                                        <path d="M10 90 A80 80 0 0 1 170 90" fill="none" stroke="${marginColor}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${(p.margin_percent || 0) * 2.5}, 250"/>
+                                    </svg>
+                                    <div style="position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); font-size: 1.75rem; font-weight: 700; color: ${marginColor};">${p.margin_percent || 0}%</div>
+                                </div>
+                                <div style="font-size: 0.8rem; color: var(--color-muted); margin-top: 8px;">Profit Margin</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.9rem; font-weight: 600; margin-bottom: 12px;">Financial Summary</div>
+                                <div class="cost-row">
+                                    <span>Total Revenue</span>
+                                    <span style="font-weight: 600; color: var(--color-success);">+$${p.revenue || 0}</span>
+                                </div>
+                                <div class="cost-row">
+                                    <span>AWS Costs</span>
+                                    <span style="font-weight: 600; color: var(--color-error);">-$${p.aws_costs || 0}</span>
+                                </div>
+                                <div class="cost-row">
+                                    <span>Other Costs (Domains, etc.)</span>
+                                    <span style="font-weight: 600; color: var(--color-error);">-$${p.other_costs || 0}</span>
+                                </div>
+                                <div class="cost-row" style="border-top: 2px solid var(--color-border); margin-top: 8px; padding-top: 12px;">
+                                    <span style="font-weight: 700;">Net Profit</span>
+                                    <span style="font-weight: 700; font-size: 1.25rem; color: ${p.profit >= 0 ? 'var(--color-success)' : 'var(--color-error)'};">$${p.profit || 0}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Auto-refresh indicator -->
+                    <div style="text-align: center; margin-top: 16px; font-size: 0.75rem; color: var(--color-muted);">
+                        <span class="material-symbols-rounded" style="font-size: 14px; vertical-align: middle;">schedule</span>
+                        Auto-refreshes every 60 seconds
+                    </div>
+                </div>
+            `;
+        }
+
+        loadCosts();
+        // Auto-refresh every 60 seconds
+        setInterval(loadCosts, 60000);
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Términos de Servicio - GPUBROKER</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-bg: #F3F4F6;
+            --color-surface: #FFFFFF;
+            --color-primary: #1F1F1F;
+            --color-accent: #22C55E;
+            --color-text: #374151;
+            --color-muted: #6B7280;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--color-bg);
+            color: var(--color-text);
+            line-height: 1.7;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid #E5E7EB;
+        }
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--color-primary);
+            text-decoration: none;
+            display: inline-block;
+            margin-bottom: 1rem;
+        }
+        h1 {
+            font-size: 2.5rem;
+            color: var(--color-primary);
+            margin-bottom: 0.5rem;
+        }
+        .last-updated {
+            color: var(--color-muted);
+            font-size: 0.9rem;
+        }
+        .card {
+            background: var(--color-surface);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        h2 {
+            font-size: 1.25rem;
+            color: var(--color-primary);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        h2::before {
+            content: '';
+            width: 4px;
+            height: 24px;
+            background: var(--color-accent);
+            border-radius: 2px;
+        }
+        h3 {
+            font-size: 1rem;
+            color: var(--color-primary);
+            margin: 1.5rem 0 0.75rem;
+        }
+        p { margin-bottom: 1rem; }
+        ul, ol {
+            margin: 1rem 0 1rem 1.5rem;
+        }
+        li { margin-bottom: 0.5rem; }
+        .highlight {
+            background: #DCFCE7;
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 4px solid var(--color-accent);
+            margin: 1rem 0;
+        }
+        .warning {
+            background: #FEF3C7;
+            padding: 1rem;
+            border-radius: 8px;
+            border-left: 4px solid #F59E0B;
+            margin: 1rem 0;
+        }
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--color-muted);
+            font-size: 0.875rem;
+            border-top: 1px solid #E5E7EB;
+            margin-top: 2rem;
+        }
+        .footer a {
+            color: var(--color-accent);
+            text-decoration: none;
+        }
+        a { color: var(--color-accent); }
+        @media (max-width: 768px) {
+            .container { padding: 1.5rem 1rem; }
+            h1 { font-size: 1.75rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="/" class="logo">GPUBROKER</a>
+            <h1>Términos de Servicio</h1>
+            <p class="last-updated">Última actualización: 29 de diciembre de 2024</p>
+        </div>
+
+        <div class="card">
+            <h2>1. Aceptación de los Términos</h2>
+            <p>Al acceder y utilizar los servicios de GPUBROKER (en adelante, "el Servicio", "la Plataforma" o "nosotros"), operado por <strong>SOMATECH</strong> (www.somatech.dev), usted acepta estar legalmente vinculado por estos Términos de Servicio.</p>
+            <p>Estos términos constituyen un contrato legalmente vinculante entre usted (el "Usuario", "Cliente" o "usted") y SOMATECH, con domicilio en la República del Ecuador.</p>
+            <div class="highlight">
+                <strong>Jurisdicción Aplicable:</strong> Este contrato se rige por las leyes de la República del Ecuador. Cualquier disputa será resuelta por los tribunales competentes de la ciudad de Quito, Ecuador.
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>2. Descripción del Servicio</h2>
+            <p>GPUBROKER es una plataforma de intermediación de recursos de computación GPU (Graphics Processing Unit) que proporciona:</p>
+            <ul>
+                <li>Acceso a infraestructura de computación en la nube mediante contenedores (PODs)</li>
+                <li>Servicios de inteligencia artificial y procesamiento de datos</li>
+                <li>APIs para integración con sistemas de terceros</li>
+                <li>Panel de administración para gestión de recursos</li>
+            </ul>
+            <h3>2.1 Niveles de Servicio</h3>
+            <p>Ofrecemos diferentes planes de suscripción (Trial, Basic, Pro, Corp, Enterprise) con distintos niveles de recursos, tokens y soporte técnico según se detalla en nuestra página de precios.</p>
+        </div>
+
+        <div class="card">
+            <h2>3. Registro y Cuenta de Usuario</h2>
+            <h3>3.1 Requisitos de Registro</h3>
+            <p>Para utilizar el Servicio, usted debe:</p>
+            <ul>
+                <li>Ser mayor de 18 años o tener capacidad legal para contratar</li>
+                <li>Proporcionar información veraz, completa y actualizada</li>
+                <li>Para usuarios ecuatorianos: proporcionar un RUC o cédula válidos</li>
+                <li>Mantener la confidencialidad de sus credenciales de acceso</li>
+            </ul>
+            <h3>3.2 Verificación de Identidad</h3>
+            <p>Nos reservamos el derecho de verificar su identidad mediante:</p>
+            <ul>
+                <li>Validación de RUC ante el Servicio de Rentas Internas (SRI)</li>
+                <li>Verificación de cédula de identidad</li>
+                <li>Verificación por SMS al número registrado</li>
+            </ul>
+            <h3>3.3 Responsabilidad de la Cuenta</h3>
+            <p>Usted es responsable de todas las actividades realizadas bajo su cuenta. Debe notificarnos inmediatamente cualquier uso no autorizado.</p>
+        </div>
+
+        <div class="card">
+            <h2>4. Pagos y Facturación</h2>
+            <h3>4.1 Precios y Moneda</h3>
+            <p>Todos los precios están expresados en Dólares de los Estados Unidos de América (USD), moneda de curso legal en Ecuador.</p>
+            <h3>4.2 Métodos de Pago</h3>
+            <p>Aceptamos pagos mediante:</p>
+            <ul>
+                <li>PayPal (tarjetas de crédito/débito internacionales)</li>
+                <li>Transferencia bancaria (para planes Enterprise)</li>
+            </ul>
+            <h3>4.3 Facturación Electrónica</h3>
+            <p>De conformidad con la normativa del SRI, emitiremos comprobantes electrónicos válidos para todos los pagos realizados por contribuyentes ecuatorianos.</p>
+            <h3>4.4 Política de Reembolsos</h3>
+            <div class="warning">
+                <strong>Sin Reembolsos:</strong> Debido a la naturaleza del servicio (recursos computacionales consumidos), NO ofrecemos reembolsos una vez activado el POD. Revise cuidadosamente su plan antes de contratar.
+            </div>
+            <p>Excepciones consideradas caso por caso:</p>
+            <ul>
+                <li>Fallas técnicas atribuibles exclusivamente a GPUBROKER</li>
+                <li>Cobros duplicados por error del sistema</li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <h2>5. Uso Aceptable</h2>
+            <h3>5.1 Usos Permitidos</h3>
+            <p>El Servicio está diseñado para:</p>
+            <ul>
+                <li>Procesamiento de datos empresariales legítimos</li>
+                <li>Desarrollo y entrenamiento de modelos de IA</li>
+                <li>Análisis de datos y business intelligence</li>
+                <li>Automatización de procesos empresariales</li>
+            </ul>
+            <h3>5.2 Usos Prohibidos</h3>
+            <p>Queda estrictamente prohibido utilizar el Servicio para:</p>
+            <ul>
+                <li>Actividades ilegales según la legislación ecuatoriana o internacional</li>
+                <li>Minería de criptomonedas sin autorización expresa</li>
+                <li>Distribución de malware, virus o código malicioso</li>
+                <li>Ataques informáticos, DDoS o hacking</li>
+                <li>Almacenamiento o distribución de contenido ilegal</li>
+                <li>Violación de derechos de propiedad intelectual</li>
+                <li>Spam, phishing o fraude electrónico</li>
+                <li>Procesamiento de datos personales sin consentimiento</li>
+            </ul>
+            <h3>5.3 Consecuencias del Uso Indebido</h3>
+            <p>El incumplimiento resultará en:</p>
+            <ul>
+                <li>Suspensión inmediata del servicio sin reembolso</li>
+                <li>Terminación permanente de la cuenta</li>
+                <li>Denuncia ante las autoridades competentes si corresponde</li>
+                <li>Acciones legales por daños y perjuicios</li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <h2>6. Propiedad Intelectual</h2>
+            <h3>6.1 Propiedad de GPUBROKER</h3>
+            <p>GPUBROKER, su logo, diseño, código fuente, documentación y todos los materiales relacionados son propiedad exclusiva de SOMATECH y están protegidos por las leyes de propiedad intelectual de Ecuador y tratados internacionales.</p>
+            <h3>6.2 Propiedad del Usuario</h3>
+            <p>Usted conserva todos los derechos sobre los datos, modelos y contenidos que procese a través del Servicio. GPUBROKER no reclama propiedad sobre su contenido.</p>
+            <h3>6.3 Licencia de Uso</h3>
+            <p>Le otorgamos una licencia limitada, no exclusiva, no transferible y revocable para usar el Servicio según estos términos.</p>
+        </div>
+
+        <div class="card">
+            <h2>7. Privacidad y Protección de Datos</h2>
+            <p>El tratamiento de sus datos personales se rige por nuestra <a href="privacy-policy.html">Política de Privacidad</a>, la cual cumple con:</p>
+            <ul>
+                <li>Ley Orgánica de Protección de Datos Personales del Ecuador (LOPDP)</li>
+                <li>Reglamento General de Protección de Datos (RGPD) de la UE cuando aplique</li>
+                <li>Estándares internacionales de seguridad de la información</li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <h2>8. Limitación de Responsabilidad</h2>
+            <h3>8.1 Exclusión de Garantías</h3>
+            <p>El Servicio se proporciona "TAL CUAL" y "SEGÚN DISPONIBILIDAD". No garantizamos:</p>
+            <ul>
+                <li>Disponibilidad ininterrumpida del servicio</li>
+                <li>Ausencia total de errores o defectos</li>
+                <li>Resultados específicos del uso del servicio</li>
+            </ul>
+            <h3>8.2 Límite de Responsabilidad</h3>
+            <div class="warning">
+                <strong>Límite Máximo:</strong> En ningún caso la responsabilidad total de GPUBROKER excederá el monto pagado por usted en los últimos 12 meses de servicio.
+            </div>
+            <h3>8.3 Exclusiones</h3>
+            <p>No seremos responsables por:</p>
+            <ul>
+                <li>Daños indirectos, incidentales o consecuentes</li>
+                <li>Pérdida de datos, beneficios o ingresos</li>
+                <li>Interrupciones causadas por terceros o fuerza mayor</li>
+                <li>Uso indebido del servicio por parte del usuario</li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <h2>9. Indemnización</h2>
+            <p>Usted acepta indemnizar y mantener indemne a SOMATECH, sus directores, empleados y agentes de cualquier reclamación, daño, pérdida o gasto (incluyendo honorarios de abogados) derivados de:</p>
+            <ul>
+                <li>Su uso del Servicio</li>
+                <li>Violación de estos Términos</li>
+                <li>Violación de derechos de terceros</li>
+                <li>Contenido que procese a través del Servicio</li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <h2>10. Terminación</h2>
+            <h3>10.1 Por el Usuario</h3>
+            <p>Puede cancelar su cuenta en cualquier momento desde el panel de administración. No habrá reembolso por el período no utilizado.</p>
+            <h3>10.2 Por GPUBROKER</h3>
+            <p>Podemos suspender o terminar su cuenta por:</p>
+            <ul>
+                <li>Violación de estos Términos</li>
+                <li>Falta de pago</li>
+                <li>Actividad sospechosa o fraudulenta</li>
+                <li>Requerimiento de autoridad competente</li>
+            </ul>
+            <h3>10.3 Efectos de la Terminación</h3>
+            <p>Tras la terminación:</p>
+            <ul>
+                <li>Se desactivará su POD inmediatamente</li>
+                <li>Tendrá 30 días para exportar sus datos</li>
+                <li>Después de 30 días, sus datos serán eliminados permanentemente</li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <h2>11. Modificaciones</h2>
+            <p>Nos reservamos el derecho de modificar estos Términos en cualquier momento. Le notificaremos cambios significativos mediante:</p>
+            <ul>
+                <li>Correo electrónico a la dirección registrada</li>
+                <li>Aviso en el panel de administración</li>
+                <li>Publicación en nuestro sitio web</li>
+            </ul>
+            <p>El uso continuado del Servicio después de las modificaciones constituye aceptación de los nuevos términos.</p>
+        </div>
+
+        <div class="card">
+            <h2>12. Disposiciones Generales</h2>
+            <h3>12.1 Ley Aplicable</h3>
+            <p>Este contrato se rige por las leyes de la República del Ecuador.</p>
+            <h3>12.2 Jurisdicción</h3>
+            <p>Las partes se someten a la jurisdicción de los tribunales ordinarios de la ciudad de Quito, Ecuador, renunciando a cualquier otro fuero que pudiera corresponderles.</p>
+            <h3>12.3 Resolución de Disputas</h3>
+            <p>Antes de iniciar acciones legales, las partes intentarán resolver cualquier disputa mediante negociación directa durante un período de 30 días.</p>
+            <h3>12.4 Divisibilidad</h3>
+            <p>Si alguna disposición de estos Términos es declarada inválida, las demás disposiciones permanecerán en pleno vigor.</p>
+            <h3>12.5 Cesión</h3>
+            <p>Usted no puede ceder sus derechos u obligaciones bajo estos Términos sin nuestro consentimiento previo por escrito.</p>
+            <h3>12.6 Acuerdo Completo</h3>
+            <p>Estos Términos, junto con la Política de Privacidad y Política de Cookies, constituyen el acuerdo completo entre las partes.</p>
+        </div>
+
+        <div class="card">
+            <h2>13. Contacto</h2>
+            <p>Para consultas sobre estos Términos de Servicio:</p>
+            <ul>
+                <li><strong>Empresa:</strong> SOMATECH</li>
+                <li><strong>Sitio Web:</strong> <a href="https://www.somatech.dev" target="_blank">www.somatech.dev</a></li>
+                <li><strong>Email:</strong> legal@somatech.dev</li>
+                <li><strong>Dirección:</strong> Quito, Ecuador</li>
+            </ul>
+        </div>
+
+        <div class="footer">
+            <p>© 2024 GPUBROKER. Todos los derechos reservados.</p>
+            <p>Desarrollado por <a href="https://www.somatech.dev" target="_blank">SOMATECH</a></p>
+            <p style="margin-top: 1rem;">
+                <a href="privacy-policy.html">Política de Privacidad</a> · 
+                <a href="cookie-policy.html">Política de Cookies</a> · 
+                <a href="/">Volver al Inicio</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

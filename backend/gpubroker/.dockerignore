@@ -1,0 +1,106 @@
+# ============================================
+# GPUBROKER Django - Docker Ignore
+# ============================================
+# ONLY essential runtime files should be in the image
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Environment files (NEVER in image)
+.env
+.env.*
+*.env
+
+# Python cache/bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.pytest_cache/
+.hypothesis/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# IDE/Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# Temporary files
+TMP/
+tmp/
+temp/
+*.tmp
+*.temp
+*.log
+*.bak
+*.backup
+
+# Test files (not needed in production image)
+tests/
+test_*.py
+*_test.py
+conftest.py
+pytest.ini
+run_tests.sh
+integration_test.py
+screenshots/
+test-results/
+
+# Documentation (not needed in image)
+*.md
+docs/
+README*
+CHANGELOG*
+LICENSE*
+
+# Build/packaging artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+MANIFEST
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Docker files (don't need docker files IN the image)
+Dockerfile
+Containerfile.bak
+docker-compose*.yml
+.docker/
+
+# Data/DB (should be in volumes, not image)
+*.sqlite3
+*.db
+data/
+
+# Frontend/Node (if accidentally present)
+node_modules/
+package*.json
+
+# Other non-essential
+*.sql
+*.csv
+create_test_migrations.py

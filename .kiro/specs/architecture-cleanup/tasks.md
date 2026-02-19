@@ -1,0 +1,225 @@
+# Implementation Plan
+
+- [x] 1. Write bug condition exploration test
+  - **Property 1: Fault Condition** - Duplicate Architecture Detection
+  - **CRITICAL**: This test MUST FAIL on unfixed code - failure confirms the bug exists
+  - **DO NOT attempt to fix the test or the code when it fails**
+  - **NOTE**: This test encodes the expected behavior - it will validate the fix when it passes after implementation
+  - **GOAL**: Surface counterexamples that demonstrate the duplicate architecture bug exists
+  - **Scoped PBT Approach**: Test concrete failing cases - OLD apps directory exists, Django settings point to OLD architecture, mixed imports present
+  - Test implementation details from Fault Condition in design:
+    - Verify `backend/gpubroker/apps/` directory exists (OLD architecture)
+    - Verify `backend/gpubroker/gpubrokerpod/` directory exists (POD SaaS architecture)
+    - Verify Django settings contain `apps.auth_app`, `apps.providers`, `apps.security`
+    - Verify ASGI imports from `apps.websocket_gateway.routing`
+    - Verify test files import from `apps.providers.adapters.registry`
+    - Verify grep search finds `from apps\.` pattern in codebase
+  - The test assertions should match the Expected Behavior Properties from design:
+    - Assert OLD apps directory should NOT exist after fix
+    - Assert Django settings should reference POD SaaS apps after fix
+    - Assert ASGI should import from POD SaaS after fix
+    - Assert no OLD imports should remain after fix
+  - Run test on UNFIXED code
+  - **EXPECTED OUTCOME**: Test FAILS (this is correct - it proves the bug exists)
+  - Document counterexamples found:
+    - List specific files with OLD imports
+    - List specific Django settings pointing to OLD architecture
+    - List specific ASGI configuration issues
+  - Mark task complete when test is written, run, and failure is documented
+  - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7_
+
+- [x] 2. Write preservation property tests (BEFORE implementing fix)
+  - **Property 2: Preservation** - POD SaaS Functionality Unchanged
+  - **IMPORTANT**: Follow observation-first methodology
+  - Observe behavior on UNFIXED code for POD SaaS features (if accessible):
+    - Note: Since Django settings point to OLD architecture, POD SaaS features may not be fully accessible
+    - Document current state of POD SaaS apps in `gpubrokerpod/`
+    - Document expected behavior based on POD SaaS code analysis
+  - Write property-based tests capturing POD SaaS behavior patterns from Preservation Requirements:
+    - Test POD SaaS authentication functionality (JWT tokens, user sessions)
+    - Test POD SaaS provider adapters (GPU offer aggregation)
+    - Test POD SaaS billing (payment processing, subscriptions)
+    - Test POD SaaS deployment (GPU pod provisioning)
+    - Test POD SaaS dashboard (metrics, analytics)
+    - Test POD SaaS websocket gateway (real-time communication)
+    - Test POD SaaS admin interfaces (model display)
+    - Test POD SaaS API endpoints (response correctness)
+  - Property-based testing generates many test cases for stronger guarantees
+  - Run tests on UNFIXED code (may need to temporarily adjust Django settings to test POD SaaS)
+  - **EXPECTED OUTCOME**: Tests PASS on POD SaaS code (confirms baseline behavior to preserve)
+  - Mark task complete when tests are written, run, and passing on POD SaaS code
+  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 3.10_
+
+- [x] 3. Fix for duplicate architecture cleanup
+
+  - [x] 3.1 Backup OLD architecture before removal
+    - Create backup of `backend/gpubroker/apps/` directory
+    - Store backup outside project directory (e.g., `~/gpubroker-apps-backup/`)
+    - Document backup location for recovery if needed
+    - Verify backup is complete and accessible
+    - _Bug_Condition: hasDuplicateArchitecture(project) where old_apps_exist AND pod_apps_exist AND settings_point_to_old_
+    - _Expected_Behavior: Backup exists for recovery, no data loss risk_
+    - _Preservation: No impact on running system during backup_
+    - _Requirements: Risk mitigation strategy_
+
+  - [x] 3.2 Analyze and document OLD imports
+    - Run grep search: `grep -r "from apps\." backend/gpubroker/ --include="*.py"`
+    - Document all files with OLD imports (save to `.kiro/specs/architecture-cleanup/old-imports.txt`)
+    - Categorize imports by type (settings, tests, services, etc.)
+    - Identify POD SaaS equivalents for each OLD import
+    - Create import mapping document for reference during updates
+    - _Bug_Condition: has_old_imports where GrepSearch("from apps\.", "**/*.py").count > 0_
+    - _Expected_Behavior: Complete inventory of OLD imports for systematic replacement_
+    - _Preservation: No code changes yet, analysis only_
+    - _Requirements: 1.3, 1.5_
+
+  - [x] 3.3 Update Django settings to reference POD SaaS apps
+    - File: `backend/gpubroker/gpubroker/settings/base.py`
+    - Remove OLD app references from INSTALLED_APPS:
+      - Remove `apps.auth_app`
+      - Remove `apps.providers`
+      - Remove `apps.security`
+      - Remove any other `apps.*` references
+    - Add POD SaaS app references to INSTALLED_APPS:
+      - Add `gpubrokerpod.gpubrokerapp.apps.auth_app`
+      - Add `gpubrokerpod.gpubrokerapp.apps.providers`
+      - Add `gpubrokerpod.gpubrokerapp.apps.billing`
+      - Add `gpubrokerpod.gpubrokerapp.apps.deployment`
+      - Add `gpubrokerpod.gpubrokerapp.apps.dashboard`
+      - Add `gpubrokerpod.gpubrokerapp.apps.websocket_gateway`
+      - Add `gpubrokerpod.gpubrokerapp.apps.pod_config`
+      - Add `gpubrokerpod.gpubrokerapp.apps.kpi`
+      - Add `gpubrokerpod.gpubrokerapp.apps.ai_assistant`
+      - Add `gpubrokerpod.gpubrokerapp.apps.math_core`
+    - Verify AUTH_USER_MODEL setting (should resolve to POD SaaS User model)
+    - Check for any middleware referencing OLD architecture
+    - Run `python manage.py check` to verify configuration
+    - _Bug_Condition: settings_point_to_old where Contains(settings_content, "apps.auth_app")_
+    - _Expected_Behavior: Django settings reference only POD SaaS apps from gpubrokerpod_
+    - _Preservation: All POD SaaS apps now properly registered in Django_
+    - _Requirements: 2.1, 2.6_
+
+  - [x] 3.4 Update ASGI configuration for websocket routing
+    - File: `backend/gpubroker/gpubroker/asgi.py`
+    - Change import from `from apps.websocket_gateway.routing import websocket_urlpatterns`
+    - To: `from gpubrokerpod.gpubrokerapp.apps.websocket_gateway.routing import websocket_urlpatterns`
+    - Verify POD SaaS websocket_gateway has `routing.py` with `websocket_urlpatterns`
+    - If routing.py missing, check POD SaaS websocket implementation
+    - Test ASGI configuration loads without errors
+    - _Bug_Condition: ASGI imports from OLD architecture apps.websocket_gateway_
+    - _Expected_Behavior: ASGI imports websocket routing from POD SaaS architecture_
+    - _Preservation: Websocket connections use POD SaaS implementation_
+    - _Requirements: 2.4_
+
+  - [x] 3.5 Update test imports to POD SaaS architecture
+    - Update `backend/gpubroker/tests/test_providers.py`:
+      - Change `from apps.providers.adapters.registry import ProviderRegistry`
+      - To: `from gpubrokerpod.gpubrokerapp.apps.providers.services import ProviderService`
+      - Update model imports to POD SaaS paths
+      - Update service imports to POD SaaS paths
+    - Update `backend/gpubroker/tests/test_providers_simple.py` (same pattern)
+    - Update `backend/gpubroker/tests/test_provider_data.py` (same pattern)
+    - Update `backend/gpubroker/tests/test_live_analysis.py` (same pattern)
+    - Update `backend/gpubroker/tests/test_final_integration.py` (same pattern)
+    - Update `backend/gpubroker/tests/test_real_data.py` (same pattern)
+    - Use import mapping document from step 3.2 for reference
+    - Run tests after each file update to catch issues early
+    - _Bug_Condition: Tests import from OLD architecture instead of POD SaaS_
+    - _Expected_Behavior: All tests import from POD SaaS architecture only_
+    - _Preservation: Tests verify POD SaaS functionality, not OLD architecture_
+    - _Requirements: 2.3, 2.5_
+
+  - [x] 3.6 Update any remaining OLD imports in application code
+    - Use grep results from step 3.2 to find remaining OLD imports
+    - Update imports in services, views, models, admin files
+    - Check for imports in:
+      - `backend/gpubroker/gpubroker/urls.py`
+      - `backend/gpubroker/config/` directory
+      - Any middleware or utility files
+    - Replace all `from apps.*` with `from gpubrokerpod.gpubrokerapp.apps.*`
+    - Run `python manage.py check` after each batch of updates
+    - Verify no OLD imports remain: `grep -r "from apps\." backend/gpubroker/ --include="*.py"`
+    - _Bug_Condition: Application code has mixed imports from both architectures_
+    - _Expected_Behavior: All application code imports from POD SaaS only_
+    - _Preservation: Application functionality unchanged, only import paths updated_
+    - _Requirements: 2.3_
+
+  - [x] 3.7 Verify Django migrations are clean
+    - Check if OLD apps have migrations: `ls backend/gpubroker/apps/*/migrations/`
+    - Check POD SaaS migrations: `ls backend/gpubroker/gpubrokerpod/gpubrokerapp/apps/*/migrations/`
+    - Run `python manage.py showmigrations` to see migration status
+    - Identify any migration conflicts between OLD and POD SaaS
+    - If conflicts exist, document them for resolution
+    - Run `python manage.py migrate --plan` to verify migration plan is clean
+    - Do NOT apply migrations yet, just verify plan
+    - _Bug_Condition: OLD apps may have migrations conflicting with POD SaaS_
+    - _Expected_Behavior: Migration plan is clean with no conflicts_
+    - _Preservation: Database integrity maintained, no data loss_
+    - _Requirements: 2.7, 3.8_
+
+  - [x] 3.8 Remove OLD architecture directory
+    - Verify backup from step 3.1 is accessible
+    - Verify no OLD imports remain from step 3.6
+    - Verify Django settings updated from step 3.3
+    - Verify ASGI updated from step 3.4
+    - Verify tests updated from step 3.5
+    - Remove OLD architecture: `rm -rf backend/gpubroker/apps/`
+    - Verify directory is removed: `ls backend/gpubroker/apps/` should fail
+    - Run `python manage.py check` to ensure no errors
+    - _Bug_Condition: old_apps_exist where DirectoryExists("backend/gpubroker/apps/")_
+    - _Expected_Behavior: OLD architecture completely removed, only POD SaaS remains_
+    - _Preservation: POD SaaS functionality unaffected by OLD removal_
+    - _Requirements: 2.2, 2.8_
+
+  - [x] 3.9 Verify bug condition exploration test now passes
+    - **Property 1: Expected Behavior** - Single Architecture Verified
+    - **IMPORTANT**: Re-run the SAME test from task 1 - do NOT write a new test
+    - The test from task 1 encodes the expected behavior
+    - When this test passes, it confirms the expected behavior is satisfied
+    - Run bug condition exploration test from step 1
+    - Verify assertions pass:
+      - OLD apps directory does NOT exist
+      - Django settings reference POD SaaS apps only
+      - ASGI imports from POD SaaS only
+      - No OLD imports remain in codebase
+      - Django check passes
+      - All services can start
+    - **EXPECTED OUTCOME**: Test PASSES (confirms bug is fixed)
+    - Document test results and any issues found
+    - _Requirements: Expected Behavior Properties from design (2.1-2.8)_
+
+  - [x] 3.10 Verify preservation tests still pass
+    - **Property 2: Preservation** - POD SaaS Functionality Unchanged
+    - **IMPORTANT**: Re-run the SAME tests from task 2 - do NOT write new tests
+    - Run preservation property tests from step 2
+    - Verify all POD SaaS features work correctly:
+      - Authentication (JWT tokens, user sessions)
+      - Provider adapters (GPU offer aggregation)
+      - Billing (payment processing, subscriptions)
+      - Deployment (GPU pod provisioning)
+      - Dashboard (metrics, analytics)
+      - Websocket gateway (real-time communication)
+      - Admin interfaces (model display)
+      - API endpoints (response correctness)
+    - **EXPECTED OUTCOME**: Tests PASS (confirms no regressions)
+    - Confirm all tests still pass after fix (no regressions)
+    - Document any issues or unexpected behavior
+    - _Requirements: Preservation Requirements from design (3.1-3.10)_
+
+- [x] 4. Checkpoint - Ensure all tests pass and services start
+  - Run full test suite: `pytest backend/gpubroker/tests/`
+  - Verify all tests pass with no failures
+  - Run Django check: `python manage.py check`
+  - Verify no errors or warnings
+  - Start Django development server: `python manage.py runserver`
+  - Verify server starts without errors
+  - Test key POD SaaS features manually:
+    - Access Django admin at http://localhost:8000/admin
+    - Test API endpoints at http://localhost:8000/api/v2/
+    - Test websocket connections if possible
+  - Run Docker Compose if available: `cd infrastructure/docker && ./start.sh`
+  - Verify all services start correctly
+  - Access main application at http://localhost:10355
+  - Document any issues or questions for user
+  - Ask user if questions arise or if additional verification needed
+  - _Requirements: All requirements validated, system fully functional_

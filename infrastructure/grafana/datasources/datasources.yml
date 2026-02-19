@@ -1,0 +1,42 @@
+# ============================================
+# GPUBROKER Grafana Datasources
+# Production-Grade Configuration
+# ============================================
+
+apiVersion: 1
+
+datasources:
+  # Prometheus - Primary metrics source
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      timeInterval: "15s"
+      httpMethod: POST
+      manageAlerts: true
+      prometheusType: Prometheus
+      prometheusVersion: "2.45.0"
+
+  # PostgreSQL - Direct database access
+  - name: PostgreSQL
+    type: postgres
+    url: postgres:5432
+    database: gpubroker
+    user: gpubroker
+    secureJsonData:
+      password: ${POSTGRES_PASSWORD}
+    jsonData:
+      sslmode: disable
+      maxOpenConns: 5
+      maxIdleConns: 2
+      connMaxLifetime: 14400
+    editable: false
+
+  # Redis - Cache metrics
+  - name: Redis
+    type: redis-datasource
+    url: redis://redis:6379
+    editable: false

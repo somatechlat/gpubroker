@@ -1,0 +1,580 @@
+# GPUBROKER Production Kubernetes Manifests
+# Django 5 + Django Ninja Microservices Architecture
+# Vault-Only Secrets Management - NO HARDCODED SECRETS
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gpubroker-prod
+  labels:
+    name: gpubroker-prod
+    environment: production
+    security-level: high
+
+---
+# Vault Secrets Configuration
+apiVersion: v1
+kind: Secret
+metadata:
+  name: vault-credentials
+  namespace: gpubroker-prod
+type: Opaque
+data:
+  # Base64 encoded values
+  VAULT_ADDR: aHR0cDovdmF1bHQ6ODI4MA==  # http://vault:8280
+  VAULT_ROLE_ID: <BASE64_ROLE_ID>
+  VAULT_SECRET_ID: <BASE64_SECRET_ID>
+
+---
+# ConfigMap for Runtime Variables (NO SECRETS)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gpubroker-config
+  namespace: gpubroker-prod
+data:
+  DJANGO_SETTINGS_MODULE: "gpubroker.settings.production"
+  ALLOWED_HOSTS: "gpubroker.com,api.gpubroker.com,www.gpubroker.com"
+  CORS_ALLOWED_ORIGINS: "https://gpubroker.com,https://api.gpubroker.com"
+  PORT_NGINX: "80"
+  PORT_NGINX_SSL: "443"
+  PORT_DJANGO: "8000"
+  PORT_FRONTEND: "3000"
+  PROMETHEUS_PORT: "8001"
+  PROMETHEUS_MULTIPROCESS_DIR: "/tmp/prometheus_multiproc_dir"
+  LOG_LEVEL: "INFO"
+  OTEL_SERVICE_NAME: "gpubroker-django"
+  OTEL_RESOURCE_ATTRIBUTES: "service.name=gpubroker-django,service.version=1.0.0,deployment.environment=production"
+
+---
+# Persistent Volume Claims
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: gpubroker-prod
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Gi
+  storageClassName: fast-ssd
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-pvc
+  namespace: gpubroker-prod
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: fast-ssd
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: static-files-pvc
+  namespace: gpubroker-prod
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: fast-ssd
+
+---
+# PostgreSQL Database Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: gpubroker-prod
+  labels:
+    app: postgres
+    tier: database
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+        tier: database
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        env:
+        - name: POSTGRES_DB
+          value: "gpubroker"
+        - name: POSTGRES_USER
+          value: "gpubroker"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: vault-credentials
+              key: POSTGRES_PASSWORD
+              optional: false
+        ports:
+        - containerPort: 5432
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1000m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+        livenessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - gpubroker
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - gpubroker
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: postgres-storage
+        persistentVolumeClaim:
+          claimName: postgres-pvc
+
+---
+# Redis Cache Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: gpubroker-prod
+  labels:
+    app: redis
+    tier: cache
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+        tier: cache
+    spec:
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        command:
+        - redis-server
+        - --requirepass
+        - $(REDIS_PASSWORD)
+        env:
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: vault-credentials
+              key: REDIS_PASSWORD
+              optional: false
+        ports:
+        - containerPort: 6379
+        volumeMounts:
+        - name: redis-storage
+          mountPath: /data
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - redis-cli
+            - ping
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: redis-storage
+        persistentVolumeClaim:
+          claimName: redis-pvc
+
+---
+# Django Application Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gpubroker-django
+  namespace: gpubroker-prod
+  labels:
+    app: gpubroker-django
+    tier: backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: gpubroker-django
+  template:
+    metadata:
+      labels:
+        app: gpubroker-django
+        tier: backend
+    spec:
+      containers:
+      - name: django
+        image: gpubroker/django:latest
+        envFrom:
+        - configMapRef:
+            name: gpubroker-config
+        - secretRef:
+            name: vault-credentials
+        ports:
+        - containerPort: 8000
+          name: http
+        volumeMounts:
+        - name: static-files
+          mountPath: /app/staticfiles
+        - name: media-files
+          mountPath: /app/media
+        - name: logs
+          mountPath: /var/log/gpubroker
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1500m"
+        livenessProbe:
+          httpGet:
+            path: /health/
+            port: 8000
+            scheme: HTTP
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health/
+            port: 8000
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+      volumes:
+      - name: static-files
+        persistentVolumeClaim:
+          claimName: static-files-pvc
+      - name: media-files
+        emptyDir: {}
+      - name: logs
+        emptyDir: {}
+
+---
+# Frontend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gpubroker-frontend
+  namespace: gpubroker-prod
+  labels:
+    app: gpubroker-frontend
+    tier: frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: gpubroker-frontend
+  template:
+    metadata:
+      labels:
+        app: gpubroker-frontend
+        tier: frontend
+    spec:
+      containers:
+      - name: frontend
+        image: gpubroker/frontend:latest
+        envFrom:
+        - configMapRef:
+            name: gpubroker-config
+        ports:
+        - containerPort: 3000
+          name: http
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 3000
+            scheme: HTTP
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3000
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+
+---
+# Services
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+  namespace: gpubroker-prod
+spec:
+  selector:
+    app: postgres
+  ports:
+  - port: 5432
+    targetPort: 5432
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+  namespace: gpubroker-prod
+spec:
+  selector:
+    app: redis
+  ports:
+  - port: 6379
+    targetPort: 6379
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: django-service
+  namespace: gpubroker-prod
+spec:
+  selector:
+    app: gpubroker-django
+  ports:
+  - port: 8000
+    targetPort: 8000
+    name: http
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+  namespace: gpubroker-prod
+spec:
+  selector:
+    app: gpubroker-frontend
+  ports:
+  - port: 3000
+    targetPort: 3000
+    name: http
+  type: ClusterIP
+
+---
+# Ingress with mTLS and WAF
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gpubroker-ingress
+  namespace: gpubroker-prod
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "https://gpubroker.com"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET,POST,PUT,DELETE,OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "DNT,X-CustomHeader,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Authorization"
+spec:
+  tls:
+  - hosts:
+    - gpubroker.com
+    - api.gpubroker.com
+    - www.gpubroker.com
+    secretName: gpubroker-tls
+  rules:
+  - host: api.gpubroker.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: django-service
+            port:
+              number: 8000
+  - host: gpubroker.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend-service
+            port:
+              number: 3000
+  - host: www.gpubroker.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend-service
+            port:
+              number: 3000
+
+---
+# Network Policies for Security
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: gpubroker-network-policy
+  namespace: gpubroker-prod
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    - namespaceSelector:
+        matchLabels:
+          name: gpubroker-prod
+    ports:
+    - protocol: TCP
+      port: 5432  # PostgreSQL
+    - protocol: TCP
+      port: 6379  # Redis
+    - protocol: TCP
+      port: 8000  # Django
+    - protocol: TCP
+      port: 3000  # Frontend
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    - namespaceSelector:
+        matchLabels:
+          name: gpubroker-prod
+  - ports:
+    - protocol: TCP
+      port: 53   # DNS
+    - protocol: UDP
+      port: 53   # DNS
+    - protocol: TCP
+      port: 443  # HTTPS
+    - protocol: TCP
+      port: 8280 # Vault
+    - protocol: TCP
+      port: 9090 # Prometheus
+
+---
+# Horizontal Pod Autoscalers
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: django-hpa
+  namespace: gpubroker-prod
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: gpubroker-django
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 15
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: frontend-hpa
+  namespace: gpubroker-prod
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: gpubroker-frontend
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80

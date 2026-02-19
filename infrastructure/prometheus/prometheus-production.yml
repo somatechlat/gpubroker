@@ -1,0 +1,314 @@
+# GPUBROKER Production Prometheus Configuration
+# Django 5 + Django Ninja Monitoring Stack
+# Complete Observability for Production Infrastructure
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'gpubroker-prod'
+    environment: 'production'
+
+rule_files:
+  - "/etc/prometheus/rules/*.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+# Scrape Configurations
+scrape_configs:
+  # Prometheus Self-Monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 30s
+    metrics_path: /metrics
+
+  # Django Application Metrics
+  - job_name: 'gpubroker-django'
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names:
+            - gpubroker-prod
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        action: keep
+        regex: gpubroker-django
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+        target_label: __metrics_path__
+        regex: (.+)
+      - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+        target_label: __address__
+        regex: ([^:]+)(?::\d+)?;:\2
+        replacement: $1:8001
+      - source_labels: [__meta_kubernetes_namespace]
+        target_label: namespace
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        target_label: app
+      - source_labels: [__meta_kubernetes_pod_name]
+        target_label: pod
+    metrics_path: /metrics
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # PostgreSQL Metrics
+  - job_name: 'postgres-exporter'
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names:
+            - gpubroker-prod
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        action: keep
+        regex: postgres
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: localhost:9187
+    static_configs:
+      - targets: []
+    metrics_path: /metrics
+    scrape_interval: 30s
+
+  # Redis Metrics
+  - job_name: 'redis-exporter'
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names:
+            - gpubroker-prod
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        action: keep
+        regex: redis
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: localhost:9121
+    metrics_path: /metrics
+    scrape_interval: 30s
+
+  # Nginx Metrics
+  - job_name: 'nginx-exporter'
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names:
+            - ingress-nginx
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        action: keep
+        regex: nginx-ingress-controller
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: localhost:9113
+    metrics_path: /metrics
+    scrape_interval: 30s
+
+  # Kubernetes Nodes
+  - job_name: 'kubernetes-nodes'
+    kubernetes_sd_configs:
+      - role: node
+    relabel_configs:
+      - action: labelmap
+        regex: __meta_kubernetes_node_label_(.+)
+        replacement: $1
+      - target_label: __address__
+        replacement: kubernetes.default.svc:443
+      - source_labels: [__meta_kubernetes_node_name]
+        regex: (.+)
+        target_label: node
+        replacement: $1
+      - source_labels: [__meta_kubernetes_node_address_InternalIP]
+        regex: (.+)
+        target_label: __address__
+        replacement: $1:9100
+    scheme: https
+    tls_config:
+      insecure_skip_verify: true
+    scrape_interval: 30s
+
+  # Kubernetes Pods
+  - job_name: 'kubernetes-pods'
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names:
+            - gpubroker-prod
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+        target_label: __metrics_path__
+        regex: (.+)
+      - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+        target_label: __address__
+        regex: ([^:]+)(?::\d+)?;:\2
+        replacement: $1:9100
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
+        replacement: $1
+      - source_labels: [__meta_kubernetes_namespace]
+        target_label: namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        target_label: pod
+    metrics_path: /metrics
+    scrape_interval: 30s
+
+# Recording Rules for Enhanced Monitoring
+recording_rules:
+  # Application Performance Rules
+  - name: gpubroker.rules
+    interval: 30s
+    rules:
+      # HTTP Request Rate
+      - record: gpubroker:http_requests:rate5m
+        expr: rate(django_http_requests_total[5m]) * 60
+        
+      # HTTP Error Rate
+      - record: gpubroker:http_errors:rate5m
+        expr: rate(django_http_errors_total[5m]) * 60
+        
+      # Response Time Quantiles
+      - record: gpubroker:http_request_duration:seconds:p50_5m
+        expr: histogram_quantile(0.50, rate(django_http_request_duration_seconds_bucket[5m]))
+        
+      - record: gpubroker:http_request_duration:seconds:p95_5m
+        expr: histogram_quantile(0.95, rate(django_http_request_duration_seconds_bucket[5m]))
+        
+      - record: gpubroker:http_request_duration:seconds:p99_5m
+        expr: histogram_quantile(0.99, rate(django_http_request_duration_seconds_bucket[5m]))
+
+      # Database Performance
+      - record: gpubroker:db_connections:current
+        expr: django_db_connections_current
+        
+      - record: gpubroker:db_queries:rate5m
+        expr: rate(django_db_queries_total[5m]) * 60
+
+      # Cache Performance
+      - record: gpubroker:cache_hits:rate5m
+        expr: rate(django_cache_hits_total[5m]) * 60
+        
+      - record: gpubroker:cache_misses:rate5m
+        expr: rate(django_cache_misses_total[5m]) * 60
+        
+      - record: gpubroker:cache_hit_ratio:5m
+        expr: (gpubroker:cache_hits:rate5m / (gpubroker:cache_hits:rate5m + gpubroker:cache_misses:rate5m)) * 100
+
+# Alerting Rules
+alerting_rules:
+  - name: gpubroker-alerts
+    rules:
+      # High Error Rate Alert
+      - alert: GpubrokerHighErrorRate
+        expr: gpubroker:http_errors:rate5m > 10
+        for: 2m
+        labels:
+          severity: warning
+          service: gpubroker-django
+        annotations:
+          summary: "High error rate detected in GPUBROKER"
+          description: "Error rate is {{ $value }} errors/minute for the last 2 minutes."
+
+      # Critical Error Rate Alert
+      - alert: GpubrokerCriticalErrorRate
+        expr: gpubroker:http_errors:rate5m > 50
+        for: 1m
+        labels:
+          severity: critical
+          service: gpubroker-django
+        annotations:
+          summary: "Critical error rate in GPUBROKER"
+          description: "Error rate is {{ $value }} errors/minute for the last 1 minute."
+
+      # High Response Time Alert
+      - alert: GpubrokerHighResponseTime
+        expr: gpubroker:http_request_duration:seconds:p95_5m > 2
+        for: 5m
+        labels:
+          severity: warning
+          service: gpubroker-django
+        annotations:
+          summary: "High response time detected"
+          description: "95th percentile response time is {{ $value }} seconds for the last 5 minutes."
+
+      # Database Connection Issues
+      - alert: GpubrokerDatabaseConnectionHigh
+        expr: gpubroker:db_connections:current > 80
+        for: 3m
+        labels:
+          severity: warning
+          service: postgres
+        annotations:
+          summary: "High database connection count"
+          description: "Database connections are at {{ $value }} (threshold: 80)."
+
+      # Cache Hit Rate Low
+      - alert: GpubrokerLowCacheHitRatio
+        expr: gpubroker:cache_hit_ratio:5m < 80
+        for: 5m
+        labels:
+          severity: warning
+          service: redis
+        annotations:
+          summary: "Low cache hit ratio"
+          description: "Cache hit ratio is {{ $value }}% (threshold: 80%)."
+
+      # Service Down Alert
+      - alert: GpubrokerServiceDown
+        expr: up{job=~"gpubroker-.*"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: gpubroker
+        annotations:
+          summary: "GPUBROKER service is down"
+          description: "Service {{ $labels.job }} has been down for more than 1 minute."
+
+      # Memory Usage Alert
+      - alert: GpubrokerHighMemoryUsage
+        expr: (container_memory_usage_bytes{pod=~"gpubroker-.*"} / container_spec_memory_limit_bytes) * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+          service: gpubroker
+        annotations:
+          summary: "High memory usage detected"
+          description: "Pod {{ $labels.pod }} memory usage is {{ $value }}%."
+
+      # CPU Usage Alert
+      - alert: GpubrokerHighCpuUsage
+        expr: (rate(container_cpu_usage_seconds_total{pod=~"gpubroker-.*"}[5m]) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          service: gpubroker
+        annotations:
+          summary: "High CPU usage detected"
+          description: "Pod {{ $labels.pod }} CPU usage is {{ $value }}%."
