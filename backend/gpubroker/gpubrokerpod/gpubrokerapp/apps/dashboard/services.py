@@ -107,12 +107,35 @@ async def get_quick_stats(user_id: str) -> Dict[str, Any]:
 
 async def get_user_pods(user_id: str, limit: int = 10) -> List[Dict[str, Any]]:
     """
-    Get user's pods.
+    Get user's GPU pods from deployment system.
     
-    For now returns empty list - will be populated when pod management is implemented.
+    Args:
+        user_id: User UUID
+        limit: Maximum number of pods to return
+        
+    Returns:
+        List of pod dictionaries
     """
-    # TODO: Implement when pod management models are created
-    return []
+    from gpubrokerpod.gpubrokerapp.apps.deployment.models import PodDeploymentConfig
+    
+    pods = await sync_to_async(list)(
+        PodDeploymentConfig.objects.filter(user_id=user_id)
+        .order_by('-created_at')[:limit]
+    )
+    
+    return [
+        {
+            "pod_id": str(pod.id),
+            "name": pod.name,
+            "provider": pod.provider,
+            "gpu_type": pod.gpu_type,
+            "gpu_count": pod.gpu_count,
+            "status": pod.status,
+            "created_at": pod.created_at,
+            "cost_per_hour": float(pod.cost_per_hour) if pod.cost_per_hour else 0.0,
+        }
+        for pod in pods
+    ]
 
 
 async def get_billing_summary(user_id: str) -> Dict[str, Any]:
@@ -150,12 +173,38 @@ async def get_billing_summary(user_id: str) -> Dict[str, Any]:
 
 async def get_recent_activity(user_id: str, limit: int = 10) -> List[Dict[str, Any]]:
     """
-    Get recent activity for user.
+    Get recent activity for user from deployment and billing events.
     
-    For now returns empty list - will be populated when activity logging is implemented.
+    Args:
+        user_id: User UUID
+        limit: Maximum number of activities to return
+        
+    Returns:
+        List of activity dictionaries
     """
-    # TODO: Implement activity logging
-    return []
+    from gpubrokerpod.gpubrokerapp.apps.deployment.models import PodDeploymentConfig
+    
+    # Get recent pod deployments as activity
+    recent_pods = await sync_to_async(list)(
+        PodDeploymentConfig.objects.filter(user_id=user_id)
+        .order_by('-created_at')[:limit]
+    )
+    
+    activities = []
+    for pod in recent_pods:
+        activities.append({
+            "type": "pod_deployment",
+            "description": f"Deployed {pod.gpu_type} pod: {pod.name}",
+            "timestamp": pod.created_at,
+            "status": pod.status,
+            "metadata": {
+                "pod_id": str(pod.id),
+                "provider": pod.provider,
+                "gpu_count": pod.gpu_count,
+            }
+        })
+    
+    return sorted(activities, key=lambda x: x['timestamp'], reverse=True)[:limit]
 
 
 async def get_provider_health() -> List[Dict[str, Any]]:
@@ -215,10 +264,32 @@ async def get_pod_detail(user_id: str, pod_id: str) -> Optional[Dict[str, Any]]:
         pod_id: Pod UUID
         
     Returns:
-        Pod detail dict or None
+        Pod detail dict or None if not found
     """
-    # TODO: Implement when pod management models are created
-    return None
+    from gpubrokerpod.gpubrokerapp.apps.deployment.models import PodDeploymentConfig
+    
+    try:
+        pod = await sync_to_async(PodDeploymentConfig.objects.get)(
+            id=pod_id,
+            user_id=user_id
+        )
+        
+        return {
+            "pod_id": str(pod.id),
+            "name": pod.name,
+            "provider": pod.provider,
+            "gpu_type": pod.gpu_type,
+            "gpu_count": pod.gpu_count,
+            "status": pod.status,
+            "created_at": pod.created_at,
+            "updated_at": pod.updated_at,
+            "cost_per_hour": float(pod.cost_per_hour) if pod.cost_per_hour else 0.0,
+            "total_cost": float(pod.total_cost) if hasattr(pod, 'total_cost') else 0.0,
+            "runtime_hours": pod.runtime_hours if hasattr(pod, 'runtime_hours') else 0.0,
+            "config": pod.config if hasattr(pod, 'config') else {},
+        }
+    except PodDeploymentConfig.DoesNotExist:
+        return None
 
 
 async def perform_pod_action(
@@ -249,20 +320,48 @@ async def perform_pod_action(
             "message": f"Invalid action: {action}",
         }
     
-    # TODO: Implement when pod management is created
-    # For now, return mock success
+    from gpubrokerpod.gpubrokerapp.apps.deployment.models import PodDeploymentConfig
+    from gpubrokerpod.gpubrokerapp.apps.deployment.services import DeploymentService
     
-    status_map = {
-        'start': 'running',
-        'stop': 'stopped',
-        'pause': 'paused',
-        'resume': 'running',
-        'terminate': 'terminated',
-    }
-    
-    return {
-        "success": True,
-        "pod_id": pod_id,
-        "new_status": status_map.get(action, 'unknown'),
-        "message": f"Pod {action} initiated",
-    }
+    try:
+        pod = await sync_to_async(PodDeploymentConfig.objects.get)(
+            id=pod_id,
+            user_id=user_id
+        )
+        
+        deployment_service = DeploymentService()
+        
+        # Execute action via deployment service
+        if action == 'start':
+            result = await deployment_service.start_pod(pod)
+        elif action == 'stop':
+            result = await deployment_service.stop_pod(pod)
+        elif action == 'pause':
+            result = await deployment_service.pause_pod(pod)
+        elif action == 'resume':
+            result = await deployment_service.resume_pod(pod)
+        elif action == 'terminate':
+            result = await deployment_service.terminate_pod(pod, force=force)
+        
+        return {
+            "success": result.get('success', False),
+            "pod_id": pod_id,
+            "new_status": result.get('status', 'unknown'),
+            "message": result.get('message', f"Action {action} completed"),
+        }
+        
+    except PodDeploymentConfig.DoesNotExist:
+        return {
+            "success": False,
+            "pod_id": pod_id,
+            "new_status": "not_found",
+            "message": "Pod not found",
+        }
+    except Exception as e:
+        logger.error(f"Failed to perform pod action {action} on {pod_id}: {e}")
+        return {
+            "success": False,
+            "pod_id": pod_id,
+            "new_status": "error",
+            "message": str(e),
+        }

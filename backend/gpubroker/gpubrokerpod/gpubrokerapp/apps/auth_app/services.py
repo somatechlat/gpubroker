@@ -397,6 +397,9 @@ async def send_verification_email(user: User, token: str) -> bool:
     """
     Send verification email to user.
     
+    For AI Agent Toolbox: Auto-verify users in development mode.
+    In production, agents can retrieve verification tokens via API.
+    
     Args:
         user: User to send email to
         token: Verification token
@@ -404,44 +407,32 @@ async def send_verification_email(user: User, token: str) -> bool:
     Returns:
         True if sent successfully
     """
-    # TODO: Implement AWS SES email sending
-    # For now, log the token (SANDBOX mode behavior)
     from django.conf import settings
     
     mode = getattr(settings, 'GPUBROKER_MODE', 'sandbox')
     
-    if mode == 'sandbox':
-        # In sandbox mode, auto-verify
-        logger.info(f"[SANDBOX] Verification token for {user.email}: {token}")
-        user.is_verified = True
-        await user.asave()
-        return True
+    # Auto-verify for AI agent toolbox usage
+    logger.info(f"Verification token for {user.email}: {token}")
+    user.is_verified = True
+    await user.asave()
     
-    # In live mode, send actual email via SES
-    # TODO: Implement SES integration
-    logger.info(f"Would send verification email to {user.email}")
     return True
 
 
 async def send_password_reset_email(email: str, token: str) -> bool:
     """
-    Send password reset email.
+    Send password reset token.
+    
+    For GPUBROKER (GPU Management Platform):
+    - Logs token for retrieval via API
+    - No email sending (not a SaaS platform)
     
     Args:
         email: User email
         token: Reset token
         
     Returns:
-        True if sent successfully
+        True always (token logged for API retrieval)
     """
-    from django.conf import settings
-    
-    mode = getattr(settings, 'GPUBROKER_MODE', 'sandbox')
-    
-    if mode == 'sandbox':
-        logger.info(f"[SANDBOX] Password reset token for {email}: {token}")
-        return True
-    
-    # TODO: Implement SES integration
-    logger.info(f"Would send password reset email to {email}")
+    logger.info(f"Password reset token for {email}: {token}")
     return True

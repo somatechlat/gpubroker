@@ -77,14 +77,46 @@ router = Router(tags=["deployment"])
 
 
 def get_user_id(request: HttpRequest) -> UUID:
-    """Extract user ID from request (placeholder for auth integration)."""
-    # In production, this would come from JWT token or session
+    """
+    Extract user ID from JWT token in request.
+    
+    Args:
+        request: HTTP request with Authorization header
+        
+    Returns:
+        User UUID from JWT token
+        
+    Raises:
+        ValueError: If no valid authentication found
+    """
+    # Check for user_id set by auth middleware
     user_id = getattr(request, 'user_id', None)
-    if not user_id:
-        # For development/testing, use a default UUID
-        from uuid import uuid4
-        user_id = uuid4()
-    return user_id
+    if user_id:
+        return UUID(str(user_id))
+    
+    # Extract from JWT token in Authorization header
+    auth_header = request.headers.get('Authorization', '')
+    if auth_header.startswith('Bearer '):
+        token = auth_header[7:]
+        try:
+            from gpubrokerpod.gpubrokerapp.apps.auth_app.services import verify_jwt_token
+            payload = verify_jwt_token(token)
+            return UUID(payload['user_id'])
+        except Exception as e:
+            logger.error(f"JWT verification failed: {e}")
+            raise ValueError("Invalid authentication token")
+    
+    # Check for API key authentication
+    api_key = request.headers.get('X-API-Key', '')
+    if api_key:
+        try:
+            from gpubrokerpod.gpubrokerapp.apps.auth_app.models import User
+            user = User.objects.get(api_key=api_key)
+            return user.id
+        except User.DoesNotExist:
+            raise ValueError("Invalid API key")
+    
+    raise ValueError("No authentication provided")
 
 
 def get_user_email(request: HttpRequest) -> str:

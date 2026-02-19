@@ -267,7 +267,16 @@ async def cancel_subscription(
         
         await sync_to_async(subscription.save)()
         
-        # TODO: Cancel in Stripe if stripe_subscription_id exists
+        # Cancel in Stripe if subscription exists
+        if subscription.stripe_subscription_id:
+            try:
+                from .stripe_service import StripeService
+                stripe_service = StripeService()
+                await stripe_service.cancel_subscription(subscription.stripe_subscription_id)
+                logger.info(f"Canceled Stripe subscription: {subscription.stripe_subscription_id}")
+            except Exception as stripe_error:
+                logger.error(f"Failed to cancel Stripe subscription {subscription.stripe_subscription_id}: {stripe_error}")
+                # Continue anyway - local cancellation succeeded
         
         return True
     except Exception as e:
