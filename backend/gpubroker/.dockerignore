@@ -87,9 +87,9 @@ MANIFEST
 
 # Docker files (don't need docker files IN the image)
 Dockerfile
+Containerfile.bak
 docker-compose*.yml
 .docker/
-docker-entrypoint.sh.bak
 
 # Data/DB (should be in volumes, not image)
 *.sqlite3
@@ -99,14 +99,8 @@ data/
 # Frontend/Node (if accidentally present)
 node_modules/
 package*.json
-*.js
-*.ts
-*.jsx
-*.tsx
 
 # Other non-essential
 *.sql
 *.csv
-*.json
-!package.json
 create_test_migrations.py

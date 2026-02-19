@@ -4,15 +4,14 @@ This directory contains a complete Docker Compose setup for GPUBroker, providing
 
 ## Overview
 
-The docker-compose.yml file orchestrates the entire GPUBroker stack:
+The docker-compose.dev.yml file orchestrates the entire GPUBroker stack:
 - **Core Infrastructure**: PostgreSQL, Redis
-- **Messaging**: Kafka, Zookeeper
+- **Messaging**: Kafka (KRaft mode - NO Zookeeper)
 - **Analytics**: ClickHouse, Prometheus, Grafana
-- **Backend**: Django API, WebSocket Gateway
-- **Frontend**: Lit Web Components UI
-- **Infrastructure**: Vault, SpiceDB
-- **Orchestration**: Airflow, Flink
-- **Proxy**: Nginx (unified access on port 10355)
+- **Backend**: Django 5 + Django Ninja (Unified POD SaaS)
+- **Frontend**: Lit 3 Web Components UI
+- **Secrets**: HashiCorp Vault (database-backed configuration)
+- **Proxy**: Nginx (unified access on port 28010)
 
 ## Memory Usage
 

@@ -19,9 +19,18 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "corsheaders",
-    "django_ninja",
-    "apps.auth_app",
-    "apps.providers",
+    # POD SaaS Architecture - gpubrokerapp apps
+    "gpubrokerpod.gpubrokerapp.apps.auth_app",
+    "gpubrokerpod.gpubrokerapp.apps.providers",
+    "gpubrokerpod.gpubrokerapp.apps.billing",
+    "gpubrokerpod.gpubrokerapp.apps.deployment",
+    "gpubrokerpod.gpubrokerapp.apps.dashboard",
+    "gpubrokerpod.gpubrokerapp.apps.websocket_gateway",
+    "gpubrokerpod.gpubrokerapp.apps.pod_config",
+    "gpubrokerpod.gpubrokerapp.apps.kpi",
+    "gpubrokerpod.gpubrokerapp.apps.ai_assistant",
+    "gpubrokerpod.gpubrokerapp.apps.math_core",
+    # Shared utilities
     "shared",
 ]
 
@@ -70,9 +79,46 @@ STATIC_URL = "/static/"
 MEDIA_URL = "/media/"
 
 # Default settings
-DEFAULT_AUTO_FIELD = "id"
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Security settings
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_REFERRER_POLICY = "same-origin"
+
+# Enhanced security settings
+SECURE_SSL_REDIRECT = False  # Will be overridden in production
+SESSION_COOKIE_SECURE = False  # Will be overridden in production
+CSRF_COOKIE_SECURE = False  # Will be overridden in production
+
+# Password validation
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {
+            "min_length": 12,
+        },
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
+    },
+]
+
+# Security middleware configuration
+SECURITY_MIDDLEWARE_ENABLED = True
+RATE_LIMITING_ENABLED = True
+INPUT_VALIDATION_ENABLED = True
+SECURITY_MONITORING_ENABLED = True
+
+# Security configuration
+SECURITY_EMAIL_RECIPIENTS = []  # Configure in production
+MAX_LOGIN_ATTEMPTS = 5
+ACCOUNT_LOCKOUT_TIME = 900  # 15 minutes
+JWT_ACCESS_TOKEN_LIFETIME = 900  # 15 minutes
+JWT_REFRESH_TOKEN_LIFETIME = 86400  # 24 hours

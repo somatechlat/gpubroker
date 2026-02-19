@@ -3,25 +3,27 @@
 # FastAPI legacy services have been removed
 # MEMORY LIMIT: 8GB total cluster
 
+name: gpubroker
+
 services:
   # ============================================
   # SECRET MANAGEMENT - HashiCorp Vault
   # ============================================
   vault:
     image: hashicorp/vault:1.15
-    container_name: gpubroker-vault
+    container_name: gpubroker_vault
     ports:
-      - "${PORT_VAULT:-28005}:8200"
+      - "28005:8200"
     environment:
-      VAULT_ADDR: "http://0.0.0.0:8200"
-      VAULT_API_ADDR: "http://0.0.0.0:8200"
+      VAULT_ADDR: "http://vault:8200"
+      VAULT_API_ADDR: "http://vault:8200"
     cap_add:
       - IPC_LOCK
     volumes:
       - vault_data:/vault/data
       - ./infrastructure/vault/config:/vault/config
       - ./infrastructure/vault/scripts:/vault/scripts
-    command: server -config=/vault/config/vault.hcl
+    command: server -dev -dev-root-token-id=root
     healthcheck:
       test: ["CMD", "vault", "status"]
       interval: 30s
@@ -40,12 +42,13 @@ services:
   # ============================================
   postgres:
     image: postgres:15-alpine
+    container_name: gpubroker_postgres
     environment:
       POSTGRES_USER: gpubroker
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: gpubroker_bootstrap_temp
       POSTGRES_DB: gpubroker
     ports:
-      - "${PORT_POSTGRES:-28001}:5432"
+      - "28001:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./database/init:/docker-entrypoint-initdb.d
@@ -63,8 +66,9 @@ services:
 
   redis:
     image: redis:7-alpine
+    container_name: gpubroker_redis
     ports:
-      - "${PORT_REDIS:-28004}:6379"
+      - "28004:6379"
     command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
@@ -82,43 +86,36 @@ services:
 
   kafka:
     image: confluentinc/cp-kafka:7.4.0
-    depends_on:
-      - zookeeper
+    container_name: gpubroker_kafka
     ports:
-      - "${PORT_KAFKA:-28007}:9092"
+      - "28007:9092"
     environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
       KAFKA_HEAP_OPTS: "-Xmx512m -Xms256m"
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
     healthcheck:
-      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list"]
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092"]
       interval: 30s
       timeout: 10s
       retries: 5
+      start_period: 30s
     deploy:
       resources:
         limits:
           memory: 768M
         reservations:
           memory: 384M
-
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.4.0
-    ports:
-      - "${PORT_ZOOKEEPER:-28008}:2181"
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-      KAFKA_HEAP_OPTS: "-Xmx256m -Xms128m"
-    deploy:
-      resources:
-        limits:
-          memory: 384M
-        reservations:
-          memory: 128M
 
   # ============================================
   # Django Backend (All Services Unified)
@@ -127,25 +124,37 @@ services:
     build: 
       context: ../../backend/gpubroker
       dockerfile: Containerfile
-    container_name: gpubroker-django
+    container_name: gpubroker_django
     ports:
-      - "${PORT_DJANGO:-28080}:8000"
+      - "28080:8000"
     environment:
-      DJANGO_SETTINGS_MODULE: gpubroker.settings.development
-      DATABASE_URL: postgresql://gpubroker:${POSTGRES_PASSWORD}@postgres:5432/gpubroker_dev
-      REDIS_URL: redis://redis:6379/0
-      SECRET_KEY: ${DJANGO_SECRET_KEY:-django-insecure-dev-key-change-in-production}
+      # Django settings module
+      DJANGO_SETTINGS_MODULE: gpubroker.settings.database_backed
+      
+      # Bootstrap database connection (ONLY for initial connection)
+      BOOTSTRAP_DB_NAME: gpubroker
+      BOOTSTRAP_DB_USER: gpubroker
+      BOOTSTRAP_DB_PASSWORD: gpubroker_bootstrap_temp
+      BOOTSTRAP_DB_HOST: postgres
+      BOOTSTRAP_DB_PORT: 5432
+      
+      # Bootstrap encryption key (will be replaced with database-backed key)
+      # This is a Fernet key for django-encrypted-model-fields
+      SECRET_KEY: bootstrap-dev-key-will-be-replaced-from-vault
+      FIELD_ENCRYPTION_KEY: PrnxWzrFkad36rvHCHEFxqLDfhfQR0DMoXTnm9H-i7A=
+      
+      # Runtime configuration (non-sensitive)
       DEBUG: "True"
-      ALLOWED_HOSTS: localhost,127.0.0.1,django
-      CORS_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:${PORT_FRONTEND:-28030}
-      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY:-}
-      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY:-}
+      ALLOWED_HOSTS: localhost,127.0.0.1,django,gpubroker_django
+      CORS_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:28030,http://localhost:28010
+      
+      # Vault connection (for initial secret loading)
       VAULT_ADDR: http://vault:8200
-      VAULT_ROLE_ID: ${VAULT_ROLE_ID:-}
-      VAULT_SECRET_ID: ${VAULT_SECRET_ID:-}
-      SOMA_AGENT_BASE: ${SOMA_AGENT_BASE:-http://localhost:8080}
+      VAULT_TOKEN: root
+      
+      # Service endpoints (non-sensitive)
       KAFKA_BROKERS: kafka:9092
-      CLICKHOUSE_URL: ${CLICKHOUSE_URL:-http://clickhouse:8123}
+      CLICKHOUSE_URL: http://clickhouse:8123
     depends_on:
       postgres:
         condition: service_healthy
@@ -154,9 +163,8 @@ services:
       vault:
         condition: service_started
     volumes:
-      - ./backend/gpubroker:/app
-      - ./backend/shared:/app/shared
-    command: daphne -b 0.0.0.0 -p 8000 gpubroker.asgi:application
+      - ../../backend/gpubroker:/app
+    command: python manage.py runserver 0.0.0.0:8000
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -175,13 +183,14 @@ services:
   # ============================================
   clickhouse:
     image: clickhouse/clickhouse-server:23.8
+    container_name: gpubroker_clickhouse
     ports:
-      - "${PORT_CLICKHOUSE_HTTP:-28002}:8123"
-      - "${PORT_CLICKHOUSE_NATIVE:-28003}:9000"
+      - "28002:8123"
+      - "28003:9000"
     environment:
       CLICKHOUSE_DB: gpubroker
       CLICKHOUSE_USER: gpubroker
-      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?set CLICKHOUSE_PASSWORD}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-clickhouse_dev_password}
     volumes:
       - clickhouse_data:/var/lib/clickhouse
     deploy:
@@ -196,14 +205,13 @@ services:
   # ============================================
   nginx:
     image: nginx:1.25-alpine
-    container_name: gpubroker-nginx
+    container_name: gpubroker_nginx
     ports:
-      - "${PORT_NGINX:-80}:80"
+      - "28010:80"
     volumes:
-      - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - django
-      - frontend
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost/health"]
       interval: 30s
@@ -221,20 +229,23 @@ services:
   # Frontend
   # ============================================
   frontend:
-    build: ./frontend
+    build:
+      context: ../../frontend
+      dockerfile: Containerfile
+    container_name: gpubroker_frontend
     ports:
-      - "${PORT_FRONTEND:-28030}:3000"
+      - "28030:3000"
     environment:
-      VITE_API_URL: http://localhost/api/v2
-      VITE_WS_URL: ws://localhost/ws
-      VITE_PROVIDER_API_URL: http://localhost/api/v2/providers
-      VITE_KPI_API_URL: http://localhost/api/v2/kpi
-      VITE_PRICE_WS_URL: ws://localhost/ws/prices
-      VITE_AI_API_URL: http://localhost/api/v2/ai
+      VITE_API_URL: http://localhost:28010/api/v2
+      VITE_WS_URL: ws://localhost:28010/ws
+      VITE_PROVIDER_API_URL: http://localhost:28010/api/v2/providers
+      VITE_KPI_API_URL: http://localhost:28010/api/v2/kpi
+      VITE_PRICE_WS_URL: ws://localhost:28010/ws/prices
+      VITE_AI_API_URL: http://localhost:28010/api/v2/ai
     depends_on:
       - django
     volumes:
-      - ./frontend:/app
+      - ../../frontend:/app
       - /app/node_modules
     deploy:
       resources:
@@ -248,10 +259,11 @@ services:
   # ============================================
   prometheus:
     image: prom/prometheus:latest
+    container_name: gpubroker_prometheus
     ports:
-      - "${PORT_PROMETHEUS:-28031}:9090"
+      - "28031:9090"
     volumes:
-      - ./infrastructure/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ../prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - prometheus_data:/prometheus
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
@@ -268,14 +280,15 @@ services:
 
   grafana:
     image: grafana/grafana:latest
+    container_name: gpubroker_grafana
     ports:
-      - "${PORT_GRAFANA:-28032}:3000"
+      - "28032:3000"
     environment:
-      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./infrastructure/grafana/dashboards:/etc/grafana/provisioning/dashboards
-      - ./infrastructure/grafana/datasources:/etc/grafana/provisioning/datasources
+      - ../grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ../grafana/datasources:/etc/grafana/provisioning/datasources
     deploy:
       resources:
         limits:

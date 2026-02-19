@@ -21,7 +21,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'gpubroker.settings.development'
 django_asgi_app = get_asgi_application()
 
 # Import websocket routing after Django setup
-from apps.websocket_gateway.routing import websocket_urlpatterns  # noqa: E402
+from gpubrokerpod.gpubrokerapp.apps.websocket_gateway.routing import websocket_urlpatterns  # noqa: E402
 
 application = ProtocolTypeRouter({
     'http': django_asgi_app,

@@ -1,1 +1,89 @@
+# ============================================
+# GPUBROKER Django - Git Ignore
+# ============================================
+
+# Temporary directories
 TMP/
+tmp/
+temp/
+
+# Python cache/bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments (NEVER commit)
+.venv/
+venv/
+env/
+ENV/
+virtualenv/
+
+# Environment files (NEVER commit - contains secrets)
+.env
+.env.*
+*.env
+!.env.example
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+
+# Testing
+.pytest_cache/
+.hypothesis/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+screenshots/
+test-results/
+
+# IDE/Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Build/packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+MANIFEST
+
+# Backup files
+*.bak
+*.backup
+*.tmp
+
+# Data files (should be in volumes)
+*.sqlite3
+*.db
+data/
+
+# Secrets (NEVER commit)
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+secrets/
+vault_data/

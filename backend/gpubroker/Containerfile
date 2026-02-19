@@ -38,14 +38,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Copy application code
+# Copy application code (respects .dockerignore)
 COPY --chown=appuser:appuser . .
 
-# Set environment variables - use sandbox for build, runtime can override
+# Set environment variables - database-backed configuration
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    DJANGO_SETTINGS_MODULE=config.settings.sandbox \
-    SECRET_KEY=build-time-dummy-key-replaced-at-runtime
+    DJANGO_SETTINGS_MODULE=gpubroker.settings.database_backed
 
 # Collect static files using sandbox settings (no external dependencies required)
 RUN python manage.py collectstatic --noinput --clear 2>/dev/null || echo "Static collection deferred to runtime"
@@ -53,9 +52,15 @@ RUN python manage.py collectstatic --noinput --clear 2>/dev/null || echo "Static
 # Create media directory
 RUN mkdir -p /app/media /app/staticfiles && chown -R appuser:appuser /app/media /app/staticfiles
 
-# Copy and make entrypoint executable (before USER switch)
-COPY container-entrypoint.sh /container-entrypoint.sh
-RUN chmod +x /container-entrypoint.sh && chown appuser:appuser /container-entrypoint.sh
+# Make scripts executable
+RUN chmod +x /app/container-entrypoint.sh /app/init-django-config.sh
+
+# Clean up unnecessary files to reduce image size
+RUN find /app -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true && \
+    find /app -type f -name '*.pyc' -delete && \
+    find /app -type f -name '*.pyo' -delete && \
+    find /app -type d -name '.pytest_cache' -exec rm -rf {} + 2>/dev/null || true && \
+    find /app -type d -name '.hypothesis' -exec rm -rf {} + 2>/dev/null || true
 
 # Switch to non-root user
 USER appuser
@@ -64,10 +69,10 @@ USER appuser
 EXPOSE 8000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/api/v2/admin/public/health || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD python /app/health_check.py || exit 1
 
-ENTRYPOINT ["/container-entrypoint.sh"]
+ENTRYPOINT ["/app/container-entrypoint.sh"]
 
 # Default command: run with Daphne (ASGI server)
-CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "config.asgi:application"]
+CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "gpubroker.asgi:application"]
