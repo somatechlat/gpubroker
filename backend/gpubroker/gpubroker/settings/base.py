@@ -4,7 +4,6 @@ GPUBroker Base Settings
 Shared settings for all environments.
 """
 
-import os
 from pathlib import Path
 
 # Build paths

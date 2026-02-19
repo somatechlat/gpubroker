@@ -11,32 +11,32 @@ Endpoints:
 
 NO MOCKS. NO FAKE DATA. REAL DATABASE QUERIES ONLY.
 """
+
 import logging
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any
 
+from django.http import HttpRequest
 from ninja import Router
 from ninja.errors import HttpError
-from django.http import HttpRequest
 
 from .schemas import (
-    KPIOverviewResponse,
-    GPUMetrics,
-    ProviderKPI,
-    MarketInsights,
     CostOptimization,
     CostOptimizationRequest,
+    GPUMetrics,
     KPIHealthResponse,
+    KPIOverviewResponse,
+    MarketInsights,
+    ProviderKPI,
 )
 from .services import (
-    get_kpi_overview,
     get_gpu_metrics,
-    get_provider_kpis,
+    get_kpi_overview,
     get_market_insights,
+    get_provider_kpis,
     get_workload_optimization,
 )
 
-logger = logging.getLogger('gpubroker.kpi.api')
+logger = logging.getLogger("gpubroker.kpi.api")
 
 router = Router(tags=["kpi"])
 
@@ -45,7 +45,7 @@ router = Router(tags=["kpi"])
 async def kpi_overview(request: HttpRequest):
     """
     Get aggregate KPI cards for dashboard.
-    
+
     Returns:
     - cost_per_token: Average cost per token across all GPUs
     - uptime_pct: Average uptime percentage
@@ -62,17 +62,15 @@ async def kpi_overview(request: HttpRequest):
 
 @router.get("/gpu/{gpu_type}", response=GPUMetrics, auth=None)
 async def get_gpu_kpis(
-    request: HttpRequest,
-    gpu_type: str,
-    provider: Optional[str] = None
+    request: HttpRequest, gpu_type: str, provider: str | None = None
 ):
     """
     Get comprehensive KPIs for a specific GPU type.
-    
+
     Args:
         gpu_type: GPU type to query (e.g., "A100", "RTX 4090")
         provider: Optional provider filter
-        
+
     Returns:
         GPU metrics including cost per token, cost per GFLOP, etc.
     """
@@ -88,10 +86,10 @@ async def get_gpu_kpis(
 async def get_provider_kpi(request: HttpRequest, provider_name: str):
     """
     Get comprehensive KPIs for a specific provider.
-    
+
     Args:
         provider_name: Provider name to query
-        
+
     Returns:
         Provider KPIs including total offers, avg price, volatility, etc.
     """
@@ -109,7 +107,7 @@ async def get_provider_kpi(request: HttpRequest, provider_name: str):
 async def market_insights(request: HttpRequest):
     """
     Get comprehensive market insights and trends.
-    
+
     Returns:
         Market insights including totals, extremes, trends, etc.
     """
@@ -125,10 +123,10 @@ async def market_insights(request: HttpRequest):
 async def optimize_workload(request: HttpRequest, data: CostOptimizationRequest):
     """
     Get cost optimization recommendations for a workload.
-    
+
     Args:
         data: Workload specification including type
-        
+
     Returns:
         Optimization recommendations with reasoning
     """
@@ -144,12 +142,12 @@ async def optimize_workload(request: HttpRequest, data: CostOptimizationRequest)
 async def health_check(request: HttpRequest):
     """
     KPI service health check.
-    
+
     Returns:
         Health status including database connectivity
     """
     from django.db import connection
-    
+
     db_status = "disconnected"
     try:
         with connection.cursor() as cursor:
@@ -157,9 +155,9 @@ async def health_check(request: HttpRequest):
         db_status = "connected"
     except Exception:
         pass
-    
+
     status = "healthy" if db_status == "connected" else "degraded"
-    
+
     return KPIHealthResponse(
         status=status,
         database=db_status,

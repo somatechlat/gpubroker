@@ -6,4 +6,5 @@ Handles:
 - Workload parsing
 - Session history
 """
-default_app_config = 'apps.ai_assistant.apps.AiAssistantConfig'
+
+default_app_config = "apps.ai_assistant.apps.AiAssistantConfig"

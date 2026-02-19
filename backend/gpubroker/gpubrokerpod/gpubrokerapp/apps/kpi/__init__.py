@@ -6,4 +6,5 @@ Handles:
 - Provider KPIs
 - Market insights
 """
-default_app_config = 'apps.kpi.apps.KpiConfig'
+
+default_app_config = "apps.kpi.apps.KpiConfig"

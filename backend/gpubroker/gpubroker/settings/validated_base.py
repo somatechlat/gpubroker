@@ -5,7 +5,6 @@ Uses validated configuration system with Pydantic for production reliability.
 Implements security best practices and performance optimizations.
 """
 
-import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -190,7 +189,6 @@ CORS_ALLOWED_METHODS = CONFIG.security.cors_allowed_methods
 # JWT AUTHENTICATION SETTINGS
 # =============================================================================
 
-import jwt
 from datetime import timedelta
 
 JWT_AUTH = {
@@ -236,16 +234,18 @@ LOGGING = {
             "class": "logging.StreamHandler",
             "formatter": "verbose",
         },
-        "file": {
-            "level": CONFIG.logging.level.value,
-            "class": "logging.handlers.RotatingFileHandler",
-            "filename": CONFIG.logging.file_path or "/var/log/gpubroker/django.log",
-            "maxBytes": CONFIG.logging.max_file_size,
-            "backupCount": CONFIG.logging.backup_count,
-            "formatter": "verbose",
-        }
-        if CONFIG.logging.file_path
-        else None,
+        "file": (
+            {
+                "level": CONFIG.logging.level.value,
+                "class": "logging.handlers.RotatingFileHandler",
+                "filename": CONFIG.logging.file_path or "/var/log/gpubroker/django.log",
+                "maxBytes": CONFIG.logging.max_file_size,
+                "backupCount": CONFIG.logging.backup_count,
+                "formatter": "verbose",
+            }
+            if CONFIG.logging.file_path
+            else None
+        ),
     },
     "root": {
         "handlers": ["console"] + (["file"] if CONFIG.logging.file_path else []),

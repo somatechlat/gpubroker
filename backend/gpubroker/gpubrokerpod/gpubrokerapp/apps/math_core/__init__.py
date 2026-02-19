@@ -7,4 +7,5 @@ Handles:
 - Workload estimation
 - GPU benchmarks
 """
-default_app_config = 'apps.math_core.apps.MathCoreConfig'
+
+default_app_config = "apps.math_core.apps.MathCoreConfig"

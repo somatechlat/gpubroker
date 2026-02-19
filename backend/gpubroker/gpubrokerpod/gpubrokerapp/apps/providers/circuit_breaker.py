@@ -9,30 +9,31 @@ Configuration:
 - Stays open for 60 seconds before allowing a half-open trial
 - Success in half-open closes the breaker; failure re-opens
 """
+
 from __future__ import annotations
 
-import time
 import logging
-from typing import Callable, Dict, Optional, Any, Awaitable
+import time
+from collections.abc import Awaitable, Callable
+from typing import Any
 
-logger = logging.getLogger('gpubroker.providers.circuit_breaker')
+logger = logging.getLogger("gpubroker.providers.circuit_breaker")
 
 
 class CircuitBreakerOpen(Exception):
     """Raised when circuit breaker is open and calls are blocked."""
-    pass
 
 
 class AsyncCircuitBreaker:
     """
     Lightweight async circuit breaker for outbound provider calls.
-    
+
     States:
     - closed: Normal operation, calls pass through
     - open: Calls are blocked, waiting for reset timeout
     - half_open: Single trial call allowed to test recovery
     """
-    
+
     def __init__(
         self,
         *,
@@ -43,7 +44,7 @@ class AsyncCircuitBreaker:
     ):
         """
         Initialize circuit breaker.
-        
+
         Args:
             fail_max: Number of failures to trigger open state
             window_seconds: Time window for counting failures
@@ -56,13 +57,13 @@ class AsyncCircuitBreaker:
         self._clock = clock
         self.state = "closed"
         self._failures: list[float] = []
-        self._opened_at: Optional[float] = None
-    
+        self._opened_at: float | None = None
+
     def _prune(self, now: float) -> None:
         """Remove failures outside the current window."""
         cutoff = now - self.window_seconds
         self._failures = [t for t in self._failures if t >= cutoff]
-    
+
     def _can_attempt(self, now: float) -> bool:
         """Check if a call attempt is allowed."""
         if self.state == "closed":
@@ -78,7 +79,7 @@ class AsyncCircuitBreaker:
         if self.state == "half_open":
             return True
         return False
-    
+
     def _record_success(self) -> None:
         """Record a successful call."""
         if self.state == "half_open":
@@ -86,7 +87,7 @@ class AsyncCircuitBreaker:
         self._failures.clear()
         self.state = "closed"
         self._opened_at = None
-    
+
     def _record_failure(self, now: float) -> None:
         """Record a failed call."""
         self._failures.append(now)
@@ -97,19 +98,19 @@ class AsyncCircuitBreaker:
             logger.warning(
                 f"Circuit breaker opened after {len(self._failures)} failures"
             )
-    
+
     async def call(self, func: Callable[..., Awaitable[Any]], *args, **kwargs) -> Any:
         """
         Execute a function through the circuit breaker.
-        
+
         Args:
             func: Async function to call
             *args: Positional arguments for func
             **kwargs: Keyword arguments for func
-            
+
         Returns:
             Result of func
-            
+
         Raises:
             CircuitBreakerOpen: If circuit is open
             Exception: Any exception from func
@@ -126,12 +127,12 @@ class AsyncCircuitBreaker:
         except Exception:
             self._record_failure(self._clock())
             raise
-    
+
     @property
     def is_open(self) -> bool:
         """Check if circuit breaker is currently open."""
         return self.state == "open"
-    
+
     @property
     def failure_count(self) -> int:
         """Get current failure count within window."""
@@ -140,7 +141,7 @@ class AsyncCircuitBreaker:
 
 
 # Singleton registry per key (provider/service)
-_breakers: Dict[str, AsyncCircuitBreaker] = {}
+_breakers: dict[str, AsyncCircuitBreaker] = {}
 
 
 def get_breaker(
@@ -152,13 +153,13 @@ def get_breaker(
 ) -> AsyncCircuitBreaker:
     """
     Get or create a circuit breaker for a given key.
-    
+
     Args:
         key: Unique identifier (typically provider name)
         fail_max: Number of failures to trigger open state
         window_seconds: Time window for counting failures
         reset_timeout: Seconds to wait before half-open trial
-        
+
     Returns:
         AsyncCircuitBreaker instance
     """

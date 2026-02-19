@@ -4,14 +4,14 @@ GPUBROKER Admin Authentication Models
 JWT-based authentication for the admin dashboard.
 """
 
-import hashlib
 import uuid
-from django.db import models
+
 from django.contrib.auth.models import (
     AbstractBaseUser,
     BaseUserManager,
     PermissionsMixin,
 )
+from django.db import models
 from django.utils import timezone
 
 

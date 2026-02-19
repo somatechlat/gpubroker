@@ -4,9 +4,10 @@ Standardized API responses for GPUBroker.
 Provides consistent response format across all endpoints.
 """
 
+from typing import Any
+
 from django.http import JsonResponse
 from django.utils import timezone
-from typing import Any, Dict, List, Optional, Union
 
 
 class APIResponse:
@@ -17,7 +18,7 @@ class APIResponse:
         data: Any = None,
         message: str = None,
         status_code: int = 200,
-        metadata: Dict = None,
+        metadata: dict = None,
     ) -> JsonResponse:
         """Return success response."""
         response = {
@@ -41,7 +42,7 @@ class APIResponse:
         message: str,
         error_code: str = "UNKNOWN_ERROR",
         status_code: int = 400,
-        details: Dict = None,
+        details: dict = None,
         trace_id: str = None,
     ) -> JsonResponse:
         """Return error response."""
@@ -64,12 +65,12 @@ class APIResponse:
 
     @staticmethod
     def paginated(
-        data: List[Any],
+        data: list[Any],
         page: int,
         per_page: int,
         total: int,
         message: str = None,
-        metadata: Dict = None,
+        metadata: dict = None,
     ) -> JsonResponse:
         """Return paginated response."""
         total_pages = (total + per_page - 1) // per_page
@@ -139,7 +140,7 @@ class APIError(Exception):
         message: str,
         status_code: int = 400,
         error_code: str = "API_ERROR",
-        details: Dict = None,
+        details: dict = None,
     ):
         self.message = message
         self.status_code = status_code

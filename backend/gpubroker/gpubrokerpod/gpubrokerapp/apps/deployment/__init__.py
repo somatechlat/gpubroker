@@ -8,4 +8,5 @@ User Journey:
 - Deployment (Task 16)
 - Activation (Task 17)
 """
-default_app_config = 'gpubrokerpod.gpubrokerapp.apps.deployment.apps.DeploymentConfig'
+
+default_app_config = "gpubrokerpod.gpubrokerapp.apps.deployment.apps.DeploymentConfig"

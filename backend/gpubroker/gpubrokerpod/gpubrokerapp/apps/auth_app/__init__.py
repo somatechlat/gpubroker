@@ -7,4 +7,5 @@ Handles:
 - Tenant management
 - Audit logging
 """
-default_app_config = 'apps.auth_app.apps.AuthAppConfig'
+
+default_app_config = "apps.auth_app.apps.AuthAppConfig"

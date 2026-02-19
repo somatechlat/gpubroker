@@ -5,8 +5,8 @@ Following VIBE CODING RULES - NO HARDCODED SECRETS
 """
 
 import os
-import socket
-from .base import *  # noqa: F401, F403
+
+from .base import *  # noqa: F403
 
 DEBUG = False
 
@@ -16,8 +16,8 @@ DEBUG = False
 # According to HashiCorp Vault docs at https://www.vaultproject.io/docs/configuration
 # All secrets MUST be retrieved from Vault, NO environment variables for secrets
 
+
 import requests
-import json
 from django.core.exceptions import ImproperlyConfigured
 
 

@@ -4,22 +4,22 @@ GPUBROKER Admin Authentication Services
 JWT-based authentication service for GPUBROKER POD Admin.
 """
 
-import os
+import base64
+import binascii
 import hashlib
 import hmac
 import json
-import time
-import base64
-import binascii
 import logging
+import os
 import secrets
-from typing import Optional, Dict, Any
+import time
 from datetime import timedelta
-from django.conf import settings
-from django.utils import timezone
-from django.core.cache import cache
+from typing import Any
 
-from .models import AdminUser, AdminSession, AdminAuditLog
+from django.core.cache import cache
+from django.utils import timezone
+
+from .models import AdminAuditLog, AdminSession, AdminUser
 
 logger = logging.getLogger("gpubroker.auth")
 
@@ -34,7 +34,7 @@ MAX_LOGIN_ATTEMPTS = int(os.getenv("MAX_LOGIN_ATTEMPTS", 5))
 ACCOUNT_LOCKOUT_TIME = int(os.getenv("ACCOUNT_LOCKOUT_TIME", 900))  # 15 minutes
 
 
-def create_jwt(payload: dict, expiry: Optional[int] = None) -> str:
+def create_jwt(payload: dict, expiry: int | None = None) -> str:
     """
     Create a JWT token with security enhancements.
 
@@ -85,7 +85,7 @@ def create_jwt(payload: dict, expiry: Optional[int] = None) -> str:
     return f"{header_b64}.{payload_b64}.{signature_b64}"
 
 
-def verify_jwt(token: str) -> Optional[dict]:
+def verify_jwt(token: str) -> dict | None:
     """
     Verify and decode a JWT token with comprehensive security checks.
 
@@ -291,9 +291,9 @@ class AdminAuthService:
     def login(
         email: str,
         password: str,
-        ip_address: Optional[str] = None,
+        ip_address: str | None = None,
         user_agent: str = "",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Authenticate admin user with enhanced security checks.
 
@@ -349,18 +349,17 @@ class AdminAuthService:
         if user.is_locked:
             if user.lockout_until and user.lockout_until > timezone.now():
                 return {"success": False, "error": "Cuenta bloqueada temporalmente"}
-            else:
-                # Lockout expired, reset
-                user.is_locked = False
-                user.lockout_until = None
-                user.failed_login_attempts = 0
-                user.save(
-                    update_fields=[
-                        "is_locked",
-                        "lockout_until",
-                        "failed_login_attempts",
-                    ]
-                )
+            # Lockout expired, reset
+            user.is_locked = False
+            user.lockout_until = None
+            user.failed_login_attempts = 0
+            user.save(
+                update_fields=[
+                    "is_locked",
+                    "lockout_until",
+                    "failed_login_attempts",
+                ]
+            )
 
         # Password verification with timing attack protection
         if not user.check_password(password):
@@ -475,7 +474,7 @@ class AdminAuthService:
         }
 
     @staticmethod
-    def verify_token(token: str) -> Optional[AdminUser]:
+    def verify_token(token: str) -> AdminUser | None:
         """
         Verify token and return user.
 
@@ -496,7 +495,7 @@ class AdminAuthService:
             return None
 
     @staticmethod
-    def logout(token: str, ip_address: Optional[str] = None) -> Dict[str, Any]:
+    def logout(token: str, ip_address: str | None = None) -> dict[str, Any]:
         """
         Logout user by revoking session.
 
@@ -526,7 +525,7 @@ class AdminAuthService:
             return {"success": False, "error": "Session not found"}
 
     @staticmethod
-    def get_current_user(token: str) -> Optional[Dict[str, Any]]:
+    def get_current_user(token: str) -> dict[str, Any] | None:
         """
         Get current user from token.
 

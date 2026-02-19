@@ -9,10 +9,9 @@ The key insight is that we need to patch the model classes BEFORE Django
 inspects them for migration generation.
 """
 import os
-import sys
 
 # Set Django settings
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'gpubroker.settings.test')
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "gpubroker.settings.test")
 
 # We need to patch the model Meta classes BEFORE Django setup
 # This requires importing the models directly and modifying them
@@ -42,20 +41,22 @@ django.setup()
 
 # Patch all models to be managed
 from django.apps import apps
+
 for model in apps.get_models():
     model._meta.managed = True
     # Also need to update the original_attrs which makemigrations uses
-    if hasattr(model._meta, 'original_attrs'):
-        model._meta.original_attrs['managed'] = True
-    print(f'Patched {model._meta.app_label}.{model.__name__} to managed=True')
+    if hasattr(model._meta, "original_attrs"):
+        model._meta.original_attrs["managed"] = True
+    print(f"Patched {model._meta.app_label}.{model.__name__} to managed=True")
 
 # Clear the migration writer cache to pick up the changes
 from django.db.migrations import writer
-if hasattr(writer, '_migration_template'):
-    delattr(writer, '_migration_template')
+
+if hasattr(writer, "_migration_template"):
+    delattr(writer, "_migration_template")
 
 # Now run makemigrations
 from django.core.management import call_command
 
-print('\n--- Creating migrations ---')
-call_command('makemigrations', 'auth_app', 'providers', 'math_core', 'kpi', 'ai_assistant', 'websocket_gateway', verbosity=2)
+print("\n--- Creating migrations ---")
+call_command("makemigrations", "auth_app", "providers", "math_core", "kpi", "ai_assistant", "websocket_gateway", verbosity=2)

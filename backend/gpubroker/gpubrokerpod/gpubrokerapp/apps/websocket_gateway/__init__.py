@@ -6,4 +6,5 @@ Handles:
 - Client connection management
 - Heartbeat messages
 """
-default_app_config = 'apps.websocket_gateway.apps.WebsocketGatewayConfig'
+
+default_app_config = "apps.websocket_gateway.apps.WebsocketGatewayConfig"

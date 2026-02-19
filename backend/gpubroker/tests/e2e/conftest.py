@@ -3,14 +3,16 @@ Pytest configuration and fixtures for GPUBROKER E2E tests.
 
 Provides Playwright fixtures for browser automation testing.
 """
+
 import os
+
 import pytest
 from playwright.sync_api import sync_playwright
-
 
 # ============================================
 # Playwright Fixtures
 # ============================================
+
 
 @pytest.fixture(scope="session")
 def playwright_instance():
@@ -23,8 +25,7 @@ def playwright_instance():
 def browser(playwright_instance):
     """Launch browser once per session."""
     browser = playwright_instance.chromium.launch(
-        headless=True,
-        args=['--no-sandbox', '--disable-setuid-sandbox']
+        headless=True, args=["--no-sandbox", "--disable-setuid-sandbox"]
     )
     yield browser
     browser.close()
@@ -34,8 +35,8 @@ def browser(playwright_instance):
 def context(browser):
     """Create a new browser context for each test."""
     context = browser.new_context(
-        viewport={'width': 1280, 'height': 720},
-        locale='es-EC',
+        viewport={"width": 1280, "height": 720},
+        locale="es-EC",
     )
     yield context
     context.close()
@@ -63,6 +64,7 @@ def authenticated_page(context):
 # Test Configuration
 # ============================================
 
+
 @pytest.fixture(scope="session")
 def base_url():
     """Base URL for the application."""
@@ -73,19 +75,19 @@ def base_url():
 def test_credentials():
     """Test credentials for various services."""
     return {
-        'admin': {
-            'email': 'admin@gpubroker.io',
-            'password': 'admin123',
+        "admin": {
+            "email": "admin@gpubroker.io",
+            "password": "admin123",
         },
-        'paypal_sandbox': {
-            'email': os.getenv('PAYPAL_SANDBOX_EMAIL', 'test@example.com'),
-            'password': os.getenv('PAYPAL_SANDBOX_PASSWORD', 'test_password'),
+        "paypal_sandbox": {
+            "email": os.getenv("PAYPAL_SANDBOX_EMAIL", "test@example.com"),
+            "password": os.getenv("PAYPAL_SANDBOX_PASSWORD", "test_password"),
         },
-        'test_customer': {
-            'ruc': '1790869571001',
-            'email': 'ai@somatech.dev',
-            'name': 'INGELSI CIA LTDA',
-            'phone': '+5939997202547',
+        "test_customer": {
+            "ruc": "1790869571001",
+            "email": "ai@somatech.dev",
+            "name": "INGELSI CIA LTDA",
+            "phone": "+5939997202547",
         },
     }
 
@@ -93,6 +95,7 @@ def test_credentials():
 # ============================================
 # Pytest Markers
 # ============================================
+
 
 def pytest_configure(config):
     """Configure custom pytest markers."""
@@ -102,24 +105,23 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "paypal: marks tests that require PayPal sandbox"
     )
-    config.addinivalue_line(
-        "markers", "auth: marks tests that require authentication"
-    )
+    config.addinivalue_line("markers", "auth: marks tests that require authentication")
 
 
 # ============================================
 # Test Hooks
 # ============================================
 
+
 @pytest.hookimpl(tryfirst=True, hookwrapper=True)
 def pytest_runtest_makereport(item, call):
     """Take screenshot on test failure."""
     outcome = yield
     rep = outcome.get_result()
-    
+
     if rep.when == "call" and rep.failed:
         # Try to take screenshot on failure
-        page = item.funcargs.get('page')
+        page = item.funcargs.get("page")
         if page:
             try:
                 screenshot_path = f"/tmp/test_failure_{item.name}.png"

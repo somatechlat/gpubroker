@@ -1,9 +1,10 @@
 """Notifications App configuration - GPUBROKERADMIN Control Plane."""
+
 from django.apps import AppConfig
 
 
 class NotificationsConfig(AppConfig):
-    default_auto_field = 'django.db.models.BigAutoField'
-    name = 'gpubrokeradmin.apps.notifications'
-    label = 'notifications'
-    verbose_name = 'Notifications'
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "gpubrokeradmin.apps.notifications"
+    label = "notifications"
+    verbose_name = "Notifications"

@@ -3,12 +3,13 @@ GPUBROKER Email Service
 
 AWS SES email sending for GPUBROKER POD.
 """
-import os
-import logging
-from typing import Dict, Any
-from datetime import datetime
 
-logger = logging.getLogger('gpubroker.email')
+import logging
+import os
+from datetime import datetime
+from typing import Any
+
+logger = logging.getLogger("gpubroker.email")
 
 # AWS Configuration
 AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
@@ -20,6 +21,7 @@ def _get_ses_client():
     """Get boto3 SES client with error handling."""
     try:
         import boto3
+
         return boto3.client("ses", region_name=AWS_REGION)
     except ImportError:
         logger.warning("boto3 not installed, using mock mode")
@@ -33,7 +35,7 @@ class EmailService:
     """
     Service for sending emails via AWS SES.
     """
-    
+
     @staticmethod
     def send_payment_receipt(
         to_email: str,
@@ -47,10 +49,10 @@ class EmailService:
         payment_provider: str,
         name: str,
         ruc: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Send comprehensive payment receipt with all transaction and pod details.
-        
+
         Args:
             to_email: Customer email
             api_key: API key for the subscription
@@ -63,7 +65,7 @@ class EmailService:
             payment_provider: Payment provider name
             name: Customer name
             ruc: Customer RUC
-            
+
         Returns:
             Dict with send result
         """
@@ -75,9 +77,9 @@ class EmailService:
         }
         plan_display = plan_names.get(plan, plan.upper())
         date_str = datetime.utcnow().strftime("%d/%m/%Y %H:%M UTC")
-        
+
         subject = f"Recibo de Pago - GPUBROKER #{order_id[:8] if order_id else 'N/A'}"
-        
+
         html_body = f"""
         <!DOCTYPE html>
         <html>
@@ -188,7 +190,7 @@ class EmailService:
         </body>
         </html>
         """
-        
+
         text_body = f"""
         RECIBO DE PAGO - GPUBROKER
         ================================
@@ -228,9 +230,9 @@ class EmailService:
         Guarda este email para tus registros.
         Soporte: soporte@gpubroker.site
         """
-        
+
         ses = _get_ses_client()
-        
+
         if not ses:
             logger.info(f"[Email] Mock: Receipt for {to_email}")
             return {
@@ -239,7 +241,7 @@ class EmailService:
                 "to": to_email,
                 "mock": True,
             }
-        
+
         try:
             response = ses.send_email(
                 Source=SES_FROM_EMAIL,
@@ -252,18 +254,20 @@ class EmailService:
                     },
                 },
             )
-            
-            logger.info(f"[Email] Receipt sent to {to_email}, MessageId: {response['MessageId']}")
+
+            logger.info(
+                f"[Email] Receipt sent to {to_email}, MessageId: {response['MessageId']}"
+            )
             return {
                 "success": True,
                 "message_id": response["MessageId"],
                 "to": to_email,
             }
-            
+
         except Exception as e:
             logger.error(f"[Email] Error sending receipt: {e}")
             return {"success": False, "error": str(e)}
-    
+
     @staticmethod
     def send_vendor_notification(
         customer_email: str,
@@ -275,7 +279,7 @@ class EmailService:
         transaction_id: str,
         order_id: str,
         payment_provider: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Send notification to vendor/admin when a new sale is made.
         """
@@ -286,9 +290,9 @@ class EmailService:
         }
         plan_display = plan_names.get(plan, plan.upper())
         date_str = datetime.utcnow().strftime("%d/%m/%Y %H:%M UTC")
-        
+
         subject = f"Nueva Venta - {plan_display} - ${amount:.2f} USD"
-        
+
         html_body = f"""
         <!DOCTYPE html>
         <html>
@@ -370,13 +374,13 @@ class EmailService:
         </body>
         </html>
         """
-        
+
         ses = _get_ses_client()
-        
+
         if not ses:
             logger.info(f"[Email] Mock: Vendor notification for {customer_email}")
             return {"success": True, "message_id": "mock", "mock": True}
-        
+
         try:
             response = ses.send_email(
                 Source=SES_FROM_EMAIL,
@@ -386,19 +390,21 @@ class EmailService:
                     "Body": {"Html": {"Data": html_body, "Charset": "UTF-8"}},
                 },
             )
-            
-            logger.info(f"[Email] Vendor notification sent, MessageId: {response['MessageId']}")
+
+            logger.info(
+                f"[Email] Vendor notification sent, MessageId: {response['MessageId']}"
+            )
             return {"success": True, "message_id": response["MessageId"]}
-            
+
         except Exception as e:
             logger.error(f"[Email] Error sending vendor notification: {e}")
             return {"success": False, "error": str(e)}
-    
+
     @staticmethod
-    def send_activation_email(to_email: str, api_key: str, plan: str) -> Dict[str, Any]:
+    def send_activation_email(to_email: str, api_key: str, plan: str) -> dict[str, Any]:
         """Send activation email with API key."""
         subject = "🔑 ¡Activa tu GPUBROKER POD!"
-        
+
         html_body = f"""
         <!DOCTYPE html>
         <html>
@@ -433,13 +439,13 @@ class EmailService:
         </body>
         </html>
         """
-        
+
         ses = _get_ses_client()
-        
+
         if not ses:
             logger.info(f"[Email] Mock: Activation email for {to_email}")
             return {"success": True, "message_id": "mock", "mock": True}
-        
+
         try:
             response = ses.send_email(
                 Source=SES_FROM_EMAIL,
@@ -453,12 +459,12 @@ class EmailService:
         except Exception as e:
             logger.error(f"[Email] Error sending activation email: {e}")
             return {"success": False, "error": str(e)}
-    
+
     @staticmethod
-    def send_pod_ready_email(to_email: str, pod_url: str, plan: str) -> Dict[str, Any]:
+    def send_pod_ready_email(to_email: str, pod_url: str, plan: str) -> dict[str, Any]:
         """Send email when GPUBROKER POD is ready."""
         subject = "Tu GPUBROKER POD esta listo"
-        
+
         html_body = f"""
         <!DOCTYPE html>
         <html>
@@ -489,13 +495,13 @@ class EmailService:
         </body>
         </html>
         """
-        
+
         ses = _get_ses_client()
-        
+
         if not ses:
             logger.info(f"[Email] Mock: Pod ready email for {to_email}")
             return {"success": True, "message_id": "mock", "mock": True}
-        
+
         try:
             response = ses.send_email(
                 Source=SES_FROM_EMAIL,

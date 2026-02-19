@@ -8,16 +8,17 @@ Contains verified GPU performance data from official sources:
 
 NO MOCKS. NO FAKE DATA. REAL BENCHMARK DATA ONLY.
 """
+
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-logger = logging.getLogger('gpubroker.math_core.benchmarks')
+logger = logging.getLogger("gpubroker.math_core.benchmarks")
 
 
 # Real GPU benchmark data from verified sources
 # Source: NVIDIA official specs, MLPerf, Lambda Labs
-GPU_BENCHMARK_DATA: Dict[str, Dict[str, Any]] = {
+GPU_BENCHMARK_DATA: dict[str, dict[str, Any]] = {
     "H100": {
         "tflops_fp32": 510.0,
         "tflops_fp16": 1000.0,
@@ -168,37 +169,37 @@ GPU_BENCHMARK_DATA: Dict[str, Dict[str, Any]] = {
 class BenchmarkRepository:
     """
     Repository for GPU benchmark data.
-    
+
     Provides access to verified GPU performance metrics.
     Falls back to in-memory data if database unavailable.
     """
-    
+
     def __init__(self):
-        self._cache: Dict[str, Dict[str, Any]] = GPU_BENCHMARK_DATA.copy()
-    
-    def get(self, gpu_type: str) -> Optional[Dict[str, Any]]:
+        self._cache: dict[str, dict[str, Any]] = GPU_BENCHMARK_DATA.copy()
+
+    def get(self, gpu_type: str) -> dict[str, Any] | None:
         """
         Get benchmark data for a GPU type.
-        
+
         Args:
             gpu_type: GPU model name (case-insensitive partial match)
-            
+
         Returns:
             Benchmark dict or None
         """
         # Try exact match first
         if gpu_type in self._cache:
             return self._cache[gpu_type]
-        
+
         # Try case-insensitive partial match
         gpu_lower = gpu_type.lower()
         for key, data in self._cache.items():
             if key.lower() in gpu_lower or gpu_lower in key.lower():
                 return data
-        
+
         return None
-    
-    def list_all(self) -> List[Dict[str, Any]]:
+
+    def list_all(self) -> list[dict[str, Any]]:
         """List all GPU benchmarks."""
         result = []
         for gpu_model, data in self._cache.items():
@@ -209,47 +210,43 @@ class BenchmarkRepository:
             }
             result.append(benchmark)
         return result
-    
+
     def get_tflops(self, gpu_type: str, precision: str = "fp32") -> float:
         """
         Get TFLOPS for a GPU.
-        
+
         Args:
             gpu_type: GPU model name
             precision: fp32, fp16, or int8
-            
+
         Returns:
             TFLOPS value or 0.0 if not found
         """
         benchmark = self.get(gpu_type)
         if not benchmark:
             return 0.0
-        
+
         key = f"tflops_{precision}"
         return float(benchmark.get(key, 0) or 0)
-    
-    def get_tokens_per_second(
-        self,
-        gpu_type: str,
-        model_size: str = "7b"
-    ) -> int:
+
+    def get_tokens_per_second(self, gpu_type: str, model_size: str = "7b") -> int:
         """
         Get tokens per second for LLM inference.
-        
+
         Args:
             gpu_type: GPU model name
             model_size: 7b, 13b, or 70b
-            
+
         Returns:
             Tokens per second or 0 if not found
         """
         benchmark = self.get(gpu_type)
         if not benchmark:
             return 0
-        
+
         key = f"tokens_per_second_{model_size}"
         return int(benchmark.get(key, 0) or 0)
-    
+
     def get_vram(self, gpu_type: str) -> int:
         """Get VRAM in GB for a GPU."""
         benchmark = self.get(gpu_type)

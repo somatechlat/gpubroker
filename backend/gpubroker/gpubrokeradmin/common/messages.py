@@ -4,9 +4,7 @@ Centralized message catalog for GPUBROKER Admin.
 All user-facing strings must be retrieved via get_message(code, **kwargs).
 """
 
-from typing import Dict
-
-MESSAGES: Dict[str, str] = {
+MESSAGES: dict[str, str] = {
     # Payment / PayPal
     "paypal.not_configured": "PayPal is not configured. Set PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET.",
     "paypal.auth_failed": "Failed to authenticate with PayPal.",

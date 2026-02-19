@@ -7,4 +7,5 @@ Handles:
 - Price history tracking
 - Provider adapters (RunPod, VastAI, etc.)
 """
-default_app_config = 'apps.providers.apps.ProvidersConfig'
+
+default_app_config = "apps.providers.apps.ProvidersConfig"

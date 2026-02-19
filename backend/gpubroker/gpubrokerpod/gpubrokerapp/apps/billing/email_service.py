@@ -3,12 +3,13 @@ Billing Email Service - Invoice and payment notification emails.
 
 Uses AWS SES for email delivery.
 """
-import os
-import logging
-from datetime import datetime
-from typing import Dict, Any, Optional
 
-logger = logging.getLogger('gpubroker.billing.email')
+import logging
+import os
+from datetime import datetime
+from typing import Any
+
+logger = logging.getLogger("gpubroker.billing.email")
 
 # AWS Configuration
 AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
@@ -19,6 +20,7 @@ def _get_ses_client():
     """Get boto3 SES client with error handling."""
     try:
         import boto3
+
         return boto3.client("ses", region_name=AWS_REGION)
     except ImportError:
         logger.warning("boto3 not installed, using mock mode")
@@ -32,7 +34,7 @@ class BillingEmailService:
     """
     Service for sending billing-related emails via AWS SES.
     """
-    
+
     @staticmethod
     def send_invoice_email(
         to_email: str,
@@ -41,13 +43,13 @@ class BillingEmailService:
         currency: str,
         plan_name: str,
         invoice_date: datetime,
-        due_date: Optional[datetime],
-        pdf_url: Optional[str],
+        due_date: datetime | None,
+        pdf_url: str | None,
         line_items: list,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Send invoice email to customer.
-        
+
         Args:
             to_email: Customer email
             invoice_number: Invoice number
@@ -58,13 +60,13 @@ class BillingEmailService:
             due_date: Payment due date
             pdf_url: URL to download PDF invoice
             line_items: List of invoice line items
-            
+
         Returns:
             Dict with send result
         """
         date_str = invoice_date.strftime("%B %d, %Y")
         due_str = due_date.strftime("%B %d, %Y") if due_date else "Due on receipt"
-        
+
         # Build line items HTML
         items_html = ""
         for item in line_items:
@@ -74,9 +76,9 @@ class BillingEmailService:
                 <td style="padding: 12px; border-bottom: 1px solid #E5E7EB; text-align: right;">${item.get('amount', 0):.2f}</td>
             </tr>
             """
-        
+
         subject = f"Invoice #{invoice_number} from GPUBROKER"
-        
+
         html_body = f"""
         <!DOCTYPE html>
         <html>
@@ -158,7 +160,7 @@ class BillingEmailService:
         </body>
         </html>
         """
-        
+
         text_body = f"""
         INVOICE #{invoice_number}
         ========================
@@ -180,9 +182,9 @@ class BillingEmailService:
         
         © 2025 GPUBROKER
         """
-        
+
         ses = _get_ses_client()
-        
+
         if not ses:
             logger.info(f"[Email] Mock: Invoice {invoice_number} for {to_email}")
             return {
@@ -191,7 +193,7 @@ class BillingEmailService:
                 "to": to_email,
                 "mock": True,
             }
-        
+
         try:
             response = ses.send_email(
                 Source=SES_FROM_EMAIL,
@@ -204,18 +206,18 @@ class BillingEmailService:
                     },
                 },
             )
-            
+
             logger.info(f"[Email] Invoice {invoice_number} sent to {to_email}")
             return {
                 "success": True,
                 "message_id": response["MessageId"],
                 "to": to_email,
             }
-            
+
         except Exception as e:
             logger.error(f"[Email] Error sending invoice: {e}")
             return {"success": False, "error": str(e)}
-    
+
     @staticmethod
     def send_payment_failed_email(
         to_email: str,
@@ -224,10 +226,10 @@ class BillingEmailService:
         plan_name: str,
         error_message: str,
         retry_url: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Send payment failure notification.
-        
+
         Args:
             to_email: Customer email
             amount: Failed payment amount
@@ -235,12 +237,12 @@ class BillingEmailService:
             plan_name: Subscription plan name
             error_message: Payment error message
             retry_url: URL to retry payment
-            
+
         Returns:
             Dict with send result
         """
         subject = "Payment Failed - Action Required"
-        
+
         html_body = f"""
         <!DOCTYPE html>
         <html>
@@ -290,13 +292,13 @@ class BillingEmailService:
         </body>
         </html>
         """
-        
+
         ses = _get_ses_client()
-        
+
         if not ses:
             logger.info(f"[Email] Mock: Payment failed notification for {to_email}")
             return {"success": True, "message_id": "mock", "mock": True}
-        
+
         try:
             response = ses.send_email(
                 Source=SES_FROM_EMAIL,
@@ -306,14 +308,14 @@ class BillingEmailService:
                     "Body": {"Html": {"Data": html_body, "Charset": "UTF-8"}},
                 },
             )
-            
+
             logger.info(f"[Email] Payment failed notification sent to {to_email}")
             return {"success": True, "message_id": response["MessageId"]}
-            
+
         except Exception as e:
             logger.error(f"[Email] Error sending payment failed email: {e}")
             return {"success": False, "error": str(e)}
-    
+
     @staticmethod
     def send_subscription_confirmed_email(
         to_email: str,
@@ -321,14 +323,14 @@ class BillingEmailService:
         amount: float,
         currency: str,
         next_billing_date: datetime,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Send subscription confirmation email.
         """
         next_date_str = next_billing_date.strftime("%B %d, %Y")
-        
+
         subject = f"Welcome to GPUBROKER {plan_name}!"
-        
+
         html_body = f"""
         <!DOCTYPE html>
         <html>
@@ -379,13 +381,13 @@ class BillingEmailService:
         </body>
         </html>
         """
-        
+
         ses = _get_ses_client()
-        
+
         if not ses:
             logger.info(f"[Email] Mock: Subscription confirmed for {to_email}")
             return {"success": True, "message_id": "mock", "mock": True}
-        
+
         try:
             response = ses.send_email(
                 Source=SES_FROM_EMAIL,
@@ -395,10 +397,10 @@ class BillingEmailService:
                     "Body": {"Html": {"Data": html_body, "Charset": "UTF-8"}},
                 },
             )
-            
+
             logger.info(f"[Email] Subscription confirmed sent to {to_email}")
             return {"success": True, "message_id": response["MessageId"]}
-            
+
         except Exception as e:
             logger.error(f"[Email] Error sending subscription confirmed email: {e}")
             return {"success": False, "error": str(e)}
